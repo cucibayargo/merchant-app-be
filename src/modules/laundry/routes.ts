@@ -15,7 +15,7 @@ const router = express.Router();
  * /v1/laundry/get:
  *   get:
  *     summary: Get laundry details
- *     description: Retrieve details of the laundry with optional status filter
+ *     description: Retrieve details of the laundry with optional filters
  *     parameters:
  *       - in: query
  *         name: status
@@ -26,6 +26,17 @@ const router = express.Router();
  *             - Selesai
  *             - Siap Diambil
  *         description: Filter by laundry status
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Filter by customer name
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by date created
  *     responses:
  *       200:
  *         description: Successful retrieval
@@ -112,14 +123,6 @@ router.post('/create', (req, res) => {
  *           schema:
  *             type: object
  *             properties:
- *               customer:
- *                 type: string
- *               duration:
- *                 type: string
- *               qty:
- *                 type: number
- *               service:
- *                 type: string
  *               status:
  *                 type: string
  *                 enum:
@@ -138,4 +141,100 @@ router.put('/edit', (req, res) => {
   res.send('Laundry entry updated');
 });
 
+/**
+ * @swagger
+ * /v1/laundry/payment:
+ *   post:
+ *     summary: Make a payment
+ *     description: Handle a payment with a cash input
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               cash:
+ *                 type: number
+ *                 description: Amount of cash paid
+ *             required:
+ *               - cash
+ *     responses:
+ *       200:
+ *         description: Payment processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   description: Success status
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ */
+router.post('/payment', (req, res) => {
+    const { cash } = req.body;
+  
+    // Process payment (mock implementation)
+    if (cash > 0) {
+      res.json({ success: true, message: 'Payment processed successfully' });
+    } else {
+      res.status(400).json({ success: false, message: 'Invalid payment amount' });
+    }
+  });
+  
+/**
+ * @swagger
+ * /v1/laundry/detail/{laundryId}:
+ *   get:
+ *     summary: Get laundry details by ID
+ *     description: Retrieve details of a specific laundry entry by its ID
+ *     parameters:
+ *       - in: path
+ *         name: laundryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the laundry entry to retrieve
+ *     responses:
+ *       200:
+ *         description: Successful retrieval
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 customer:
+ *                   type: string
+ *                 duration:
+ *                   type: string
+ *                 qty:
+ *                   type: number
+ *                 service:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                   enum:
+ *                     - Diproses
+ *                     - Selesai
+ *                     - Siap Diambil
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ */
+
+router.get('/detail/:laundryId', (req, res) => {
+    const { laundryId } = req.params;
+
+    // Mock data lookup by ID
+    const laundryEntry = 0;
+
+    if (!laundryEntry) {
+        return res.status(404).json({ error: 'Laundry entry not found' });
+    }
+
+    res.json(laundryEntry);
+});
 export default router;
