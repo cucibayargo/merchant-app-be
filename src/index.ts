@@ -3,6 +3,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import authRoutes from './modules/auth/routes';
 import laundryRoutes from './modules/laundry/routes';
+import customerRoutes from './modules/customer/routes';
 
 const app = express();
 const port = 3000;
@@ -26,6 +27,7 @@ app.use('/v1/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 // Routes
 app.use('/v1/auth', authRoutes);
 app.use('/v1/laundry', laundryRoutes);
+app.use('/v1/customer', customerRoutes);
 
 // Start server
 app.listen(port, () => {

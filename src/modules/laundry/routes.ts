@@ -16,6 +16,8 @@ const router = express.Router();
  *   get:
  *     summary: Get laundry details
  *     description: Retrieve details of the laundry with optional filters
+ *     tags: 
+ *       - Laundry 
  *     parameters:
  *       - in: query
  *         name: status
@@ -81,6 +83,8 @@ router.get('/get', (req, res) => {
  *   post:
  *     summary: Create a new laundry entry
  *     description: Create a new laundry entry with items
+ *     tags: 
+ *       - Laundry 
  *     requestBody:
  *       content:
  *         application/json:
@@ -117,6 +121,8 @@ router.post('/create', (req, res) => {
  *   put:
  *     summary: Edit laundry details
  *     description: Edit existing laundry entry details
+ *     tags: 
+ *       - Laundry 
  *     requestBody:
  *       content:
  *         application/json:
@@ -147,6 +153,8 @@ router.put('/edit', (req, res) => {
  *   post:
  *     summary: Make a payment
  *     description: Handle a payment with a cash input
+ *     tags: 
+ *       - Laundry 
  *     requestBody:
  *       required: true
  *       content:
@@ -191,6 +199,8 @@ router.post('/payment', (req, res) => {
  *   get:
  *     summary: Get laundry details by ID
  *     description: Retrieve details of a specific laundry entry by its ID
+ *     tags: 
+ *       - Laundry 
  *     parameters:
  *       - in: path
  *         name: laundryId
