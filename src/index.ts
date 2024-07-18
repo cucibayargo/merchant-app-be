@@ -4,7 +4,7 @@ import swaggerUi from 'swagger-ui-express';
 import authRoutes from './modules/auth/routes';
 import laundryRoutes from './modules/laundry/routes';
 import customerRoutes from './modules/customer/routes';
-import serviceRoutes from './modules/service/routes';
+import serviceRoutes from './modules/services/routes';
 
 const app = express();
 const port = 3000;
