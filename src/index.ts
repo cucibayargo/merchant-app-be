@@ -4,6 +4,7 @@ import swaggerUi from 'swagger-ui-express';
 import authRoutes from './modules/auth/routes';
 import laundryRoutes from './modules/laundry/routes';
 import customerRoutes from './modules/customer/routes';
+import serviceRoutes from './modules/service/routes';
 
 const app = express();
 const port = 3000;
@@ -22,12 +23,13 @@ const options = {
 };
 
 const specs = swaggerJsdoc(options);
-app.use('/v1/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Routes
 app.use('/v1/auth', authRoutes);
 app.use('/v1/laundry', laundryRoutes);
 app.use('/v1/customer', customerRoutes);
+app.use('/v1/service', serviceRoutes);
 
 // Start server
 app.listen(port, () => {
