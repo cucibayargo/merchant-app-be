@@ -23,6 +23,11 @@ const options = {
       version: '1.0.0',
       description: 'API Routes and schema details of Kasir Laundry Pro Services',
     },
+    servers: [
+    {
+      url: 'https://kasirlaundrypro.netlify.app/api/', // Replace with your server URL
+    },
+  ],
   },
   apis: ['./src/modules/**/*.ts'], // Path to the API routes or files to be documented
 };
