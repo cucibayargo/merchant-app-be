@@ -1,7 +1,6 @@
 import express, { Router } from 'express';
 import serverless from "serverless-http";
 import swaggerJsdoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
 import authRoutes from '../../src/modules/auth/routes';
 import laundryRoutes from '../../src/modules/laundry/routes';
 import customerRoutes from '../../src/modules/customer/routes';
