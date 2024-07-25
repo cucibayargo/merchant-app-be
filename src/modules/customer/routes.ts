@@ -138,8 +138,6 @@ router.get("/", async (req, res) => {
  *         description: Bad request, invalid input
  */
 router.post("/", (req: Request, res: Response) => {
-  console.log(req.body);
-  
   if (!req.body || typeof req.body !== 'object') {
     return res.status(400).json({
       errors: [{
