@@ -1,7 +1,11 @@
 import pool from "../../database/postgres";
 import { Customer } from "./types";
 
-export async function GetCustomers() {
+/**
+ * Retrieve all customers from the database.
+ * @returns {Promise<Customer[]>} - A promise that resolves to an array of customers.
+ */
+export async function GetCustomers(): Promise<Customer[]> {
   const client = await pool.connect();
   try {
     const res = await client.query("SELECT * FROM customer");
@@ -12,9 +16,9 @@ export async function GetCustomers() {
 }
 
 /**
- * Add a new customer to the database
- * @param customer - The customer data to add
- * @returns The created customer
+ * Add a new customer to the database.
+ * @param customer - The customer data to add. Excludes 'id' as it's auto-generated.
+ * @returns {Promise<Customer>} - A promise that resolves to the newly created customer.
  */
 export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Customer> {
   const client = await pool.connect();
@@ -33,9 +37,10 @@ export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Custo
 }
 
 /**
- * Update an existing customer in the database
- * @param id - The ID of the customer to update
- * @param customer - The updated customer data
+ * Update an existing customer in the database.
+ * @param id - The ID of the customer to update.
+ * @param customer - The updated customer data. Excludes 'id' as it's the identifier for the update.
+ * @returns {Promise<Customer>} - A promise that resolves to the updated customer.
  */
 export async function updateCustomer(id: string, customer: Omit<Customer, 'id'>): Promise<Customer> {
   const client = await pool.connect();
