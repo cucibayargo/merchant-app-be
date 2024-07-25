@@ -14,24 +14,19 @@ export async function GetCustomers() {
 /**
  * Add a new customer to the database
  * @param customer - The customer data to add
+ * @returns The created customer
  */
-export async function addCustomer(customer: {
-  name: string;
-  phone_number?: string;
-  email?: string;
-  address: string;
-  gender: "Laki-laki" | "Perempuan";
-}) {
+export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Customer> {
   const client = await pool.connect();
   try {
     const { name, phone_number, email, address, gender } = customer;
     const query = `
-        INSERT INTO customer (name, phone_number, email, address, gender)
-        VALUES ($1, $2, $3, $4, $5)
-      `;
+      INSERT INTO customer (name, phone_number, email, address, gender)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *;
+    `;
     const values = [name, phone_number, email || null, address, gender];
-
-    await client.query(query, values);
+    const result = await client.query(query, values);
+    return result.rows[0];
   } finally {
     client.release();
   }
@@ -42,27 +37,18 @@ export async function addCustomer(customer: {
  * @param id - The ID of the customer to update
  * @param customer - The updated customer data
  */
-export async function updateCustomer(
-  id: string,
-  customer: {
-    name: string;
-    phone_number: string;
-    email?: string;
-    address: string;
-    gender: "Laki-laki" | "Perempuan";
-  }
-) {
+export async function updateCustomer(id: string, customer: Omit<Customer, 'id'>): Promise<Customer> {
   const client = await pool.connect();
   try {
     const { name, phone_number, email, address, gender } = customer;
     const query = `
-        UPDATE customer
-        SET name = $1, phone_number = $2, email = $3, address = $4, gender = $5
-        WHERE id = $6
-      `;
+      UPDATE customer
+      SET name = $1, phone_number = $2, email = $3, address = $4, gender = $5
+      WHERE id = $6 RETURNING *;
+    `;
     const values = [name, phone_number, email || null, address, gender, id];
-
-    await client.query(query, values);
+    const result = await client.query(query, values);
+    return result.rows[0];
   } finally {
     client.release();
   }
