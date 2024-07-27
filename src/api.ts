@@ -43,7 +43,7 @@ routerV1.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 routerV1.use("/auth", authRoutes);
 routerV1.use("/laundry", laundryRoutes);
 routerV1.use("/customer", customerRoutes);
-routerV1.use("/notes", notesRoutes);
+routerV1.use("/note", notesRoutes);
 routerV1.use("/service", serviceRoutes);
 routerV1.use("/duration", durationRoutes);
 app.use("/api/", routerV1);
