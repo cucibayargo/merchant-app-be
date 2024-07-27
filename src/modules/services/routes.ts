@@ -141,7 +141,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/service:
+ * /service:
  *   get:
  *     summary: Get all services
  *     description: Retrieve a list of all services
@@ -167,7 +167,7 @@ router.get('/', async (req, res) => {
 
 /**
  * @swagger
- * /api/service:
+ * /service:
  *   post:
  *     summary: Create a new service
  *     description: Create a new service record
@@ -210,7 +210,7 @@ router.post('/', async (req, res) => {
 
 /**
  * @swagger
- * /api/service/{id}:
+ * /service/{id}:
  *   put:
  *     summary: Update a service
  *     description: Update an existing service record
@@ -260,7 +260,7 @@ router.put('/:id', async (req, res) => {
 
 /**
  * @swagger
- * /api/service/{id}:
+ * /service/{id}:
  *   delete:
  *     summary: Delete a service
  *     description: Delete an existing service record

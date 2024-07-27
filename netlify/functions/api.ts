@@ -1,20 +1,18 @@
-import express, { Router } from "express";
+import express, { Router } from 'express';
 import serverless from "serverless-http";
-import swaggerJsdoc from "swagger-jsdoc";
-import authRoutes from "../../src/modules/auth/routes";
-import laundryRoutes from "../../src/modules/laundry/routes";
-import customerRoutes from "../../src/modules/customer/routes";
-import serviceRoutes from "../../src/modules/services/routes";
-import durationRoutes from "../../src/modules/duration/routes";
-import notesRoutes from "../../src/modules/notes/routes";
+import swaggerJsdoc from 'swagger-jsdoc';
+import authRoutes from '../../src/modules/auth/routes';
+import laundryRoutes from '../../src/modules/laundry/routes';
+import customerRoutes from '../../src/modules/customer/routes';
+import serviceRoutes from '../../src/modules/services/routes';
+import durationRoutes from '../../src/modules/duration/routes';
+import notesRoutes from '../../src/modules/notes/routes';
 import swaggerUi from "swagger-ui-express";
+import cors from 'cors';
+
 const app = express();
 app.use(express.json()); 
-app.use((req, res, next) => {
-  console.log('Middleware Check:', req.body); // Log to check if body is parsed
-  next();
-});
-
+app.use(cors());
 
 const port = 3000;
 
@@ -29,7 +27,12 @@ const options = {
       version: "1.0.0",
       description:
         "API Routes and schema details of Kasir Laundry Pro Services",
-    }
+    },
+    servers: [
+      {
+        url: 'https://kasirlaundrypro.netlify.app/api/', // Replace with your server URL
+      },
+    ]
   },
   apis: ["./src/modules/**/*.ts"], // Path to the API routes or files to be documented
 };
@@ -38,6 +41,9 @@ const swaggerSpec = swaggerJsdoc(options);
 
 // Serve Swagger UI
 routerV1.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+routerV1.use("/docs-json", (req, res) => {
+    res.json(swaggerSpec)
+})
 
 // Routes
 routerV1.use("/auth", authRoutes);

@@ -50,7 +50,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/note:
+ * /note:
  *   get:
  *     summary: Get all notes
  *     description: Retrieve a list of all notes
@@ -77,7 +77,7 @@ router.get("/", async (req, res) => {
 
 /**
  * @swagger
- * /api/note:
+ * /note:
  *   post:
  *     summary: Create a new note
  *     description: Create a new note record
@@ -140,7 +140,7 @@ router.post("/", (req, res) => {
 
 /**
  * @swagger
- * /api/note/{id}:
+ * /note/{id}:
  *   put:
  *     summary: Update a note
  *     description: Update an existing note record
