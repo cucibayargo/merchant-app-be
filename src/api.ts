@@ -38,6 +38,9 @@ const swaggerSpec = swaggerJsdoc(options);
 
 // Serve Swagger UI
 routerV1.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+routerV1.use("/docs-json", (req, res) => {
+    res.json(swaggerSpec)
+})
 
 // Routes
 routerV1.use("/auth", authRoutes);
