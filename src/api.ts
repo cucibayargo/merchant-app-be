@@ -36,7 +36,7 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000/api', // Replace with your server URL
+        url: 'https://kasirlaundrypro.netlify.app/api', // Replace with your server URL
       },
     ]
   },
