@@ -4,6 +4,7 @@ export interface User {
     name: string;
     email: string;
     oauth: boolean;
+    password: string;
     token?: string;
     phone_number?: string;
     logo?: string;
@@ -71,3 +72,9 @@ export const SignUpSchema = Joi.object({
             'string.base': 'Nomor telepon harus berupa string.'
         }),
 });
+
+export const ChangePasswordSchema = Joi.object({
+    email: Joi.string().email().required(),
+    currentPassword: Joi.string().required(),
+    newPassword: Joi.string().min(6).required(),
+  });
