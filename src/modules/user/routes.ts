@@ -1,6 +1,10 @@
 import express, { Request, Response } from "express";
 import multer from "multer";
-import { getUserDetails, updateUserDetails, updateUserProfile } from "./controller"; // Assuming you have this function
+import {
+  getUserDetails,
+  updateUserDetails,
+  updateUserProfile,
+} from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
 import { AuthenticatedRequest } from "src/middlewares";
 
@@ -224,52 +228,67 @@ router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
  *         description: Failed to update user details or process logo
  */
 router.put('/:id', async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { name, email, phone_number, address, logo } = req.body;
-  
-    // Validate required fields
-    if (!name || !email) {
-      return res.status(400).json({ message: 'Name and email are required' });
+  const { id } = req.params;
+  const { name, email, phone_number, address, logo } = req.body;
+
+  // Validate required fields
+  if (!name || !email) {
+    return res.status(400).json({ message: 'Name and email are required' });
+  }
+
+  try {
+    // Update user details (excluding logo initially)
+    const updatedUser = await updateUserDetails(id, { name, email, phone_number, address });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  
-    try {
-      // Update user details
-      const updatedUser = await updateUserDetails(id, { name, email, phone_number, address, logo });
-  
-      if (!updatedUser) {
-        return res.status(404).json({ message: 'User not found' });
+
+    if (logo) {
+      // Process logo if provided
+      const fileName = logo.split('/').pop();
+      const newLogoPath = `logos/${id}/${fileName}`;
+
+      // Move the logo from the temporary location to the final location
+      const { error: moveError } = await supabase.storage
+        .from('logos')
+        .move(logo, newLogoPath);
+
+      if (moveError) {
+        return res.status(500).json({ message: 'Failed to move logo file.', error: moveError.message });
       }
-  
-      if (logo) {
-        // Process logo if provided
-        const { error: moveError } = await supabase.storage
-          .from('logos')
-          .move(logo, `logos/${id}/${logo.split('/').pop()}`);
-  
-        if (moveError) {
-          return res.status(500).json({ message: 'Failed to move logo file.', error: moveError.message });
-        }
-  
-        // Clean up temporary logo file
-        const { error: deleteError } = await supabase.storage
-          .from('logos')
-          .remove([logo]);
-  
-        if (deleteError) {
-          return res.status(500).json({ message: 'Failed to delete temporary logo file.', error: deleteError.message });
-        }
-  
-        // Update user profile with the new logo URL
-        const logoUrl = `logos/${id}/${logo.split('/').pop()}`;
-        await updateUserDetails(id, { logo: logoUrl });
+
+      // Clean up the original temporary logo file if it was successfully moved
+      const { error: deleteError } = await supabase.storage
+        .from('logos')
+        .remove([logo]);
+
+      if (deleteError) {
+        return res.status(500).json({ message: 'Failed to delete temporary logo file.', error: deleteError.message });
       }
-  
-      res.status(200).json({ message: 'User details updated successfully', user: updatedUser });
-    } catch (error) {
-      const err = error as Error;
-      res.status(500).json({ message: 'Internal server error.', error: err.message });
+
+      // Get the public URL for the new logo
+      const { data } = supabase.storage
+        .from('logos')
+        .getPublicUrl(newLogoPath);
+
+      // Access the public URL
+      const publicURL = data?.publicUrl;
+
+      if (!publicURL) {
+        return res.status(500).json({ message: 'Failed to retrieve the public URL for the logo.' });
+      }
+
+      // Update user profile with the new logo URL
+      await updateUserDetails(id, { logo: publicURL });
+      updatedUser.logo = publicURL; // Update the user object with the new logo URL
     }
-  });
-  
+
+    res.status(200).json({ message: 'User details updated successfully', user: updatedUser });
+  } catch (error) {
+    const err = error as Error;
+    res.status(500).json({ message: 'Internal server error.', error: err.message });
+  }
+});
 
 export default router;
