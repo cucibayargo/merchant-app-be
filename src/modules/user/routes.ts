@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import { getUserDetails, updateUserDetails, updateUserProfile } from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
+import { AuthenticatedRequest } from "src/middlewares";
 
 const router = express.Router();
 
@@ -145,18 +146,11 @@ router.post("/upload-logo", upload.single("file"), async (req, res) => {
 
 /**
  * @swagger
- * /user/{id}:
+ * /user/details:
  *   get:
  *     summary: Retrieve user details
  *     description: Fetches the details of a user by their ID.
  *     tags: [User]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: The ID of the user to retrieve.
- *         schema:
- *           type: string
  *     responses:
  *       '200':
  *         description: User details retrieved successfully
@@ -167,10 +161,11 @@ router.post("/upload-logo", upload.single("file"), async (req, res) => {
  *       '404':
  *         description: User not found
  */
-router.get("/user/:id", async (req: Request, res: Response) => {
-  const { id } = req.params;
+router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.userId;
+
   try {
-    const user = await getUserDetails(id);
+    const user = await getUserDetails(userId);
     if (user) {
       res.json(user);
     } else {
@@ -228,7 +223,7 @@ router.get("/user/:id", async (req: Request, res: Response) => {
  *       '500':
  *         description: Failed to update user details or process logo
  */
-router.put('/user/:id', async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, email, phone_number, address, logo } = req.body;
   

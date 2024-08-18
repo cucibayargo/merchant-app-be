@@ -1110,23 +1110,12 @@
         }
       }
     },
-    "/user/{id}": {
+    "/user/details": {
       "get": {
         "summary": "Retrieve user details",
         "description": "Fetches the details of a user by their ID.",
         "tags": [
           "User"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "description": "The ID of the user to retrieve.",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -1143,7 +1132,9 @@
             "description": "User not found"
           }
         }
-      },
+      }
+    },
+    "/user/{id}": {
       "put": {
         "summary": "Update user details and optionally submit logo",
         "description": "Updates user details including optional logo upload. If a logo file path is provided, it will be moved from temporary to final location.",

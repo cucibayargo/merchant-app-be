@@ -22,10 +22,10 @@ export async function updateUserProfile(userId: string, logoUrl: string): Promis
  * @param id - The ID of the user to retrieve.
  * @returns A promise that resolves to the user details or null if not found.
  */
-export async function getUserDetails(id: string): Promise<User | null> {
+export async function getUserDetails(id?: string): Promise<User | null> {
     const client = await pool.connect();
     try {
-      const result = await client.query('SELECT * FROM users WHERE id = $1', [id]);
+      const result = await client.query('SELECT id,name,email,phone_number,logo,address FROM users WHERE id = $1', [id]);
       return result.rows[0] || null;
     } finally {
       client.release();
