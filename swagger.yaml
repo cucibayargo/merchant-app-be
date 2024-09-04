@@ -77,6 +77,12 @@
           }
           }
           }
+          }
+        ]
+        }
+        ]
+        }
+          }
         ]
         }
         ]
@@ -816,7 +822,15 @@
             "schema": {
               "type": "string"
             },
-            "description": "Filter Data by name"
+            "description": "Filter data by name"
+          },
+          {
+            "in": "query",
+            "name": "duration",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter data by duration"
           }
         ],
         "responses": {
