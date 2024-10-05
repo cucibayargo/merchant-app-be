@@ -43,7 +43,7 @@ export async function getTransactions(
       values.push(status);
     }
 
-    // Add customer ID condition
+    // Add customer filter condition
     if (filter) {
       conditions.push(`(t.customer_name ILIKE '%' || $${values.length + 1} || '%' OR d.invoice_id ILIKE '%' || $${values.length + 1} || '%')`);
       values.push(filter);
@@ -61,20 +61,21 @@ export async function getTransactions(
       values.push(merchant_id);
     }
 
-    // Construct query
+    // Construct query using dateColumn for ordering
     const query = `
       SELECT 
-          t.id AS id,
-          t.customer_name AS customer,
-          d.status AS payment_status,
-          d.invoice_id AS invoice,
-          t.status,
-          t.created_at,
-          t.ready_to_pick_up_at,
-          t.completed_at
+        t.id AS id,
+        t.customer_name AS customer,
+        p.status AS payment_status,
+        p.invoice_id AS invoice,
+        t.status,
+        t.created_at,
+        t.ready_to_pick_up_at,
+        t.completed_at
       FROM new_transaction t
-      LEFT JOIN new_payment d ON t.id = d.transaction_id
-      WHERE ${conditions.join(' AND ')}
+      LEFT JOIN new_payment p ON t.id = p.transaction_id
+      WHERE ${conditions.length > 0 ? conditions.join(' AND ') : 'TRUE'}
+      ORDER BY ${dateColumn} DESC
     `;
     
     // Execute the query
@@ -85,6 +86,7 @@ export async function getTransactions(
     client.release();
   }
 }
+
 
 /**
  * Add a new transaction to the database.
