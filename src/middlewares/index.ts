@@ -15,7 +15,7 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
   const crToken = req.headers['cron-job-token'];
   const crPrivateToken = process.env.crToken;
   
-  if (req.path.startsWith('/user/delete-temp-files')) {
+  if (req.path.startsWith('/api/user/delete-temp-files')) {
     if (crToken == crPrivateToken) {
       return next();
     } else {
