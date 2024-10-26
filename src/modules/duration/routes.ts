@@ -1,7 +1,7 @@
 import express from 'express';
 import { Duration, durationSchema, DurationType } from './types';
 import { getDurations, getDurationById, addDuration, updateDuration, deleteDuration } from './controller';
-import { AuthenticatedRequest } from 'src/middlewares';
+import { AuthenticatedRequest } from '../../middlewares';
 
 const router = express.Router();
 

@@ -1,19 +1,14 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
-    "paths": {
-      "@database/*": ["src/database/*"]
-    },
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "moduleResolution": "node",
-    "target": "ES6",
+    "target": "ESNext",
     "module": "commonjs",
+    "strict": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true,
     "skipLibCheck": true,
-    "strict": true
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "rootDir": "src"  // Ensure this is set to 'src'
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

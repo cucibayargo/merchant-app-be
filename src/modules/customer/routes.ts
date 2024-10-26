@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import { addCustomer, GetCustomers, updateCustomer, getCustomerById, deleteCustomer } from "./controller";
 import { customerSchema } from "./types";
-import { AuthenticatedRequest } from "src/middlewares";
+import { AuthenticatedRequest } from "../../middlewares";
 
 const router = express.Router();
 

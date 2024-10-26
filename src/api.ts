@@ -1,5 +1,4 @@
 import express, { Request, Response, NextFunction, Router } from "express";
-import serverless from "serverless-http";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import cors, { CorsOptions } from 'cors';
@@ -100,8 +99,8 @@ routerV1.use("/email-support", emailSupport);
 routerV1.use("/payment", paymentRoutes);
 app.use("/api/", routerV1);
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Server running on http://localhost:${port}`);
+// });
 
-export const handler = serverless(app);
+export default app;

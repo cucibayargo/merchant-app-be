@@ -6,7 +6,7 @@ import {
   updateUserDetails,
 } from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
-import { AuthenticatedRequest } from "src/middlewares";
+import { AuthenticatedRequest } from "../../middlewares";
 
 const router = express.Router();
 

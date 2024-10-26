@@ -1,7 +1,7 @@
 import express from "express";
 import { noteSchema } from "./types";
 import { addNote, GetNote, updateNote } from "./controller";
-import { AuthenticatedRequest } from "src/middlewares";
+import { AuthenticatedRequest } from "../../middlewares";
 
 const router = express.Router();
 
