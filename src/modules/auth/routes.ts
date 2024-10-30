@@ -1,6 +1,6 @@
 import express from "express";
-import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenInput, SignUpTokenSchema } from "./types";
-import { addUser, addUserSignUpToken, changeUserPassword, getUserByEmail, updateUserSignupStatus, validateToken } from "./controller";
+import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema } from "./types";
+import { addUser, addUserSignUpToken, changeUserPassword, getSubsPlanByCode, getUserByEmail, updateUserSignupStatus, validateToken } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import passport from "./passportConfig";
@@ -479,17 +479,25 @@ router.post("/signup/token",  async (req, res) => {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  const { name, email, phone_number } = req.body;
+  const { name, email, phone_number, subscription_plan } = req.body;
   try {
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: "Email sudah digunakan." });
     }
 
+    let subscriptionPlan = null;
+    if (subscription_plan) {
+      subscriptionPlan = await getSubsPlanByCode(subscription_plan);
+      if (subscriptionPlan) {
+        return res.status(400).json({ message: "Paket Aplikasi Tidak di temukan sudah digunakan." });
+      }
+    }
+
     // Generate a unique token using SHA256 hash
     const signupToken = crypto.createHash('sha256').update(email + Date.now().toString()).digest('hex');
 
-    const userDetail = { name, email, phone_number, token: signupToken };
+    const userDetail = { name, email, phone_number, token: signupToken, subscriptionPlan };
 
     // Save the signup token and user details in the database
     await addUserSignUpToken(userDetail);

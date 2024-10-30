@@ -97,6 +97,7 @@ export interface SignUpTokenInput {
     email: string;
     name: string;
     phone_number?: string;
+    subscription_plan?: string;
     token?: string;
     status?: "signed" | "unsigned"
 }

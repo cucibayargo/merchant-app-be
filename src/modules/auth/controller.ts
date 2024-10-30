@@ -18,6 +18,21 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 }
 
 /**
+ * Retrieve a App Plans by subscriotion code.
+ * @param code - The code of the plan to retrieve.
+ * @returns {Promise<string | null>} - A promise that resolves to the user if found, or null if not found.
+ */
+export async function getSubsPlanByCode(code: string): Promise<string | null> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query('SELECT * FROM app_plans WHERE code = $1', [code]);
+    return res.rows[0]?.id || null;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Add a new user to the database.
  * @param user - The user data to add. Excludes 'id' as it's auto-generated.
  * @returns {Promise<User>} - A promise that resolves to the newly created user.
@@ -73,12 +88,12 @@ export async function changeUserPassword(email: string, currentPassword: string,
 export async function addUserSignUpToken(payload: Omit<SignUpTokenInput, 'id'>): Promise<void> {
   const client = await pool.connect();
   try {
-    const { name, email, phone_number, token, status} = payload;
+    const { name, email, phone_number, token, status, subscription_plan} = payload;
     const query = `
-      INSERT INTO users_signup (name, email, phone_number, token, status)
-      VALUES ($1, $2, $3, $4, $5);
+      INSERT INTO users_signup (name, email, phone_number, token, status, subscription_plan)
+      VALUES ($1, $2, $3, $4, $5, $6);
     `;
-    const values = [name, email, phone_number, token, status];
+    const values = [name, email, phone_number, token, status, subscription_plan];
     await client.query(query, values);
   } finally {
     client.release();

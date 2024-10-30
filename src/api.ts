@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction, Router } from "express";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import cors, { CorsOptions } from 'cors';
-import fs from "fs";
+// import fs from "fs";
 import authRoutes from "./modules/auth/routes";
 import TransactionRoutes from "./modules/transaction/routes";
 import customerRoutes from "./modules/customer/routes";
@@ -56,7 +56,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-const port = 3000;
 const routerV1 = Router();
 
 // Swagger configuration and setup
@@ -78,7 +77,7 @@ const options = {
 };
 
 const swaggerSpec = swaggerJsdoc(options);
-fs.writeFileSync('swagger.yaml', JSON.stringify(swaggerSpec, null, 2));
+// fs.writeFileSync('swagger.yaml', JSON.stringify(swaggerSpec, null, 2));
 
 routerV1.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 routerV1.use("/docs-json", (req: Request, res: Response) => {
