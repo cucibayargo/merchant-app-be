@@ -433,6 +433,10 @@ router.post("/signup", async (req, res) => {
  *                 type: string
  *                 description: The user's full name
  *                 example: John Doe
+ *               subscription_plan:
+ *                 type: string
+ *                 description: The subscription plan code picking by user
+ *                 example: paket1
  *               email:
  *                 type: string
  *                 description: The user's email address
