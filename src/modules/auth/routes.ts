@@ -7,10 +7,17 @@ import passport from "./passportConfig";
 import { getUserDetails, updateUserDetails } from "../user/controller";
 import * as dotenv from 'dotenv';
 import crypto from 'crypto';
+import disposableDomains from 'disposable-email-domains';
+
 const SibApiV3Sdk = require('sib-api-v3-sdk');
 const defaultClient = SibApiV3Sdk.ApiClient.instance;
 
 const router = express.Router();
+
+function isDisposableEmail(email: string): boolean {
+    const domain = email.split('@')[1];
+    return disposableDomains.includes(domain);
+}
 
 // Load environment variables from .env file
 dotenv.config();
@@ -372,6 +379,10 @@ router.post("/signup", async (req, res) => {
   const { name, email, password, phone_number, token} = req.body;
 
   try {
+    if (isDisposableEmail(email)) {
+      return res.status(400).json({ message: "Email tidak sesuai. Tolong gunakan alamat email yang valid." });
+    }
+    
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: "Email sudah digunakan." });
@@ -485,6 +496,10 @@ router.post("/signup/token",  async (req, res) => {
 
   const { name, email, phone_number, subscription_plan } = req.body;
   try {
+    if (isDisposableEmail(email)) {
+      return res.status(400).json({ message: "Email tidak sesuai. Tolong gunakan alamat email yang valid." });
+    }
+
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: "Email sudah digunakan." });

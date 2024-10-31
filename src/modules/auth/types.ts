@@ -109,6 +109,7 @@ export const SignUpTokenSchema = Joi.object({
                 'string.empty': 'Nama harus diisi.',
                 'any.required': 'Nama harus diisi.'
             }),
+    subscription_plan: Joi.string(),
     email: Joi.string()
             .email()
             .required()
