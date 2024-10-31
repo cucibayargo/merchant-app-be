@@ -382,7 +382,7 @@ router.post("/signup", async (req, res) => {
     if (isDisposableEmail(email)) {
       return res.status(400).json({ message: "Email tidak sesuai. Tolong gunakan alamat email yang valid." });
     }
-    
+
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: "Email sudah digunakan." });
@@ -508,8 +508,8 @@ router.post("/signup/token",  async (req, res) => {
     let subscriptionPlan = null;
     if (subscription_plan) {
       subscriptionPlan = await getSubsPlanByCode(subscription_plan);
-      if (subscriptionPlan) {
-        return res.status(400).json({ message: "Paket Aplikasi Tidak di temukan sudah digunakan." });
+      if (!subscriptionPlan) {
+        return res.status(400).json({ message: "Paket Aplikasi Tidak ditemukan." });
       }
     }
 
