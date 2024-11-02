@@ -86,10 +86,8 @@ export const SignUpSchema = Joi.object({
             'string.email': 'Alamat email tidak valid.',
             'any.required': 'Alamat email harus diisi.'
         }),
-    phone_number: Joi.string()
-        .optional()
-        .messages({
-            'string.base': 'Nomor telepon harus berupa string.'
+    phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
+        'string.pattern.base': 'Nomor telepon tidak valid',
         }),
 });
 
@@ -117,11 +115,9 @@ export const SignUpTokenSchema = Joi.object({
                 'string.email': 'Alamat email tidak valid.',
                 'any.required': 'Alamat email harus diisi.'
             }),
-    phone_number: Joi.string()
-            .optional()
-            .messages({
-                'string.base': 'Nomor telepon harus berupa string.'
-            }),
+    phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
+        'string.pattern.base': 'Nomor telepon tidak valid',
+        }),
 })
 
 export const ChangePasswordSchema = Joi.object({
