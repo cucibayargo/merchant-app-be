@@ -32,7 +32,7 @@ const sendEmailRegistration = async (registrationEmail: string, verificationToke
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
   const sendSmtpEmail = {
-    sender: { name: 'Cucibayargo', email: 'laundryapps225@gmail.com' },
+    sender: { name: 'Support', email: 'no-reply@mail.cucibayargo.com' },
     to: [{ email: registrationEmail }],
     subject: 'Verifikasi Alamat Email Anda',
     textContent: `Silakan verifikasi alamat email Anda dengan mengklik tautan berikut: ${verificationUrl}`,
@@ -86,7 +86,7 @@ const sendSignUpLink = async (
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
   const sendSmtpEmail = {
-    sender: { name: 'Cucibayargo', email: 'laundryapps225@gmail.com' },
+    sender: { name: 'Support', email: 'no-reply@mail.cucibayargo.com' },
     to: [{ email: registrationEmail }],
     subject: 'Link Pendaftaran Cucibayargo',
     textContent: `Silakan klik link untuk melakukan pendaftaran: ${verificationUrl}`,
@@ -526,6 +526,7 @@ router.post("/signup/token",  async (req, res) => {
 
     res.status(201).json({ message: "Link pendaftaran telah dibuat. Silahkan cek email anda untuk melanjutkan."});
   } catch (err: any) {
+    console.log(err);
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 })
