@@ -72,8 +72,8 @@ export async function getTransactions(
         t.created_at,
         t.ready_to_pick_up_at,
         t.completed_at
-      FROM new_transaction t
-      LEFT JOIN new_payment p ON t.id = p.transaction_id
+      FROM transaction t
+      LEFT JOIN payment p ON t.id = p.transaction_id
       WHERE ${conditions.length > 0 ? conditions.join(' AND ') : 'TRUE'}
       ORDER BY ${dateColumn} DESC
     `;
@@ -101,7 +101,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>, merch
     const durationDetail = await getDurationById(duration);
 
     const query = `
-      INSERT INTO new_transaction (
+      INSERT INTO transaction (
         customer_id, 
         customer_name, 
         customer_phone_number, 
@@ -143,7 +143,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>, merch
       
       transactionQueries.push({
         text: `
-          INSERT INTO new_transaction_item (transaction_id, service_id, service_name, service_unit, price, qty)
+          INSERT INTO transaction_item (transaction_id, service_id, service_name, service_unit, price, qty)
           VALUES ($1, $2, $3, $4, $5, $6);
         `,
         values: [newTransactionId, serviceDetail.id, serviceDetail.name, serviceDetail.unit, serviceDetail.price, item.qty],
@@ -187,7 +187,7 @@ async function getInvoiceTotalPrice(transactionId: string): Promise<{total: numb
     const query = `
       SELECT 
         SUM(ti.price * ti.qty) AS total
-      FROM new_transaction_item ti
+      FROM transaction_item ti
       WHERE ti.transaction_id = $1
       GROUP BY ti.transaction_id
     `;
@@ -215,7 +215,7 @@ export async function updateTransaction(status: string, invoiceId: string): Prom
   const client = await pool.connect();
   try {
     const query = `
-      UPDATE new_transaction
+      UPDATE transaction
       SET 
         status = $1::text, 
         completed_at = CASE 
@@ -228,8 +228,8 @@ export async function updateTransaction(status: string, invoiceId: string): Prom
                               END
       WHERE id = (
         SELECT t.id
-        FROM new_transaction t
-        JOIN new_payment p ON t.id = p.transaction_id
+        FROM transaction t
+        JOIN payment p ON t.id = p.transaction_id
         WHERE p.invoice_id = $2
       )
       RETURNING *;
@@ -275,9 +275,9 @@ export async function getTransactionById(invoiceId: string): Promise<Transaction
             'quantity', ti.qty
           )
         ) AS services
-      FROM new_transaction t
-      LEFT JOIN new_payment p ON t.id = p.transaction_id
-      LEFT JOIN new_transaction_item ti ON t.id = ti.transaction_id
+      FROM transaction t
+      LEFT JOIN payment p ON t.id = p.transaction_id
+      LEFT JOIN transaction_item ti ON t.id = ti.transaction_id
       WHERE p.invoice_id = $1
       GROUP BY t.id, p.id
     `;
@@ -303,15 +303,15 @@ export async function getTransactionByTransactionId(invoiceId: string): Promise<
   try {
     const query = `
       SELECT 
-        new_transaction.id AS transaction_id,
-        new_transaction.customer_id,
-        new_transaction.customer_name,
-        new_transaction.customer_phone_number,
+        transaction.id AS transaction_id,
+        transaction.customer_id,
+        transaction.customer_name,
+        transaction.customer_phone_number,
         p.invoice_id AS invoice,
-        new_transaction.status
-      FROM new_transaction
-      LEFT JOIN new_payment p ON new_transaction.id = p.transaction_id
-      WHERE new_transaction.id = $1
+        transaction.status
+      FROM transaction
+      LEFT JOIN payment p ON transaction.id = p.transaction_id
+      WHERE transaction.id = $1
     `;
     const { rows } = await client.query(query, [invoiceId]);
     return rows.length ? rows[0] : null;
@@ -360,9 +360,9 @@ export async function getInvoiceById(invoiceId: string): Promise<InvoiceDetails 
               'payment_received', p.payment_received,
               'change_given', p.change_given
           ) as transaction
-      FROM new_transaction t
-      LEFT JOIN new_payment p ON t.id = p.transaction_id
-      LEFT JOIN new_transaction_item ti ON t.id = ti.transaction_id
+      FROM transaction t
+      LEFT JOIN payment p ON t.id = p.transaction_id
+      LEFT JOIN transaction_item ti ON t.id = ti.transaction_id
       LEFT JOIN users u ON u.id = t.merchant_id
       LEFT JOIN note n ON n.merchant_id = u.id
       WHERE p.invoice_id = $1

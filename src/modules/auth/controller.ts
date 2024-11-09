@@ -1,5 +1,5 @@
 import pool from "../../database/postgres";
-import { SignUpInput, SignUpTokenInput, User } from "./types";
+import { SignUpInput, SignUpTokenInput, SubscriptionPlan, User } from "./types";
 import bcrypt from "bcrypt";
 
 /**
@@ -22,11 +22,11 @@ export async function getUserByEmail(email: string): Promise<User | null> {
  * @param code - The code of the plan to retrieve.
  * @returns {Promise<string | null>} - A promise that resolves to the user if found, or null if not found.
  */
-export async function getSubsPlanByCode(code: string): Promise<string | null> {
+export async function getSubsPlanByCode(code: string): Promise<SubscriptionPlan> {
   const client = await pool.connect();
   try {
     const res = await client.query('SELECT * FROM app_plans WHERE code = $1', [code]);
-    return res.rows[0]?.id || null;
+    return res.rows[0] || null;
   } finally {
     client.release();
   }

@@ -138,3 +138,12 @@ export interface MailOptions {
     text: string;
     html: string;
 }
+
+export interface SubscriptionPlan {
+    name: string;
+    id: string;
+    code: string;
+    price: number;
+    duration: number;
+    created_at: string;
+}

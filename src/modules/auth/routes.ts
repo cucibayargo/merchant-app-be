@@ -1,5 +1,5 @@
 import express from "express";
-import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema } from "./types";
+import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema, SubscriptionPlan } from "./types";
 import { addUser, addUserSignUpToken, changeUserPassword, getSubsPlanByCode, getUserByEmail, updateUserSignupStatus, validateToken } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -505,7 +505,7 @@ router.post("/signup/token",  async (req, res) => {
       return res.status(400).json({ message: "Email sudah digunakan." });
     }
 
-    let subscriptionPlan = null;
+    let subscriptionPlan  = null;
     if (subscription_plan) {
       subscriptionPlan = await getSubsPlanByCode(subscription_plan);
       if (!subscriptionPlan) {
@@ -516,13 +516,13 @@ router.post("/signup/token",  async (req, res) => {
     // Generate a unique token using SHA256 hash
     const signupToken = crypto.createHash('sha256').update(email + Date.now().toString()).digest('hex');
 
-    const userDetail = { name, email, phone_number, token: signupToken, subscriptionPlan };
+    const userDetail = { name, email, phone_number, token: signupToken, subscriptionPlan: subscriptionPlan ? subscriptionPlan.id : null };
 
     // Save the signup token and user details in the database
     await addUserSignUpToken(userDetail);
 
     // Send the signup email with the generated token
-    await sendSignUpLink(email, { token: signupToken, email, phone_number, name });
+    await sendSignUpLink(email, { token: signupToken, email, phone_number, name, subscription_plan: subscriptionPlan ? subscriptionPlan.code : '' });
 
     res.status(201).json({ message: "Link pendaftaran telah dibuat. Silahkan cek email anda untuk melanjutkan."});
   } catch (err: any) {

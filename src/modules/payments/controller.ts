@@ -18,7 +18,7 @@ export async function addPayment(
         const { status, invoice_id, transaction_id, total_amount_due } = payment;
 
         const query = `
-          INSERT INTO new_payment (status, invoice_id, transaction_id, total_amount_due, merchant_id)
+          INSERT INTO payment (status, invoice_id, transaction_id, total_amount_due, merchant_id)
           VALUES ($1, $2, $3, $4, $5) RETURNING id;
         `;
 
@@ -49,7 +49,7 @@ export async function updatePayment(invoiceId: string, paymentParams: { change_g
     try {
       const { change_given, payment_received} = paymentParams;
       const query = `
-        UPDATE new_payment
+        UPDATE payment
         SET status = 'Lunas',
             payment_received = $1,
             change_given = $2
@@ -88,9 +88,9 @@ export async function getPaymentByInvoiceId(invoiceId: string): Promise<PaymentD
                         'quantity', ti.qty
                     )
                 ) AS services
-            FROM new_transaction t
-            LEFT JOIN new_payment p ON t.id = p.transaction_id
-            LEFT JOIN new_transaction_item ti ON t.id = ti.transaction_id
+            FROM transaction t
+            LEFT JOIN payment p ON t.id = p.transaction_id
+            LEFT JOIN transaction_item ti ON t.id = ti.transaction_id
             WHERE p.invoice_id = $1
             GROUP BY p.id, p.invoice_id, p.status
         `, [invoiceId]);
@@ -111,7 +111,7 @@ async function getCustomerByPatmentId(payment: string) {
                 t.customer_email,
                 t.customer_phone_number,
                 t.customer_address
-            FROM new_transaction t
+            FROM transaction t
             WHERE t.id = $1
         `, [payment]);
         return res.rows[0] || null;
