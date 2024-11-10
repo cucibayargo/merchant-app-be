@@ -6,7 +6,8 @@ CREATE TABLE app_invoices (
     due_date date,
     invoice_date date,
     id uuid NOT NULL DEFAULT gen_random_uuid(),
-    created_at timestamp with time zone NOT NULL DEFAULT now()
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE app_plans (
@@ -15,7 +16,8 @@ CREATE TABLE app_plans (
     code character varying NOT NULL,
     price double precision,
     duration integer,
-    created_at timestamp with time zone NOT NULL DEFAULT now()
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE app_subscriptions (
@@ -25,7 +27,8 @@ CREATE TABLE app_subscriptions (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     user_id uuid,
-    plan_id uuid
+    plan_id uuid,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE app_transactions (
@@ -36,7 +39,8 @@ CREATE TABLE app_transactions (
     amount numeric,
     transaction_date timestamp without time zone,
     payment_method character varying,
-    status character varying
+    status character varying,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE customer (
@@ -47,7 +51,8 @@ CREATE TABLE customer (
     address character varying,
     phone_number character varying,
     email character varying,
-    gender character varying
+    gender character varying,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE duration (
@@ -56,14 +61,16 @@ CREATE TABLE duration (
     merchant_id uuid,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     name character varying,
-    type character varying
+    type character varying,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE note (
     merchant_id uuid,
     notes text,
     id uuid NOT NULL DEFAULT gen_random_uuid(),
-    created_at timestamp with time zone NOT NULL DEFAULT now()
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE payment (
@@ -75,7 +82,8 @@ CREATE TABLE payment (
     total_amount_due double precision,
     payment_received double precision,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
-    transaction_id uuid
+    transaction_id uuid,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE service (
@@ -83,7 +91,8 @@ CREATE TABLE service (
     unit character varying,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     merchant_id uuid,
-    name character varying
+    name character varying,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE service_duration (
@@ -91,7 +100,8 @@ CREATE TABLE service_duration (
     price double precision NOT NULL,
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
-    duration uuid NOT NULL DEFAULT gen_random_uuid()
+    duration uuid NOT NULL DEFAULT gen_random_uuid(),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE transaction (
@@ -109,7 +119,8 @@ CREATE TABLE transaction (
     duration_length_type character varying,
     status character varying,
     customer_email character varying,
-    customer_phone_number character varying
+    customer_phone_number character varying,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE transaction_item (
@@ -120,7 +131,8 @@ CREATE TABLE transaction_item (
     service_unit character varying,
     transaction_id uuid,
     service_name character varying,
-    price double precision
+    price double precision,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE users (
@@ -134,7 +146,8 @@ CREATE TABLE users (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     name character varying,
     email character varying,
-    phone_number character varying
+    phone_number character varying,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE users_signup (
@@ -146,5 +159,6 @@ CREATE TABLE users_signup (
     status character varying,
     user_id uuid,
     subscription_plan uuid,
-    id uuid NOT NULL DEFAULT gen_random_uuid()
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    PRIMARY KEY (id)
 );
