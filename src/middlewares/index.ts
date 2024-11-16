@@ -30,11 +30,21 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
 
   try {
     const secretKey = process.env.JWT_SECRET || 'secret_key';
-    const decoded = jwt.verify(token, secretKey) as { id: string };
+    const decoded = jwt.verify(token, secretKey) as { id: string; subscription_end?: string };
     req.userId = decoded.id;
 
+    // Check if subscription_end exists and is valid
+    const subscriptionEnd = decoded.subscription_end ? new Date(decoded.subscription_end) : null;
+    if (subscriptionEnd && subscriptionEnd.getTime() <= Date.now()) {
+      return res.status(403).json({
+        message: "Your subscription has expired. Please renew your subscription or contact the administrator."
+      });
+    }
+
     // Reissue a new token with refreshed expiration
-    const newToken = jwt.sign({ id: decoded.id }, secretKey, { expiresIn: "2d" });
+    const newToken = jwt.sign({ id: decoded.id, subscription_end: decoded.subscription_end }, secretKey, {
+      expiresIn: "2d",
+    });
 
     // Set the refreshed token in the cookie
     res.cookie("auth_token", newToken, {

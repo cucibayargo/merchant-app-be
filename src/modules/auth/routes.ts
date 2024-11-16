@@ -1,6 +1,6 @@
 import express from "express";
 import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema, SubscriptionPlan } from "./types";
-import { addUser, addUserSignUpToken, changeUserPassword, getSubsPlanByCode, getUserByEmail, updateUserSignupStatus, validateToken } from "./controller";
+import { addUser, addUserSignUpToken, changeUserPassword, createSubscriptions, getSubsPlanByCode, getUserByEmail, updateUserSignupStatus, validateToken } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import passport from "./passportConfig";
@@ -45,7 +45,7 @@ const sendEmailRegistration = async (registrationEmail: string, verificationToke
                 <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                   <tr>
                     <td style="text-align: center;">
-                      <img src="https://merchant-app-fe.vercel.app/assets/logo-B3sUIac6.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                      <img src="https://store.cucibayargo.com/assets/logo-B3sUIac6.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                     </td>
                   </tr>
                   <tr>
@@ -81,7 +81,7 @@ const sendSignUpLink = async (
   params: string | string[][] | Record<string, string> | URLSearchParams | undefined
 ) => {
   const queryParams = new URLSearchParams(params).toString();
-  const verificationUrl = `https://merchant-app-fe.vercel.app/register?${queryParams}`;
+  const verificationUrl = `https://store.cucibayargo.com/register?${queryParams}`;
 
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
@@ -99,7 +99,7 @@ const sendSignUpLink = async (
                 <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                   <tr>
                     <td style="text-align: center;">
-                      <img src="https://merchant-app-fe.vercel.app/assets/logo-B3sUIac6.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                      <img src="https://store.cucibayargo.com/assets/logo-B3sUIac6.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                     </td>
                   </tr>
                   <tr>
@@ -238,6 +238,16 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Email tidak ditemukan" });
     }
 
+    // Validate Expires user subscription
+    const subscriptionEnd = new Date(user.subscription_end || "");
+    if (isNaN(subscriptionEnd.getTime())) {
+      return res.status(400).json({ message: "Tanggal berakhir langganan tidak valid. Harap hubungi administrator." });
+    }
+    
+    if (subscriptionEnd.getTime() <= Date.now()) {
+      return res.status(400).json({ message: "Langganan Anda telah berakhir. Harap bayar tagihan atau hubungi administrator." });
+    }
+    
     if (user.status === "pending") {
       return res.status(400).json({ message: "Tolong lakukan verifikasi email terlebih dahulu" });
     }
@@ -247,7 +257,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Password salah." });
     }
 
-    const token = jwt.sign({ id: user.id }, "secret_key", { expiresIn: "2d" });
+    const token = jwt.sign({ id: user.id, subscription_end: user.subscription_end }, "secret_key", { expiresIn: "2d" });
 
     res.cookie("auth_token", token, {
       httpOnly: true,
@@ -376,7 +386,7 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  const { name, email, password, phone_number, token} = req.body;
+  const { name, email, password, phone_number, token, subscription_plan} = req.body;
 
   try {
     if (isDisposableEmail(email)) {
@@ -394,6 +404,11 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired token." });
     }
 
+    const subscriptionPlan = await getSubsPlanByCode(subscription_plan);
+    if (!subscriptionPlan) {
+      return res.status(400).json({ message: "Paket Aplikasi Tidak ditemukan." });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await addUser({
       name,
@@ -407,6 +422,13 @@ router.post("/signup", async (req, res) => {
     // Step 4: Update users_signup table with the status and user_id
     await updateUserSignupStatus(email, token, newUser.id);
 
+    // Step 5: Insert User subscription
+    await createSubscriptions({
+      user_id: newUser.id,
+      plan_id: subscriptionPlan.id,
+      start_date: new Date().toISOString(), // Sets the start date to current date in ISO format
+      end_date: new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString() // Adds duration in days
+    });
 
     // Generate verification token
     const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {
@@ -641,7 +663,7 @@ router.get("/google/callback", passport.authenticate("google", { session: false 
       expiresIn: "2d",
     });
     res.cookie("auth_token", token, { httpOnly: true, sameSite: 'none', secure: true});
-    res.redirect("https://merchant-app-fe.vercel.app/login-google"); 
+    res.redirect("https://store.cucibayargo.com/login-google"); 
   } else {
     res.status(500).json({ message: "Authentication failed" });
   }
@@ -694,7 +716,7 @@ router.get("/verify-email", async (req, res) => {
     // Update user status to 'verified'
     await updateUserDetails(userId, { status: 'verified' });
 
-    res.redirect("https://merchant-app-fe.vercel.app/"); 
+    res.redirect("https://store.cucibayargo.com/"); 
   } catch (err: any) {
     res.status(400).json({ message: "Link verifikasi sudah kedaluarsa." });
   }

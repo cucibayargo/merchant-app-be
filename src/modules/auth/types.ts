@@ -15,6 +15,9 @@ export interface User {
     updated_at: string; // ISO date string
     id: string; // UUID v4
     status?: string
+    plan_code?: string
+    subscription_start?: string
+    subscription_end?: string
 }
 
 export interface UserDetail {
@@ -54,6 +57,7 @@ export interface SignUpInput {
     phone_number?: string;
     oauth?: boolean;
     status?: string;
+    subscription_plan?: string;
 }
 
 export const SignUpSchema = Joi.object({
@@ -89,6 +93,7 @@ export const SignUpSchema = Joi.object({
     phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
         'string.pattern.base': 'Nomor telepon tidak valid',
         }),
+    subscription_plan: Joi.string(),
 });
 
 export interface SignUpTokenInput {
@@ -146,4 +151,11 @@ export interface SubscriptionPlan {
     price: number;
     duration: number;
     created_at: string;
+}
+
+export interface SubscriptionInput {
+    start_date: string
+    end_date: string
+    user_id: string
+    plan_id: string
 }

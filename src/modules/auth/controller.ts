@@ -1,5 +1,5 @@
 import pool from "../../database/postgres";
-import { SignUpInput, SignUpTokenInput, SubscriptionPlan, User } from "./types";
+import { SignUpInput, SignUpTokenInput, SubscriptionInput, SubscriptionPlan, User } from "./types";
 import bcrypt from "bcrypt";
 
 /**
@@ -10,7 +10,17 @@ import bcrypt from "bcrypt";
 export async function getUserByEmail(email: string): Promise<User | null> {
   const client = await pool.connect();
   try {
-    const res = await client.query('SELECT * FROM users WHERE email = $1', [email]);
+    const res = await client.query(`
+      SELECT 
+        users.*,
+        app_plans.code as plan_code,
+        app_subscriptions.start_date as subscription_start,
+        app_subscriptions.end_date as subscription_end
+      FROM users 
+      LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id 
+      LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id 
+      WHERE users.email = $1
+      `, [email]);
     return res.rows[0] || null;
   } finally {
     client.release();
@@ -54,6 +64,24 @@ export async function addUser(user: Omit<SignUpInput, 'id'>): Promise<User> {
 }
 
 
+/**
+ * Add User Subscription
+ */
+export async function createSubscriptions(user: Omit<SubscriptionInput, 'id'>): Promise<User> {
+  const client = await pool.connect();
+  try {
+    const { start_date, end_date, user_id, plan_id} = user;
+    const query = `
+      INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id)
+      VALUES ($1, $2, $3, $4) RETURNING *;
+    `;
+    const values = [start_date, end_date, user_id, plan_id];
+    const result = await client.query(query, values);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
 /**
  * Change the user's password.
  * @param email - The user's email.
