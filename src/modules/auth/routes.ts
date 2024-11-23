@@ -8,123 +8,139 @@ import { getUserDetails, updateUserDetails } from "../user/controller";
 import * as dotenv from 'dotenv';
 import crypto from 'crypto';
 import disposableDomains from 'disposable-email-domains';
-
-const SibApiV3Sdk = require('sib-api-v3-sdk');
-const defaultClient = SibApiV3Sdk.ApiClient.instance;
+import Mailjet from 'node-mailjet';
 
 const router = express.Router();
+dotenv.config();
 
 function isDisposableEmail(email: string): boolean {
     const domain = email.split('@')[1];
     return disposableDomains.includes(domain);
 }
 
-// Load environment variables from .env file
-dotenv.config();
-
-// Configure API key authorization: api-key
-const apiKey = defaultClient.authentications['api-key'];
-apiKey.apiKey = process.env.BREVO_API_KEY; // Set your Brevo API key here
-
 const sendEmailRegistration = async (registrationEmail: string, verificationToken: string) => {
-  const verificationUrl = `https://kasirlaundrypro.netlify.app/api/auth/verify-email?token=${verificationToken}`;
+  const verificationUrl = `https://${process.env.API_URL}/api/auth/verify-email?token=${verificationToken}`;
 
-  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+  // Initialize the Mailjet client with your API keys
+  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string);
 
-  const sendSmtpEmail = {
-    sender: { name: 'Cucibayargo', email: 'no-reply@mail.cucibayargo.com' },
-    to: [{ email: registrationEmail }],
-    subject: 'Verifikasi Alamat Email Anda',
-    textContent: `Silakan verifikasi alamat email Anda dengan mengklik tautan berikut: ${verificationUrl}`,
-    htmlContent: `
-      <html>
-        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
-          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
-            <tr>
-              <td>
-                <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                  <tr>
-                    <td style="text-align: center;">
-                      <img src="https://store.cucibayargo.com/assets/logo-B3sUIac6.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="text-align: center; padding: 20px;">
-                      <h1 style="color: #333333;">Verifikasi Alamat Email Anda</h1>
-                      <p style="font-size: 16px; color: #555555;">Silakan verifikasi alamat email Anda dengan mengklik tautan di bawah ini.</p>
-                      <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Verifikasi Email</a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
-                      Jika Anda tidak mendaftarkan email ini, abaikan email ini.
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-      </html>`,
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: "no-reply@cucibayargo.com",
+          Name: "Cucibayargo",
+        },
+        To: [
+          {
+            Email: registrationEmail,
+          },
+        ],
+        Subject: "Verifikasi Alamat Email Anda",
+        TextPart: `Silakan verifikasi alamat email Anda dengan mengklik tautan berikut: ${verificationUrl}`,
+        HTMLPart: `
+          <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+              <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+                <tr>
+                  <td>
+                    <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                      <tr>
+                        <td style="text-align: center;">
+                          <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="text-align: center; padding: 20px;">
+                          <h1 style="color: #333333;">Verifikasi Alamat Email Anda</h1>
+                          <p style="font-size: 16px; color: #555555;">Silakan verifikasi alamat email Anda dengan mengklik tautan di bawah ini.</p>
+                          <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Verifikasi Email</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                          Jika Anda tidak mendaftarkan email ini, abaikan email ini.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+          </html>`,
+      },
+    ],
   };
 
   try {
-    const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('Verification email sent successfully:', response);
+    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
+    console.log('Verification email sent successfully:', response.body);
   } catch (error) {
     console.error('Error sending verification email:', error);
   }
 };
+
 
 const sendSignUpLink = async (
   registrationEmail: string,
   params: string | string[][] | Record<string, string> | URLSearchParams | undefined
 ) => {
   const queryParams = new URLSearchParams(params).toString();
-  const verificationUrl = `https://store.cucibayargo.com/register?${queryParams}`;
+  const verificationUrl = `https://${process.env.APP_URL}/register?${queryParams}`;
 
-  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string);
 
-  const sendSmtpEmail = {
-    sender: { name: 'Cucibayargo', email: 'no-reply@mail.cucibayargo.com' },
-    to: [{ email: registrationEmail }],
-    subject: 'Link Pendaftaran Cucibayargo',
-    textContent: `Silakan klik link untuk melakukan pendaftaran: ${verificationUrl}`,
-    htmlContent: `
-      <html>
-        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
-          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
-            <tr>
-              <td>
-                <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                  <tr>
-                    <td style="text-align: center;">
-                      <img src="https://store.cucibayargo.com/assets/logo-B3sUIac6.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="text-align: center; padding: 20px;">
-                      <h1 style="color: #333333;">Selamat Datang di Cucibayargo!</h1>
-                      <p style="font-size: 16px; color: #555555;">Terima kasih telah mendaftar. Silakan klik tombol di bawah ini untuk melanjutkan pendaftaran Anda.</p>
-                      <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Daftar Sekarang</a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
-                      Jika Anda tidak mendaftar di Cucibayargo, abaikan email ini.
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-      </html>`,
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: "no-reply@cucibayargo.com",
+          Name: "Cucibayargo",
+        },
+        To: [
+          {
+            Email: registrationEmail,
+          },
+        ],
+        Subject: "Link Pendaftaran Cucibayargo",
+        TextPart: `Silakan klik link untuk melakukan pendaftaran: ${verificationUrl}`,
+        HTMLPart: `
+          <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+              <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+                <tr>
+                  <td>
+                    <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                      <tr>
+                        <td style="text-align: center;">
+                          <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="text-align: center; padding: 20px;">
+                          <h1 style="color: #333333;">Selamat Datang di Cucibayargo!</h1>
+                          <p style="font-size: 16px; color: #555555;">Terima kasih telah mendaftar. Silakan klik tombol di bawah ini untuk melanjutkan pendaftaran Anda.</p>
+                          <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Daftar Sekarang</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                          Jika Anda tidak mendaftar di Cucibayargo, abaikan email ini.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+          </html>`,
+      },
+    ],
   };
 
   try {
-    const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('Verification email sent successfully:', response);
+    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
+    console.log('Verification email sent successfully:', response.body);
   } catch (error) {
     console.error('Error sending verification email:', error);
   }
@@ -716,7 +732,7 @@ router.get("/verify-email", async (req, res) => {
     // Update user status to 'verified'
     await updateUserDetails(userId, { status: 'verified' });
 
-    res.redirect("https://store.cucibayargo.com/"); 
+    res.redirect(`https://${process.env.APP_URL}/`); 
   } catch (err: any) {
     res.status(400).json({ message: "Link verifikasi sudah kedaluarsa." });
   }
