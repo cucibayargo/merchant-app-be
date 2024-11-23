@@ -22,7 +22,7 @@ const sendEmailRegistration = async (registrationEmail: string, verificationToke
   const verificationUrl = `https://${process.env.API_URL}/api/auth/verify-email?token=${verificationToken}`;
 
   // Initialize the Mailjet client with your API keys
-  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string);
+  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string, { options: { timeout: 20000 } });
 
   const emailData = {
     Messages: [
@@ -88,7 +88,7 @@ const sendSignUpLink = async (
   const queryParams = new URLSearchParams(params).toString();
   const verificationUrl = `https://${process.env.APP_URL}/register?${queryParams}`;
 
-  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string);
+  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string, { options: { timeout: 20000 } });
 
   const emailData = {
     Messages: [
