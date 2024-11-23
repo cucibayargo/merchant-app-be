@@ -452,7 +452,7 @@ router.post("/signup", async (req, res) => {
     });
 
     // Send verification email
-    sendEmailRegistration(email, verificationToken);
+    await sendEmailRegistration(email, verificationToken);
 
     res.status(201).json({ message: "Daftar berhasil. Silahkan cek email anda untuk verifikasi"});
   } catch (err: any) {
