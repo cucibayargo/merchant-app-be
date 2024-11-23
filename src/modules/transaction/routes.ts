@@ -281,6 +281,18 @@ const router = express.Router();
  *           type: string
  *           format: date
  *         description: Filter by end date
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: Successful retrieval of transaction items
@@ -291,14 +303,26 @@ const router = express.Router();
  */
 router.get("/", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { status, filter, date_from, date_to } = req.query;
+    const { status, filter, date_from, date_to, page = "1", limit = "10" } = req.query;
 
+    // Convert page and limit to numbers
+    const pageNumber = parseInt(page as string, 10);
+    const limitNumber = parseInt(limit as string, 10);
+
+    // Ensure valid numbers for page and limit
+    if (isNaN(pageNumber) || pageNumber < 1 || isNaN(limitNumber) || limitNumber < 1) {
+      return res.status(400).json({ message: "Invalid page or limit values" });
+    }
+
+    // Call your transaction fetching logic with pagination
     const transactions = await getTransactions(
       status as string || null,
       filter as string || null,
       date_from as string || null,
       date_to as string || null,
-      req.userId
+      req.userId,
+      pageNumber,
+      limitNumber
     );
 
     res.json(transactions);

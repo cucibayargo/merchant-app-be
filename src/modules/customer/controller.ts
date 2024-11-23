@@ -5,22 +5,51 @@ import { Customer } from "./types";
  * Retrieve all customers from the database.
  * @returns {Promise<Customer[]>} - A promise that resolves to an array of customers.
  */
-export async function GetCustomers(filter: string | null, merchant_id: string): Promise<Customer[]> {
+export async function GetCustomers(
+  filter: string | null,
+  merchant_id: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<{ customers: Customer[]; totalCount: number }> {
   const client = await pool.connect();
   try {
-    let query = `
-          SELECT * FROM customer
-          WHERE (($1::text IS NULL OR customer.name ILIKE '%' || $1 || '%')
-              OR ($1::text IS NULL OR customer.phone_number ILIKE '%' || $1 || '%')
-              OR ($1::text IS NULL OR customer.email ILIKE '%' || $1 || '%')) AND merchant_id = $2
-          ORDER BY created_at DESC
-      `;
-      const res = await client.query(query, [filter, merchant_id]);
-      return res.rows;
+    const offset = (page - 1) * limit;
+
+    // Query for customers with pagination
+    const query = `
+      SELECT *
+      FROM customer
+      WHERE (($1::text IS NULL OR customer.name ILIKE '%' || $1 || '%')
+          OR ($1::text IS NULL OR customer.phone_number ILIKE '%' || $1 || '%')
+          OR ($1::text IS NULL OR customer.email ILIKE '%' || $1 || '%'))
+        AND merchant_id = $2
+      ORDER BY created_at DESC
+      LIMIT $3 OFFSET $4
+    `;
+    const customersResult = await client.query(query, [filter, merchant_id, limit, offset]);
+
+    // Query for total count
+    const countQuery = `
+      SELECT COUNT(*) AS total_count
+      FROM customer
+      WHERE (($1::text IS NULL OR customer.name ILIKE '%' || $1 || '%')
+          OR ($1::text IS NULL OR customer.phone_number ILIKE '%' || $1 || '%')
+          OR ($1::text IS NULL OR customer.email ILIKE '%' || $1 || '%'))
+        AND merchant_id = $2
+    `;
+    const countResult = await client.query(countQuery, [filter, merchant_id]);
+
+    const totalCount = parseInt(countResult.rows[0].total_count, 10);
+
+    return {
+      customers: customersResult.rows,
+      totalCount,
+    };
   } finally {
-      client.release();
+    client.release();
   }
 }
+
 
 /**
  * Retrieve a customer by ID from the database.
