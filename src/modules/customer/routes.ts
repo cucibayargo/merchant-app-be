@@ -150,10 +150,14 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 
   try {
     const { customers, totalCount } = await GetCustomers(filter, req.userId ?? "empty", page, limit);
+    const isFirstPage = page === 1;
+    const isLastPage = page * limit >= totalCount;
 
     res.json({
       customers,
-      totalCount
+      totalCount,
+      isFirstPage,
+      isLastPage
     });
   } catch (error) {
     const err = error as Error;

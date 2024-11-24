@@ -315,7 +315,7 @@ router.get("/", async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Call your transaction fetching logic with pagination
-    const transactions = await getTransactions(
+    const { transactions, totalCount } = await getTransactions(
       status as string || null,
       filter as string || null,
       date_from as string || null,
@@ -325,7 +325,14 @@ router.get("/", async (req: AuthenticatedRequest, res: Response) => {
       limitNumber
     );
 
-    res.json(transactions);
+    const isFirstPage = pageNumber === 1;
+    const isLastPage = pageNumber * limitNumber >= totalCount;
+    res.json({
+      transactions,
+      totalCount,
+      isFirstPage,
+      isLastPage
+    });
   } catch (error) {
     const err = error as Error;
     res.status(500).json({ message: err.message });
