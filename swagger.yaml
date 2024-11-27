@@ -226,6 +226,11 @@
                     "description": "The user's full name",
                     "example": "John Doe"
                   },
+                  "subscription_plan": {
+                    "type": "string",
+                    "description": "The subscription plan code picking by user",
+                    "example": "paket1"
+                  },
                   "email": {
                     "type": "string",
                     "description": "The user's email address",
@@ -458,6 +463,24 @@
               "type": "string"
             },
             "description": "Filter Data by name, phone number, email"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number for pagination (optional) *"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items per page (optional) *"
           }
         ],
         "responses": {
@@ -1208,6 +1231,24 @@
               "format": "date"
             },
             "description": "Filter by end date"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number for pagination"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items per page"
           }
         ],
         "responses": {

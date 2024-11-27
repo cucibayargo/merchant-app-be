@@ -119,7 +119,6 @@ export interface InvoiceDetails {
   transaction: Transaction;
 }
 
-
 export interface TransactionQuery { 
   text: string;
   values: any[];

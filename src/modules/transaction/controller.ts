@@ -24,8 +24,10 @@ export async function getTransactions(
   filter: string | null = null,
   date_from: string | null = null,
   date_to: string | null = null,
-  merchant_id?: string
-): Promise<TransactionData[]> {
+  merchant_id?: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<{ transactions: TransactionData[]; totalCount: number }> {
   const client = await pool.connect();
 
   try {
@@ -47,7 +49,7 @@ export async function getTransactions(
         break;
     }
 
-    // Building dynamic conditions for each filter
+    // Build dynamic conditions for each filter
     let conditions: string[] = [];
     let values: any[] = [];
 
@@ -83,7 +85,10 @@ export async function getTransactions(
       values.push(merchant_id);
     }
 
-    // Construct query using dateColumn for ordering
+    // Calculate offset
+    const offset = (page - 1) * limit;
+
+    // Construct query for fetching transactions
     const query = `
       SELECT 
         t.id AS id,
@@ -98,12 +103,32 @@ export async function getTransactions(
       LEFT JOIN payment p ON t.id = p.transaction_id
       WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
       ORDER BY ${dateColumn} DESC
+      LIMIT $${values.length + 1} OFFSET $${values.length + 2}
     `;
 
-    // Execute the query
-    const result = await client.query(query, values);
+    // Add limit and offset to the query values
+    values.push(limit, offset);
 
-    return result.rows;
+    // Execute the query for transactions
+    const transactionsResult = await client.query(query, values);
+
+    // Construct query for total count
+    const countQuery = `
+      SELECT COUNT(*) AS total_count
+      FROM transaction t
+      LEFT JOIN payment p ON t.id = p.transaction_id
+      WHERE ${conditions.length > 0 ? conditions.join(' AND ') : 'TRUE'}
+    `;
+
+    // Execute the query for total count
+    const countResult = await client.query(countQuery, values.slice(0, -2)); // Exclude limit and offset from count query
+
+    const totalCount = parseInt(countResult.rows[0].total_count, 10);
+
+    return {
+      transactions: transactionsResult.rows,
+      totalCount,
+    };
   } finally {
     client.release();
   }

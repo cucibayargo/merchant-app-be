@@ -117,6 +117,18 @@ const router = express.Router();
  *         schema:
  *            type: string
  *         description: Filter Data by name, phone number, email
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination (optional) *
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page (optional) *
  *     responses:
  *       200:
  *         description: Successful retrieval
@@ -128,14 +140,23 @@ const router = express.Router();
  *                 $ref: '#/components/schemas/Customer'
  */
 router.get("/", async (req: AuthenticatedRequest, res) => {
-  // Extract query parameters from the request
   const filter = req.query.filter as string | null;
+  const page = parseInt(req.query.page as string || "1", 10);
+  const limit = parseInt(req.query.limit as string || "10", 10);
+
+  if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1) {
+    return res.status(400).json({ message: "Invalid page or limit values" });
+  }
 
   try {
-    const data = await GetCustomers(filter, req.userId ?? "empty");
-    res.json(data);
+    const { customers, totalCount } = await GetCustomers(filter, req.userId ?? "empty", page, limit);
+
+    res.json({
+      customers,
+      totalCount
+    });
   } catch (error) {
-    const err = error as Error; // Type assertion
+    const err = error as Error;
     res.status(500).json({ message: err.message });
   }
 });
@@ -187,7 +208,7 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
   }
 
   const { name, phone_number, email, address, gender } = req.body;
-  
+
   addCustomer({ name, phone_number, email, address, gender }, req.userId ?? "")
     .then(() =>
       res.status(201).json({
