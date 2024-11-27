@@ -1,9 +1,23 @@
-import { InvoiceDetails, Transaction, TransactionData, TransactionDetails, TransactionQuery } from "./types";
+import {
+  InvoiceDetails,
+  Transaction,
+  TransactionData,
+  TransactionDetails,
+  TransactionQuery,
+} from "./types";
 import pool from "../../database/postgres";
 import { addPayment } from "../payments/controller";
 import { getCustomerById } from "../customer/controller";
 import { getDurationById } from "../duration/controller";
 import { getServiceDurationDetail } from "../services/controller";
+import escpos, { Adapter } from "escpos";
+import printer from "node-thermal-printer";
+// @ts-ignore
+import escposUsb from "escpos-usb";
+// import escposBluetooth from "escpos-bluetooth";
+
+escpos.USB = escposUsb;
+// escpos.Bluetooth = escposBluetooth;
 
 export async function getTransactions(
   status: string | null = null,
@@ -47,13 +61,21 @@ export async function getTransactions(
 
     // Add customer filter condition
     if (filter) {
-      conditions.push(`(t.customer_name ILIKE '%' || $${values.length + 1} || '%' OR p.invoice_id ILIKE '%' || $${values.length + 1} || '%')`);
+      conditions.push(
+        `(t.customer_name ILIKE '%' || $${
+          values.length + 1
+        } || '%' OR p.invoice_id ILIKE '%' || $${values.length + 1} || '%')`
+      );
       values.push(filter);
     }
 
     // Add date range condition
     if (date_from && date_to) {
-      conditions.push(`${dateColumn}::date BETWEEN $${values.length + 1}::date AND $${values.length + 2}::date`);
+      conditions.push(
+        `${dateColumn}::date BETWEEN $${values.length + 1}::date AND $${
+          values.length + 2
+        }::date`
+      );
       values.push(date_from, date_to);
     }
 
@@ -79,7 +101,7 @@ export async function getTransactions(
         t.completed_at
       FROM transaction t
       LEFT JOIN payment p ON t.id = p.transaction_id
-      WHERE ${conditions.length > 0 ? conditions.join(' AND ') : 'TRUE'}
+      WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
       ORDER BY ${dateColumn} DESC
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
     `;
@@ -117,7 +139,10 @@ export async function getTransactions(
  * @param transaction - The transaction data to add.
  * @returns {Promise<Service>} - A promise that resolves to the newly created transaction.
  */
-export async function addTransaction(transaction: Omit<Transaction, 'id'>, merchant_id?: string): Promise<any | null> {
+export async function addTransaction(
+  transaction: Omit<Transaction, "id">,
+  merchant_id?: string
+): Promise<any | null> {
   const client = await pool.connect();
   try {
     const { customer, duration, status, items } = transaction;
@@ -141,7 +166,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>, merch
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id;
     `;
     const values = [
-      customerDetail?.id, 
+      customerDetail?.id,
       customerDetail?.name,
       customerDetail?.phone_number,
       customerDetail?.email,
@@ -149,28 +174,37 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>, merch
       durationDetail?.id,
       durationDetail?.name,
       durationDetail?.duration,
-      durationDetail?.type, 
-      status, 
-      merchant_id
+      durationDetail?.type,
+      status,
+      merchant_id,
     ];
     const result = await client.query(query, values);
     const newTransactionId = result.rows[0].id;
 
     console.log(result);
-    
 
     // Insert service items
     const transactionQueries: TransactionQuery[] = [];
 
     for (const item of items || []) {
-      const serviceDetail = await getServiceDurationDetail(item.service, duration);
-      
+      const serviceDetail = await getServiceDurationDetail(
+        item.service,
+        duration
+      );
+
       transactionQueries.push({
         text: `
           INSERT INTO transaction_item (transaction_id, service_id, service_name, service_unit, price, qty)
           VALUES ($1, $2, $3, $4, $5, $6);
         `,
-        values: [newTransactionId, serviceDetail.id, serviceDetail.name, serviceDetail.unit, serviceDetail.price, item.qty],
+        values: [
+          newTransactionId,
+          serviceDetail.id,
+          serviceDetail.name,
+          serviceDetail.unit,
+          serviceDetail.price,
+          item.qty,
+        ],
       });
     }
 
@@ -184,28 +218,32 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>, merch
     const invoiceId = generateInvoiceId();
 
     // Create Payment
-    await addPayment({
-      status: "Belum Dibayar",
-      invoice_id: invoiceId,
-      total_amount_due: totalPrice?.total || 0,
-      transaction_id: newTransactionId
-    }, merchant_id);
+    await addPayment(
+      {
+        status: "Belum Dibayar",
+        invoice_id: invoiceId,
+        total_amount_due: totalPrice?.total || 0,
+        transaction_id: newTransactionId,
+      },
+      merchant_id
+    );
 
     const transactionDetail = await getTransactionById(invoiceId);
     return {
-      transaction: transactionDetail
-    }
+      transaction: transactionDetail,
+    };
   } finally {
     client.release();
   }
 }
 
-
 /**
  * Retrieve price details of a specific transaction by its ID.
  * @param {string} invoiceId - The ID of the transaction to retrieve.
  */
-async function getInvoiceTotalPrice(transactionId: string): Promise<{total: number} | null> {
+async function getInvoiceTotalPrice(
+  transactionId: string
+): Promise<{ total: number } | null> {
   const client = await pool.connect();
   try {
     const query = `
@@ -230,12 +268,15 @@ async function getInvoiceTotalPrice(transactionId: string): Promise<{total: numb
 /**
  * Updates the status and the completed_at timestamp of a transaction by its invoice ID.
  * If the status is "Selesai", the completed_at timestamp will be set to the current time.
- * 
+ *
  * @param status - The new status of the transaction.
  * @param invoiceId - The invoice ID of the transaction to update.
  * @returns A Promise resolving to the updated Transaction object.
  */
-export async function updateTransaction(status: string, invoiceId: string): Promise<TransactionDetails> {
+export async function updateTransaction(
+  status: string,
+  invoiceId: string
+): Promise<TransactionDetails> {
   const client = await pool.connect();
   try {
     const query = `
@@ -258,14 +299,14 @@ export async function updateTransaction(status: string, invoiceId: string): Prom
       )
       RETURNING *;
     `;
-    
+
     const values = [status, invoiceId];
-    
+
     const result = await client.query(query, values);
     const transactionDetail = getTransactionByTransactionId(result.rows[0].id);
     return transactionDetail;
   } finally {
-    client.release(); 
+    client.release();
   }
 }
 
@@ -274,7 +315,9 @@ export async function updateTransaction(status: string, invoiceId: string): Prom
  * @param {string} invoiceId - The ID of the transaction to retrieve.
  * @returns {Promise<Transaction | null>} - A promise that resolves to the transaction details or null if not found.
  */
-export async function getTransactionById(invoiceId: string): Promise<TransactionDetails | null> {
+export async function getTransactionById(
+  invoiceId: string
+): Promise<TransactionDetails | null> {
   const client = await pool.connect();
   try {
     const query = `
@@ -322,7 +365,9 @@ export async function getTransactionById(invoiceId: string): Promise<Transaction
  * @param {string} invoiceId - The ID of the transaction to retrieve.
  * @returns {Promise<TransactionDetails | null>} - Transaction details or null if not found.
  */
-export async function getTransactionByTransactionId(invoiceId: string): Promise<TransactionDetails> {
+export async function getTransactionByTransactionId(
+  invoiceId: string
+): Promise<TransactionDetails> {
   const client = await pool.connect();
   try {
     const query = `
@@ -349,7 +394,9 @@ export async function getTransactionByTransactionId(invoiceId: string): Promise<
  * @param {string} invoiceId - The ID of the transaction to retrieve.
  * @returns {Promise<InvoiceDetails | null>} - A promise that resolves to the transaction details or null if not found.
  */
-export async function getInvoiceById(invoiceId: string): Promise<InvoiceDetails | null> {
+export async function getInvoiceById(
+  invoiceId: string
+): Promise<InvoiceDetails | null> {
   const client = await pool.connect();
   try {
     const query = `
@@ -405,7 +452,30 @@ export async function getInvoiceById(invoiceId: string): Promise<InvoiceDetails 
 }
 
 function generateInvoiceId() {
-  const prefix = 'INV';
+  const prefix = "INV";
   const timestamp = Date.now(); // Current timestamp
   return `${prefix}-${timestamp}`;
+}
+
+/**
+ * Connect to thermal printer via usb and print the example format.
+ * @returns {Promise<null>} - A promise that resolves to null.
+ */
+export async function generateReceiptPrint(): Promise<null> {
+  const device = new escpos.USB();
+  const options = { encoding: "GB18030" };
+  const printer = new escpos.Printer(device, options);
+
+  return new Promise((resolve, reject) => {
+    device?.open(() => {
+      printer
+        .font("A")
+        .align("CT")
+        .style("B")
+        .size(1, 1)
+        .text("Store Name")
+        .cut()
+        .close(resolve);
+    });
+  });
 }
