@@ -1,13 +1,12 @@
 import express, { Request, Response } from "express";
-import {
-  transactionSchema,
-} from "./types";
+import { transactionSchema } from "./types";
 import {
   addTransaction,
   getInvoiceById,
   getTransactionById,
   getTransactions,
   updateTransaction,
+  generateReceiptPrint,
 } from "./controller";
 import { AuthenticatedRequest } from "../../middlewares";
 
@@ -259,7 +258,7 @@ const router = express.Router();
  *         name: status
  *         schema:
  *           type: string
- *           enum: 
+ *           enum:
  *             - Diproses
  *             - Selesai
  *             - Siap Diambil
@@ -366,7 +365,9 @@ router.get("/", async (req: AuthenticatedRequest, res: Response) => {
 router.post("/", async (req: AuthenticatedRequest, res) => {
   const { error } = transactionSchema.validate(req.body);
   if (error) {
-    return res.status(400).json({ status: "error", message: error.details[0].message });
+    return res
+      .status(400)
+      .json({ status: "error", message: error.details[0].message });
   }
 
   try {
@@ -378,7 +379,9 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ status: "error", message: "Transaksi gagal dibuat" });
+    res
+      .status(500)
+      .json({ status: "error", message: "Transaksi gagal dibuat" });
   }
 });
 
@@ -422,12 +425,17 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
  */
 router.put("/:invoiceId", async (req, res) => {
   if (!req.body || typeof req.body.status !== "string") {
-    return res.status(400).json({ message: 'Invalid request. "status" field is required.' });
+    return res
+      .status(400)
+      .json({ message: 'Invalid request. "status" field is required.' });
   }
 
   try {
     const invoiceId = req.params.invoiceId;
-    const updatedTransaction = await updateTransaction(req.body.status, invoiceId);
+    const updatedTransaction = await updateTransaction(
+      req.body.status,
+      invoiceId
+    );
 
     if (updatedTransaction) {
       res.status(200).json({
@@ -482,7 +490,9 @@ router.get("/:invoiceId", async (req: Request, res: Response) => {
     if (transaction) {
       res.status(200).json(transaction);
     } else {
-      res.status(404).json({ status: "error", message: "Transaksi tidak ditemukan" });
+      res
+        .status(404)
+        .json({ status: "error", message: "Transaksi tidak ditemukan" });
     }
   } catch (error) {
     res.status(500).json({ message: "Gagal membuat layanan" });
@@ -524,11 +534,23 @@ router.get("/invoice/:invoiceId", async (req: Request, res: Response) => {
     if (transaction) {
       res.status(200).json(transaction);
     } else {
-      res.status(404).json({ status: "error", message: "Transaksi tidak ditemukan" });
+      res
+        .status(404)
+        .json({ status: "error", message: "Transaksi tidak ditemukan" });
     }
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Gagal membuat layanan" });
+  }
+});
+
+router.post("/print", async (req: Request, res: Response) => {
+  try {
+    await generateReceiptPrint();
+    res.status(200).json();
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Tidak ada printer yang terhubung" });
   }
 });
 
