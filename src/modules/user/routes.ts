@@ -1,9 +1,11 @@
 import express, { Request, Response } from "express";
 import multer from "multer";
 import {
+  checkUserSubscriptions,
   deleteTempFiles,
   getUserDetails,
   updateUserDetails,
+  uploadTransactionFile,
 } from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
 import { AuthenticatedRequest } from "../../middlewares";
@@ -331,6 +333,124 @@ router.get("/delete-temp-files", async (req: AuthenticatedRequest, res: Response
     res.status(500).json({ message: err.message });
   }
 });
+
+/**
+ * @swagger
+ * /user/check-subscriptions:
+ *   get:
+ *     summary: Check user subscriptions
+ *     description: Checks user subscriptions and sends email notifications for those expiring soon.
+ *     tags: [User]
+ *     parameters:
+ *       - in: header
+ *         name: cron-job-token
+ *         required: true
+ *         description: The secret token required to authorize the request.
+ *         schema:
+ *           type: string
+ *           example: "d5f811"
+ *     responses:
+ *       '200':
+ *         description: Subscriptions checked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Subscriptions checked and notifications sent"
+ *       '403':
+ *         description: Forbidden Invalid token
+ *       '500':
+ *         description: Error checking subscriptions
+ */
+router.get("/check-subscriptions", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const token = req.headers["cron-job-token"];
+    if (token !== process.env.CRON_JOB_SECRET) {
+      return res.status(403).json({ message: "Forbidden: Invalid token" });
+    }
+
+    await checkUserSubscriptions();
+    res.status(200).json({ message: "Subscriptions checked and notifications sent" });
+  } catch (error) {
+    const err = error as Error;
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * @swagger
+ * /user/upload-subscriptions-invoice:
+ *   post:
+ *     summary: Uploads a subscription invoice file
+ *     description: Uploads an invoice file to Supabase Storage and returns the file path.
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: The subscription invoice file to upload
+ *               note:
+ *                 type: string
+ *                 description: Optional note to associate with the invoice
+ *     responses:
+ *       '200':
+ *         description: File uploaded successfully and transaction recorded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message confirming the file upload
+ *       '400':
+ *         description: No file uploaded
+ *       '500':
+ *         description: Failed to upload file or process the transaction
+ */
+
+router.post("/upload-subscriptions-invoice", upload.single("file"), async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Tidak ada file yang diunggah" });
+    }
+
+    const { originalname, buffer, mimetype } = req.file;
+    const fileName = `${Date.now()}_${originalname}`;
+    const userId = req.userId; // Assumed that req.userId is set correctly by middleware
+    const { note } = req.body;
+
+    // Upload file to Supabase Storage
+    const { error } = await supabase.storage
+      .from("app_transactions")
+      .upload(`invoice/${fileName}`, buffer, {
+        contentType: mimetype,
+      });
+
+    if (error) {
+      return res.status(500).json({ message: "Gagal mengunggah file" });
+    }
+
+    // Optionally save transaction record with userId and file path
+    await uploadTransactionFile(userId as string, note, `invoice/${fileName}`);
+
+    // Respond with success message
+    res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan" });
+  } catch (err) {
+    console.error(err); // Log the error for debugging
+    res.status(500).json({ message: "Terjadi kesalahan server." });
+  }
+});
+
 
 
 export default router;

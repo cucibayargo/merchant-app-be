@@ -11,7 +11,6 @@ import { getCustomerById } from "../customer/controller";
 import { getDurationById } from "../duration/controller";
 import { getServiceDurationDetail } from "../services/controller";
 import escpos, { Adapter } from "escpos";
-import printer from "node-thermal-printer";
 // @ts-ignore
 import escposUsb from "escpos-usb";
 // import escposBluetooth from "escpos-bluetooth";
@@ -179,9 +178,7 @@ export async function addTransaction(
       merchant_id,
     ];
     const result = await client.query(query, values);
-    const newTransactionId = result.rows[0].id;
-
-    console.log(result);
+    const newTransactionId = result.rows?.[0]?.id;
 
     // Insert service items
     const transactionQueries: TransactionQuery[] = [];
@@ -215,7 +212,7 @@ export async function addTransaction(
     const totalPrice = await getInvoiceTotalPrice(newTransactionId);
 
     // Generate Invoice ID
-    const invoiceId = generateInvoiceId();
+    const invoiceId = await generateInvoiceId(newTransactionId);
 
     // Create Payment
     await addPayment(
@@ -451,10 +448,48 @@ export async function getInvoiceById(
   }
 }
 
-function generateInvoiceId() {
-  const prefix = "INV";
-  const timestamp = Date.now(); // Current timestamp
-  return `${prefix}-${timestamp}`;
+/**
+ * Generates a unique invoice ID based on a transaction's order and the current date.
+ * 
+ * - The invoice ID format is: `INV-DDMMYYYY.order`
+ * - Prefix: `INV`
+ * - Date: The current date in DDMMYYYY format
+ * - Order: The `order` value retrieved from the `transaction` table for the given transaction ID
+ * 
+ * @param transactionId - The ID of the transaction for which the invoice ID is to be generated.
+ * @returns A string representing the unique invoice ID.
+ * @throws Will throw an error if the transaction ID does not exist or if the query fails.
+ */
+async function generateInvoiceId(transactionId: string): Promise<string> {
+  const client = await pool.connect();
+
+  try {
+    const prefix = "INV";
+    const now = new Date();
+    const day = now.getDate().toString().padStart(2, "0");
+    const month = (now.getMonth() + 1).toString().padStart(2, "0");
+    const year = now.getFullYear();
+
+    const query = `
+      SELECT "order"
+      FROM transaction 
+      WHERE id = $1
+    `;
+
+    const result = await client.query(query, [transactionId]);
+
+    if (result.rows.length === 0) {
+      throw new Error(`Transaction with ID ${transactionId} not found.`);
+    }
+
+    const order = result.rows[0].order;
+    return `${prefix}-${day}${month}${year}.${order}`;
+  } catch (error) {
+    console.error("Error generating invoice ID:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

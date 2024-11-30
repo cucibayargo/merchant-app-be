@@ -162,3 +162,23 @@ CREATE TABLE users_signup (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     PRIMARY KEY (id)
 );
+
+-- Create the function that will handle the logic
+CREATE OR REPLACE FUNCTION set_order_for_transaction()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Calculate the count of transactions for the same merchant_id
+  NEW.order := (
+    SELECT COUNT(*) + 1
+    FROM transaction
+    WHERE merchant_id = NEW.merchant_id
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create the trigger that calls the function
+CREATE TRIGGER trigger_set_order
+BEFORE INSERT ON transaction
+FOR EACH ROW
+EXECUTE FUNCTION set_order_for_transaction();

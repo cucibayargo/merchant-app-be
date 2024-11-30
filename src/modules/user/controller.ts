@@ -2,7 +2,7 @@ import { PoolClient } from "pg";
 import pool from "../../database/postgres";
 import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
-import cron from 'node-cron';
+import Mailjet from 'node-mailjet';
 
 /**
  * Update the user's profile with the logo URL.
@@ -143,3 +143,125 @@ export async function deleteTempFiles() {
     console.error('Error deleting files:', error);
   }
 }
+export async function checkUserSubscriptions(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const now = new Date();
+    const result = await client.query(
+      `SELECT 
+        app_subscriptions.end_date, 
+        users.name, 
+        users.email 
+      FROM users 
+      LEFT JOIN app_subscriptions 
+      ON app_subscriptions.user_id = users.id`
+    );
+
+    // Filter users with subscriptions ending in the next 5 days
+    const soonExpiringSubscriptions = result.rows.filter((row) => {
+      const endDate = new Date(row.end_date);
+      const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 5;
+    });
+
+    // Send email notifications for expiring subscriptions
+    await Promise.all(
+      soonExpiringSubscriptions.map((user) =>
+        sendEmailNotification(user.email, user.end_date)
+      )
+    );
+
+    console.log('Email notifications sent successfully for expiring subscriptions.');
+  } catch (error) {
+    console.error('Error checking user subscriptions:', error);
+  } finally {
+    client.release();
+  }
+}
+
+const sendEmailNotification = async (email: string, endDate: string): Promise<void> => {
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
+
+  const verificationUrl = `https://example.com/verify?email=${encodeURIComponent(email)}`;
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: 'no-reply@cucibayargo.com',
+          Name: 'Cucibayargo',
+        },
+        To: [
+          {
+            Email: email,
+          },
+        ],
+        Subject: 'Langganan Anda Akan Segera Berakhir!',
+        HTMLPart: `
+          <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+              <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+                <tr>
+                  <td>
+                    <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                      <tr>
+                        <td style="text-align: center;">
+                          <img src="https://example.com/logo.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="text-align: center; padding: 20px;">
+                          <h1 style="color: #333333;">Langganan Anda Akan Segera Berakhir</h1>
+                          <p style="font-size: 16px; color: #555555;">
+                            Langganan Anda akan berakhir pada <strong>${endDate}</strong>. Jangan lupa untuk memperpanjang langganan Anda sebelum tanggal tersebut agar tetap dapat menikmati layanan kami.
+                          </p>
+                          <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Perpanjang Sekarang</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                          Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+          </html>`,
+      },
+    ],
+  };
+
+  try {
+    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
+    console.log(`Email sent to ${email} with response:`, response.body);
+  } catch (error) {
+    console.error(`Failed to send email to ${email}:`, error);
+  }
+};
+
+/**
+ * Handles invoice transfer uploads.
+ * @param userId - The ID of the authenticated user.
+ * @param note - The note provided by the user.
+ * @param filePath - The file path of the uploaded file.
+ */
+export const uploadTransactionFile = async (
+  userId: string,
+  note: string,
+  filePath: string
+) => {
+  try {
+    const result = await pool.query(
+      `INSERT INTO app_transactions (user_id, file, note) VALUES ($1, $2, $3) RETURNING *`,
+      [userId, filePath, note]
+    );
+    return { success: true, transaction: result.rows[0] };
+  } catch (error) {
+    throw error;
+  }
+};

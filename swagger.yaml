@@ -1610,6 +1610,105 @@
           }
         }
       }
+    },
+    "/user/check-subscriptions": {
+      "get": {
+        "summary": "Check user subscriptions",
+        "description": "Checks user subscriptions and sends email notifications for those expiring soon.",
+        "tags": [
+          "User"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cron-job-token",
+            "required": true,
+            "description": "The secret token required to authorize the request.",
+            "schema": {
+              "type": "string",
+              "example": "d5f811"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscriptions checked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Subscriptions checked and notifications sent"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden Invalid token"
+          },
+          "500": {
+            "description": "Error checking subscriptions"
+          }
+        }
+      }
+    },
+    "/user/upload-subscriptions-invoice": {
+      "post": {
+        "summary": "Uploads a subscription invoice file",
+        "description": "Uploads an invoice file to Supabase Storage and returns the file path.",
+        "tags": [
+          "User"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The subscription invoice file to upload"
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Optional note to associate with the invoice"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File uploaded successfully and transaction recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Success message confirming the file upload"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file uploaded"
+          },
+          "500": {
+            "description": "Failed to upload file or process the transaction"
+          }
+        }
+      }
     }
   },
   "components": {

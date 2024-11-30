@@ -16,7 +16,7 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
   const crPrivateToken = process.env.crToken;
   
   // Specific route check for cron-job-token
-  if (req.path.startsWith('/api/user/delete-temp-files')) {
+  if (req.path.startsWith('/api/user/delete-temp-files') || req.path.startsWith('/api/user/check-subscriptions')) {
     if (crToken === crPrivateToken) {
       return next();
     } else {
