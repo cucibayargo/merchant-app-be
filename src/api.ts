@@ -20,7 +20,7 @@ import passport from "./modules/auth/passportConfig";
 const app = express();
 
 // CORS configuration
-const allowedOrigins = ['https://merchant-app-fe.vercel.app'];
+const allowedOrigins = ['https://stg-store.cucibayargo.com','https://store.cucibayargo.com','https://stg.cucibayargo.com','https://cucibayargo.com']
 const localhostRegex = /^http:\/\/localhost(:\d+)?$/;
 
 const corsOptions: CorsOptions = {
