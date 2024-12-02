@@ -92,7 +92,7 @@ export const SignUpSchema = Joi.object({
         }),
     phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
         'string.pattern.base': 'Nomor telepon tidak valid',
-        }),
+    }),
     subscription_plan: Joi.string(),
 });
 
@@ -107,28 +107,41 @@ export interface SignUpTokenInput {
 
 export const SignUpTokenSchema = Joi.object({
     name: Joi.string()
-            .required()
-            .messages({
-                'string.empty': 'Nama harus diisi.',
-                'any.required': 'Nama harus diisi.'
-            }),
+        .required()
+        .messages({
+            'string.empty': 'Nama harus diisi.',
+            'any.required': 'Nama harus diisi.'
+        }),
     subscription_plan: Joi.string(),
     email: Joi.string()
-            .email()
-            .required()
-            .messages({
-                'string.email': 'Alamat email tidak valid.',
-                'any.required': 'Alamat email harus diisi.'
-            }),
+        .email()
+        .required()
+        .messages({
+            'string.email': 'Alamat email tidak valid.',
+            'any.required': 'Alamat email harus diisi.'
+        }),
     phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
         'string.pattern.base': 'Nomor telepon tidak valid',
-        }),
+    }),
 })
 
 export const ChangePasswordSchema = Joi.object({
-    email: Joi.string().email().required(),
-    currentPassword: Joi.string().required(),
-    newPassword: Joi.string().min(6).required(),
+    email: Joi.string().email().required().messages({
+        'string.empty': 'Email harus diisi.',
+        'any.required': 'Email harus diisi.'
+    }),
+    currentPassword: Joi.string().required().messages({
+        'string.empty': 'Password Sekarang harus diisi.',
+        'any.required': 'Password Sekarang harus diisi.'
+    }),
+    newPassword: Joi.string().required().messages({
+        'string.empty': 'Password Baru harus diisi.',
+        'any.required': 'Password Baru harus diisi.'
+    }),
+    repeatNewPassword: Joi.string().required().messages({
+        'string.empty': 'Pengulangan Password Baru harus diisi.',
+        'any.required': 'Pengulangan Password Baru harus diisi.'
+    }),
 });
 
 export interface CustomJwtPayload extends JwtPayload {

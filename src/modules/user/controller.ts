@@ -32,7 +32,7 @@ export async function getUserDetails(id?: string): Promise<User | null> {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      "SELECT id,name,email,phone_number,logo,address FROM users WHERE id = $1",
+      `SELECT id,name,email,phone_number,logo,address FROM users WHERE id = $1`,
       [id]
     );
     return result.rows[0] || null;
@@ -161,7 +161,7 @@ export async function checkUserSubscriptions(): Promise<void> {
     const soonExpiringSubscriptions = result.rows.filter((row) => {
       const endDate = new Date(row.end_date);
       const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays <= 5;
+      return diffDays == 5;
     });
 
     // Send email notifications for expiring subscriptions
