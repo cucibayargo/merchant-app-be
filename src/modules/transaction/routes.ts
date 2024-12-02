@@ -385,6 +385,16 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
+router.post("/print", async (req: Request, res: Response) => {
+  try {
+    await generateReceiptPrint();
+    res.status(200).json();
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Tidak ada printer yang terhubung" });
+  }
+});
+
 /**
  * @swagger
  * /transaction/{invoiceId}:
@@ -527,6 +537,7 @@ router.get("/:invoiceId", async (req: Request, res: Response) => {
  *         description: Gagal membuat layanan
  */
 router.get("/invoice/:invoiceId", async (req: Request, res: Response) => {
+  console.log("receipt view");
   try {
     const invoiceId = req.params.invoiceId;
     const transaction = await getInvoiceById(invoiceId);
@@ -541,16 +552,6 @@ router.get("/invoice/:invoiceId", async (req: Request, res: Response) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Gagal membuat layanan" });
-  }
-});
-
-router.post("/print", async (req: Request, res: Response) => {
-  try {
-    await generateReceiptPrint();
-    res.status(200).json();
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Tidak ada printer yang terhubung" });
   }
 });
 
