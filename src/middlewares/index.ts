@@ -6,17 +6,29 @@ export interface AuthenticatedRequest extends Request {
 }
 
 const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  // Skip authentication for specific routes if needed
-  if (req.path.startsWith('/api/auth') || req.path.startsWith('/api/docs') || req.path.startsWith('/api/transaction/invoice') || req.path.startsWith('/api/auth/signup/token')) {
+  const skipAuthRoutes = [
+    '/auth',
+    '/docs',
+    '/transaction/:id',
+    '/auth/signup/token',
+  ];
+  
+  const cronJobRoutes = [
+    '/user/delete-temp-files',
+    '/user/check-subscriptions',
+  ];
+  
+  if (
+    skipAuthRoutes.some(route => req.path.startsWith(route)) ||
+    skipAuthRoutes.some(route => route.includes('/:') && req.path.startsWith(route.split('/:')[0]))
+  ) {
     return next();
-  }
-
+  }  
   const token = req.cookies.auth_token || req.headers['authorization'];
   const crToken = req.headers['cron-job-token'];
   const crPrivateToken = process.env.crToken;
-  
-  // Specific route check for cron-job-token
-  if (req.path.startsWith('/api/user/delete-temp-files') || req.path.startsWith('/api/user/check-subscriptions')) {
+
+  if (cronJobRoutes.some(route => req.path.startsWith(route))) {
     if (crToken === crPrivateToken) {
       return next();
     } else {
@@ -33,7 +45,6 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     const decoded = jwt.verify(token, secretKey) as { id: string; subscription_end?: string };
     req.userId = decoded.id;
 
-    // Check if subscription_end exists and is valid
     const subscriptionEnd = decoded.subscription_end ? new Date(decoded.subscription_end) : null;
     if (subscriptionEnd && subscriptionEnd.getTime() <= Date.now()) {
       return res.status(403).json({
@@ -41,12 +52,10 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
       });
     }
 
-    // Reissue a new token with refreshed expiration
     const newToken = jwt.sign({ id: decoded.id, subscription_end: decoded.subscription_end }, secretKey, {
       expiresIn: "2d",
     });
 
-    // Set the refreshed token in the cookie
     res.cookie("auth_token", newToken, {
       httpOnly: true,
       secure: true,

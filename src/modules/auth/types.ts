@@ -18,6 +18,7 @@ export interface User {
     plan_code?: string
     subscription_start?: string
     subscription_end?: string
+    isInExpiry?: boolean
 }
 
 export interface UserDetail {

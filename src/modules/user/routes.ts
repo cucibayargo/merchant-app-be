@@ -173,6 +173,12 @@ router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = await getUserDetails(userId);
     if (user) {
+      const now = new Date();
+      const endDate = new Date(user?.subscription_end as string);
+      const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      user.isInExpiry = diffDays == 5;
+    }
+    if (user) {
       res.json(user);
     } else {
       res.status(404).json({ message: "User tidak ditemukan" });

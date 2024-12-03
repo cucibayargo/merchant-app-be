@@ -32,7 +32,19 @@ export async function getUserDetails(id?: string): Promise<User | null> {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT id,name,email,phone_number,logo,address FROM users WHERE id = $1`,
+      `SELECT 
+        users.id,
+        users.name,
+        users.email,
+        users.phone_number,
+        users.logo,
+        users.address,
+        app_subscriptions.end_date AS subscription_end_date,
+        app_plans.name AS plan_name
+      FROM users 
+      LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id
+      LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id
+      WHERE users.id = $1`,
       [id]
     );
     return result.rows[0] || null;
