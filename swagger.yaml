@@ -662,6 +662,24 @@
               "type": "string"
             },
             "description": "Filter Data by services availability"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number for pagination (optional) *"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items per page (optional) *"
           }
         ],
         "responses": {
@@ -709,6 +727,64 @@
           },
           "400": {
             "description": "Bad request, invalid input"
+          }
+        }
+      }
+    },
+    "/duration/all": {
+      "get": {
+        "summary": "Get all durations",
+        "description": "Retrieve a list of all durations with optional filtering based on service availability.",
+        "tags": [
+          "Duration"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "hasService",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Filter data by services availability. Use `true` to only include durations linked to services."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of durations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "durations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DurationAll"
+                      }
+                    },
+                    "totalCount": {
+                      "type": "integer",
+                      "description": "Total number of durations available."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1006,9 +1082,60 @@
         }
       }
     },
+    "/service/all": {
+      "get": {
+        "summary": "Retrieve all services",
+        "description": "Fetch a list of all services, optionally filtered by duration.",
+        "tags": [
+          "Services"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "duration",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "description": "Filter services by a specific duration ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved the list of services.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceAll"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Failed to retrieve services."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/service": {
       "get": {
-        "summary": "Get all services",
+        "summary": "Get all services pagination",
         "description": "Retrieve a list of all services",
         "tags": [
           "Services"
@@ -1029,6 +1156,24 @@
               "type": "string"
             },
             "description": "Filter data by duration"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number for pagination (optional) *"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items per page (optional) *"
           }
         ],
         "responses": {

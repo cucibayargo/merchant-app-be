@@ -1,6 +1,6 @@
 import express from 'express';
 import { serviceSchema } from './types';
-import { addService, deleteService, getServiceById, getServices, updateService } from './controller';
+import { addService, deleteService, getAllServices, getServiceById, getServices, updateService } from './controller';
 import { AuthenticatedRequest } from '../../middlewares';
 
 const router = express.Router();
@@ -153,9 +153,55 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /service/all:
+ *   get:
+ *     summary: Retrieve all services
+ *     description: Fetch a list of all services, optionally filtered by duration.
+ *     tags: [Services]
+ *     parameters:
+ *       - in: query
+ *         name: duration
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter services by a specific duration ID.
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the list of services.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/ServiceAll'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Failed to retrieve services.
+ */
+router.get('/all', async (req: AuthenticatedRequest, res) => {
+  const durationId = req.query.duration as string | null;
+
+  try {
+    const services = await getAllServices(req.userId, durationId);
+    res.status(200).json(services);
+  } catch (error) {
+    console.error("Error retrieving services:", error);
+    res.status(500).json({ message: 'Failed to retrieve services' });
+  }
+});
+
+/**
+ * @swagger
  * /service:
  *   get:
- *     summary: Get all services
+ *     summary: Get all services pagination
  *     description: Retrieve a list of all services
  *     tags: [Services]
  *     parameters:
@@ -169,6 +215,18 @@ const router = express.Router();
  *         schema:
  *           type: string
  *         description: Filter data by duration
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination (optional) *
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page (optional) *
  *     responses:
  *       200:
  *         description: Successful retrieval
@@ -182,10 +240,24 @@ const router = express.Router();
 router.get('/', async (req: AuthenticatedRequest, res) => {
   // Extract query parameters from the request
   const filter = req.query.filter as string | null;
-  const durationId = req.query.duration as string | null;
+  const page = parseInt(req.query.page as string || "1", 10);
+  const limit = parseInt(req.query.limit as string || "10", 10);
+  
+  if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1) {
+    return res.status(400).json({ message: "Invalid page or limit values" });
+  }
+  
   try {
-    const services = await getServices(filter, req.userId, durationId);
-    res.json(services);
+    const { services, totalCount }= await getServices(filter, req.userId, page, limit);
+    const isFirstPage = page === 1;
+    const isLastPage = page * limit >= totalCount;
+
+    res.json({
+      services,
+      totalCount,
+      isFirstPage,
+      isLastPage
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Gagal mengambil layanan' });

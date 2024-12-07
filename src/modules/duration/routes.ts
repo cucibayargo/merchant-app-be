@@ -1,6 +1,6 @@
 import express from 'express';
 import { Duration, durationSchema, DurationType } from './types';
-import { getDurations, getDurationById, addDuration, updateDuration, deleteDuration } from './controller';
+import { getDurations, getDurationById, addDuration, updateDuration, deleteDuration, getAllDurations } from './controller';
 import { AuthenticatedRequest } from '../../middlewares';
 
 const router = express.Router();
@@ -87,6 +87,18 @@ const router = express.Router();
  *         schema:
  *            type: string
  *         description: Filter Data by services availability
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination (optional) *
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page (optional) *
  *     responses:
  *       200:
  *         description: Successful retrieval
@@ -101,10 +113,24 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
   // Extract query parameters from the request
   const filter = req.query.filter as string | null;
   const hasService = req.query.hasService == "true" ? true : false;
+  const page = parseInt(req.query.page as string || "1", 10);
+  const limit = parseInt(req.query.limit as string || "10", 10);
+
+  if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1) {
+    return res.status(400).json({ message: "Invalid page or limit values" });
+  }
 
   try {
-    const durations = await getDurations(filter, hasService, req.userId);
-    res.json(durations);
+    const { durations, totalCount } = await getDurations(filter, hasService, req.userId);
+    const isFirstPage = page === 1;
+    const isLastPage = page * limit >= totalCount;
+
+    res.json({
+      durations,
+      totalCount,
+      isFirstPage,
+      isLastPage
+    });
   } catch (error) {
     if (error instanceof Error) {
       res.status(500).json({ message: error.message });
@@ -113,6 +139,58 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
     }
   }
 });
+
+/**
+ * @swagger
+ * /duration/all:
+ *   get:
+ *     summary: Get all durations
+ *     description: Retrieve a list of all durations with optional filtering based on service availability.
+ *     tags: [Duration]
+ *     parameters:
+ *       - in: query
+ *         name: hasService
+ *         schema:
+ *           type: boolean
+ *         description: Filter data by services availability. Use `true` to only include durations linked to services.
+ *     responses:
+ *       200:
+ *         description: Successful retrieval of durations.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 durations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/DurationAll'
+ *                 totalCount:
+ *                   type: integer
+ *                   description: Total number of durations available.
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.get('/all', async (req: AuthenticatedRequest, res) => {
+  const hasService = req.query.hasService === "true"; // Simplified condition for boolean check
+
+  try {
+    const durations = await getAllDurations(hasService, req.userId);
+
+    res.json(durations);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan server';
+    res.status(500).json({ message: errorMessage });
+  }
+});
+
 
 /**
  * @swagger
