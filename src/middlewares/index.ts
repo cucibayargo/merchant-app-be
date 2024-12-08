@@ -19,11 +19,21 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
   ];
   
   if (
-    skipAuthRoutes.some(route => req.path.startsWith(route)) ||
-    skipAuthRoutes.some(route => route.includes('/:') && req.path.startsWith(route.split('/:')[0]))
+    skipAuthRoutes.some(route => {
+      // Check if the route has a parameter (e.g., "/:id")
+      if (route.includes('/:')) {
+        const baseRoute = route.split('/:')[0]; // Extract the base path (e.g., "/transaction")
+        const isExactMatch = req.path === baseRoute; // Ensure no unintended matching (e.g., "/transactions")
+        const startsWithBase = req.path.startsWith(baseRoute + '/'); // Match only paths with parameters
+        return startsWithBase && !isExactMatch;
+      }
+      // Exact match for routes without parameters
+      return req.path.startsWith(route);
+    })
   ) {
     return next();
-  }  
+  }
+  
   const token = req.cookies.auth_token || req.headers['authorization'];
   const crToken = req.headers['cron-job-token'];
   const crPrivateToken = process.env.crToken;

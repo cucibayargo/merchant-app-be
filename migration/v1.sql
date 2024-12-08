@@ -163,6 +163,7 @@ CREATE TABLE users_signup (
     PRIMARY KEY (id)
 );
 
+ALTER TABLE ADD COLUMN order integer;
 -- Create the function that will handle the logic
 CREATE OR REPLACE FUNCTION set_order_for_transaction()
 RETURNS TRIGGER AS $$
@@ -182,3 +183,6 @@ CREATE TRIGGER trigger_set_order
 BEFORE INSERT ON transaction
 FOR EACH ROW
 EXECUTE FUNCTION set_order_for_transaction();
+
+ALTER TABLE users
+ADD COLUMN sequence_id SERIAL UNIQUE;

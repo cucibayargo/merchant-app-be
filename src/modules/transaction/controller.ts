@@ -11,12 +11,6 @@ import { getCustomerById } from "../customer/controller";
 import { getDurationById } from "../duration/controller";
 import { getServiceDurationDetail } from "../services/controller";
 import escpos, { Adapter } from "escpos";
-// @ts-ignore
-import escposUsb from "escpos-usb";
-// import escposBluetooth from "escpos-bluetooth";
-
-escpos.USB = escposUsb;
-// escpos.Bluetooth = escposBluetooth;
 
 export async function getTransactions(
   status: string | null = null,
@@ -212,7 +206,7 @@ export async function addTransaction(
     const totalPrice = await getInvoiceTotalPrice(newTransactionId);
 
     // Generate Invoice ID
-    const invoiceId = await generateInvoiceId(newTransactionId);
+    const invoiceId = await generateInvoiceId(newTransactionId, merchant_id);
 
     // Create Payment
     await addPayment(
@@ -322,6 +316,7 @@ export async function getTransactionById(
         t.id AS transaction_id,
         t.customer_id AS customer_id,
         t.customer_name AS customer_name,
+        t.customer_address AS customer_address,
         t.customer_phone_number AS customer_phone_number,
         t.ready_to_pick_up_at,
         t.completed_at,
@@ -335,6 +330,7 @@ export async function getTransactionById(
           json_build_object(
             'service_id', ti.service_id,
             'service_name', ti.service_name,
+            'service_unit', ti.service_unit,
             'price', ti.price,
             'quantity', ti.qty
           )
@@ -460,30 +456,31 @@ export async function getInvoiceById(
  * @returns A string representing the unique invoice ID.
  * @throws Will throw an error if the transaction ID does not exist or if the query fails.
  */
-async function generateInvoiceId(transactionId: string): Promise<string> {
+async function generateInvoiceId(transactionId: string, merchantId?: string): Promise<string> {
   const client = await pool.connect();
 
   try {
     const prefix = "INV";
     const now = new Date();
-    const day = now.getDate().toString().padStart(2, "0");
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    const year = now.getFullYear();
+    const formattedDate = `${now.getDate().toString().padStart(2, "0")}${(now.getMonth() + 1).toString().padStart(2, "0")}${now.getFullYear()}`;
 
+    // Query to fetch order and merchant sequence_id in one go
     const query = `
-      SELECT "order"
-      FROM transaction 
-      WHERE id = $1
+      SELECT t."order", u.sequence_id 
+      FROM transaction t
+      JOIN users u ON u.id = $2
+      WHERE t.id = $1
     `;
 
-    const result = await client.query(query, [transactionId]);
+    const { rows } = await client.query(query, [transactionId, merchantId]);
 
-    if (result.rows.length === 0) {
-      throw new Error(`Transaction with ID ${transactionId} not found.`);
+    if (rows.length === 0) {
+      throw new Error(`Transaction with ID ${transactionId} or Merchant with ID ${merchantId} not found.`);
     }
 
-    const order = result.rows[0].order;
-    return `${prefix}-${day}${month}${year}.${order}`;
+    const { order, sequence_id: merchantSeqId } = rows[0];
+
+    return `${prefix}-${formattedDate}${merchantSeqId}${order}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);
     throw error;

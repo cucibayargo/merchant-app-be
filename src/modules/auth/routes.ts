@@ -272,7 +272,7 @@ router.post("/login", async (req, res) => {
     if (!validPassword) {
       return res.status(400).json({ message: "Password salah." });
     }
-
+        
     const token = jwt.sign({ id: user.id, subscription_end: user.subscription_end }, "secret_key", { expiresIn: "2d" });
 
     res.cookie("auth_token", token, {

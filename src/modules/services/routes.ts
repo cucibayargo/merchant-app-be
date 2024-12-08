@@ -165,6 +165,12 @@ const router = express.Router();
  *           type: string
  *         required: false
  *         description: Filter services by a specific duration ID.
+ *       - in: query
+ *         name: filter
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter services by a specific service Name.
  *     responses:
  *       200:
  *         description: Successfully retrieved the list of services.
@@ -187,9 +193,10 @@ const router = express.Router();
  */
 router.get('/all', async (req: AuthenticatedRequest, res) => {
   const durationId = req.query.duration as string | null;
+  const filter = req.query.filter as string | null;
 
   try {
-    const services = await getAllServices(req.userId, durationId);
+    const services = await getAllServices(req.userId, durationId, filter);
     res.status(200).json(services);
   } catch (error) {
     console.error("Error retrieving services:", error);

@@ -7,11 +7,13 @@ import { Service, ServiceDurationDetail } from "./types";
  * @param {string} [merchantId] - The merchant ID to filter services by.
  * @param {string | null} [durationId] - The duration ID to filter associated service prices.
  * @returns {Promise<{ id: number, name: string, price?: number }[]>} - 
+ * @param {string | null} filter - A string to filter services by name.
  * A promise resolving to an array of services with IDs, names, and optional prices.
  */
 export async function getAllServices(
   merchantId?: string, 
-  durationId?: string | null
+  durationId?: string | null,
+  filter?: string | null
 ): Promise<{ id: number, name: string, price?: number }[]> {
   const client = await pool.connect();
 
@@ -26,12 +28,13 @@ export async function getAllServices(
       LEFT JOIN service_duration 
         ON service.id = service_duration.service
       WHERE 
-        service.merchant_id = $1 AND
-        service_duration.duration::text = $2
+        ($1::text IS NULL OR service.name ILIKE '%' || $1 || '%') AND
+        service.merchant_id = $2 AND
+        service_duration.duration::text = $3
       ORDER BY service.created_at DESC
     `;
 
-    const params = [merchantId, durationId];
+    const params = [filter, merchantId, durationId];
     const result = await client.query(query, params);
 
     return result.rows;
