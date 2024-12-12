@@ -29,6 +29,7 @@ export async function getAllDurations(
     const dataQuery = `
       SELECT duration.*
       ${baseQuery}
+      GROUP BY duration.id
       ORDER BY duration.created_at DESC
     `;
     const dataParams = [merchant_id];

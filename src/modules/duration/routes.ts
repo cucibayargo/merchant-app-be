@@ -121,7 +121,7 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    const { durations, totalCount } = await getDurations(filter, hasService, req.userId);
+    const { durations, totalCount } = await getDurations(filter, hasService, req.userId, page, limit);
     const isFirstPage = page === 1;
     const isLastPage = page * limit >= totalCount;
 
