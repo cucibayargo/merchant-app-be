@@ -21,13 +21,20 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-            cd ${{ secrets.APP_PATH }} &&
-            git fetch &&
-            git checkout ${{ github.ref_name }} &&
-            git pull origin ${{ github.ref_name }} &&
-            export NODE_ENV=${{ github.ref_name == 'staging' ? 'staging' : 'production' }} &&
-            npm install &&
-            npm run build &&
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd ${{ secrets.APP_PATH }}
+            git fetch
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+            # Set NODE_ENV based on branch
+            if [ "${{ github.ref_name }}" = "staging" ]; then
+              export NODE_ENV=staging
+            else
+              export NODE_ENV=production
+            fi
+
+            npm install
+            npm run build
             pm2 start dist/app.js --name app-${{ github.ref_name }} --update-env
-          "
+          EOF
