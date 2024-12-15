@@ -2,7 +2,9 @@ import express, { Request, Response, NextFunction, Router } from "express";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import cors, { CorsOptions } from 'cors';
-// import fs from "fs";
+import cookieParser from 'cookie-parser';
+import compression from 'compression';
+import session from "express-session";
 import authRoutes from "./modules/auth/routes";
 import TransactionRoutes from "./modules/transaction/routes";
 import customerRoutes from "./modules/customer/routes";
@@ -12,26 +14,30 @@ import paymentRoutes from "./modules/payments/routes";
 import emailSupport from "./modules/email-support/routes";
 import notesRoutes from "./modules/notes/routes";
 import users from "./modules/user/routes";
-import cookieParser from 'cookie-parser';
-import authMiddleware from "./middlewares";
-import session from "express-session";
 import passport from "./modules/auth/passportConfig";
+import authMiddleware from "./middlewares";
 
 const app = express();
+const environment = process.env.NODE_ENV || 'development';
+const PORT = process.env.PORT || 3000;
+
+// Validate environment variables
+if (!process.env.SESSION_SECRET || !process.env.API_URL) {
+  console.error("Critical environment variables are missing.");
+  process.exit(1);
+}
 
 // CORS configuration
-const allowedOrigins = ['https://stg-store.cucibayargo.com','https://store.cucibayargo.com','https://stg.cucibayargo.com','https://cucibayargo.com']
-const localhostRegex = /^http:\/\/localhost(:\d+)?$/;
+const allowedOrigins = environment === 'production'
+  ? ['https://store.cucibayargo.com', 'https://cucibayargo.com']
+  : ['https://stg-store.cucibayargo.com', 'https://stg.cucibayargo.com', 'http://localhost:3000'];
 
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || localhostRegex.test(origin)) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true);
-      // callback(new Error('Not allowed by CORS'));
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
@@ -40,26 +46,31 @@ const corsOptions: CorsOptions = {
 app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
-// Session configuration (necessary for Passport)
+app.use(compression());
+
+// Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET!,
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
 }));
 
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Middleware for debugging
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log('Middleware Check:', req.body);
+  console.log('Request Body:', req.body);
   next();
 });
 
-const routerV1 = Router();
+// Swagger configuration
+const swaggerServerUrl = environment === 'production'
+  ? process.env.API_URL || 'https://api.cucibayargo.com'
+  : 'http://localhost:3000/api';
 
-// Swagger configuration and setup
-const options = {
+const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
     info: {
@@ -67,21 +78,17 @@ const options = {
       version: "1.0.0",
       description: "API Routes and schema details of Kasir Laundry Pro Services",
     },
-    servers: [
-      {
-        url: 'http://localhost:3000/api',
-      },
-    ]
+    servers: [{ url: swaggerServerUrl }],
   },
   apis: ["./src/modules/**/*.ts"],
 };
 
-const swaggerSpec = swaggerJsdoc(options);
-// fs.writeFileSync('swagger.yaml', JSON.stringify(swaggerSpec, null, 2));
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+const routerV1 = Router();
 
 routerV1.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 routerV1.use("/docs-json", (req: Request, res: Response) => {
-  res.json(swaggerSpec)
+  res.json(swaggerSpec);
 });
 
 // Routes setup
@@ -96,10 +103,12 @@ routerV1.use("/service", serviceRoutes);
 routerV1.use("/duration", durationRoutes);
 routerV1.use("/email-support", emailSupport);
 routerV1.use("/payment", paymentRoutes);
+
 app.use("/api/", routerV1);
 
-// app.listen(3000, () => {
-//   console.log(`Server running on http://localhost:3000`);
-// });
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running in ${environment} mode on port ${PORT}`);
+});
 
 export default app;
