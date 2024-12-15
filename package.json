@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "nodemon dist/api.js",
+    "start": "node dist/api.js",
     "build": "tsc",
     "vercel-build": "echo hello"
   },
