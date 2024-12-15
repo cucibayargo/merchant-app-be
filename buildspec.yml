@@ -5,15 +5,15 @@ phases:
     runtime-versions:
       nodejs: latest
     commands:
-      - npm install -g yarn typescript
-      - yarn install
+      - npm install -g typescript
+      - npm install
   build:
     commands:
-      - yarn build
+      - npm run build
 
 artifacts:
   files:
-    - yarn.lock
+    - package-lock.json
     - package.json
     - 'build/**/*'
     - '.platform/**/*' # AWS Elastic Beanstalk configuration files
