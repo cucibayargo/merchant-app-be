@@ -479,8 +479,8 @@ async function generateInvoiceId(transactionId: string, merchantId?: string): Pr
     }
 
     const { order, sequence_id: merchantSeqId } = rows[0];
-
-    return `${prefix}-${formattedDate}${merchantSeqId}${order}`;
+    
+    return `${prefix}-${order}${formattedDate}${merchantSeqId}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);
     throw error;
