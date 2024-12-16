@@ -15,7 +15,5 @@ artifacts:
   files:
     - package-lock.json
     - package.json
-    - 'dist/**/*'         # Updated to include the correct build folder
-    - '.platform/**/*'    # AWS Elastic Beanstalk configuration files
-    - '.ebextensions/**/*' # AWS Elastic Beanstalk configuration files
+    - 'dist/**/*'   
   discard-paths: no
