@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: /dist/
-    destination: /var/www/html/  # Destination folder in the EC2 instance
+    destination: /home/ec2-user/cucibayargo/  # Change the destination to a new folder
 hooks:
   BeforeInstall:
     - location: scripts/install_dependencies.sh
