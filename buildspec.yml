@@ -17,4 +17,5 @@ artifacts:
     - package-lock.json
     - package.json
     - 'dist/**/*'   
+    - 'scripts/*'   
   discard-paths: no

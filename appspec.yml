@@ -1,12 +1,22 @@
 version: 0.0
 os: linux
+
 files:
-  - source: /dist/
-    destination: /home/ec2-user/cucibayargo/dist/  # Transfer build artifacts to the 'dist' folder
+  - source: dist/
+    destination: /home/ec2-user/cucibayargo/dist
+  - source: scripts/
+    destination: /home/ec2-user/cucibayargo/scripts
+  - source: package.json
+    destination: /home/ec2-user/cucibayargo
+  - source: package-lock.json
+    destination: /home/ec2-user/cucibayargo
+
 hooks:
   BeforeInstall:
-    - location: /home/ec2-user/cucibayargo/scripts/install_dependencies.sh  # Reference script in the 'scripts' folder
+    - location: scripts/install_dependencies.sh
       timeout: 300
+      runas: ec2-user
   ApplicationStart:
-    - location: /home/ec2-user/cucibayargo/scripts/start_server.sh  # Reference script in the 'scripts' folder
+    - location: scripts/start_server.sh
       timeout: 300
+      runas: ec2-user
