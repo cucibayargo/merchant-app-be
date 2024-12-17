@@ -1,4 +1,6 @@
 import express, { Request, Response, NextFunction, Router } from "express";
+import https from "https";
+import fs from "fs";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import cors, { CorsOptions } from 'cors';
@@ -26,6 +28,12 @@ if (!process.env.SESSION_SECRET || !process.env.API_URL) {
   console.error("Critical environment variables are missing.");
   process.exit(1);
 }
+
+// SSL certificate paths (update with your actual file paths)
+const sslOptions = {
+  key: fs.readFileSync("/etc/letsencrypt/live/api.cucibayargo.com/privkey.pem"),
+  cert: fs.readFileSync("/etc/letsencrypt/live/api.cucibayargo.com/fullchain.pem"),
+};
 
 // CORS configuration
 const allowedOrigins = environment === 'production'
@@ -106,9 +114,9 @@ routerV1.use("/payment", paymentRoutes);
 
 app.use("/api/", routerV1);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running in ${environment} mode on port ${PORT}`);
+// Start HTTPS server
+https.createServer(sslOptions, app).listen(PORT, () => {
+  console.log(`Server running in ${environment} mode on https://localhost:${PORT}`);
 });
 
 export default app;
