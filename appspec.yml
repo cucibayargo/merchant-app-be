@@ -2,8 +2,17 @@ version: 0.0
 os: linux
 
 files:
-  - source: /
-    destination: /home/ec2-user/cucibayargo/
+  - source: /package-lock.json
+    destination: /home/ec2-user/cucibayargo/package-lock.json
+    overwrite: true  
+  - source: /package.json
+    destination: /home/ec2-user/cucibayargo/package.json
+    overwrite: true  
+  - source: /dist/
+    destination: /home/ec2-user/cucibayargo/dist/ 
+  - source: /scripts/
+    destination: /home/ec2-user/cucibayargo/scripts/  
+
 
 hooks:
   AfterInstall:
