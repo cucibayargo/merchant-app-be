@@ -2,41 +2,13 @@ version: 0.0
 os: linux
 
 files:
-  - source: /package-lock.json
-    destination: /home/ec2-user/cucibayargo/package-lock.json
-    overwrite: true  
-  - source: /package.json
+  - source: package.json
     destination: /home/ec2-user/cucibayargo/package.json
     overwrite: true  
   - source: /dist/
-    destination: /home/ec2-user/cucibayargo/dist/ 
+    destination: /home/ec2-user/cucibayargo/dist/  
   - source: /scripts/
-    destination: /home/ec2-user/cucibayargo/scripts/  
-
-
-hooks:
-  AfterInstall:
-    - location: scripts/install_dependencies.sh
-      timeout: 300
-      runas: root
-
-  ApplicationStart:
-    - location: scripts/start_server.sh
-      timeout: 300
-      runas: root
-
-
-version: 0.0
-os: linux
-
-files:
-  - source: /package.json
-    destination: /home/ec2-user/cucibayargo/package.json
-    overwrite: true  
-  - source: /dist/
-    destination: /home/ec2-user/cucibayargo/dist/  # This will copy the entire dist folder and overwrite files inside it
-  - source: /scripts/
-    destination: /home/ec2-user/cucibayargo/scripts/  # This will copy the entire scripts folder and overwrite files inside it
+    destination: /home/ec2-user/cucibayargo/scripts/ 
 
 hooks:
   AfterInstall:
