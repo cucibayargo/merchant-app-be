@@ -3,7 +3,7 @@ os: linux
 
 files:
   - source: package.json
-    destination: /home/ec2-user/cucibayargo/package.json
+    destination: /home/ec2-user/cucibayargo/
     overwrite: true  
   - source: /dist/
     destination: /home/ec2-user/cucibayargo/dist/  
