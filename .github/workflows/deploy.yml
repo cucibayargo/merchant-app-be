@@ -1,0 +1,68 @@
+name: Build and Deploy to CodeDeploy
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Set up Node.js environment
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18' # Replace with your Node.js version if different
+        cache: 'npm'
+
+    # Step 3: Install dependencies
+    - name: Install dependencies
+      run: |
+        npm install -g typescript
+        npm install
+
+    # Step 4: Build the project
+    - name: Build the project
+      run: npm run build
+
+    # Step 5: Prepare artifact for CodeDeploy
+    - name: Prepare artifact
+      run: |
+        mkdir -p deploy
+        cp -R appspec.yml package*.json dist aws deploy/
+      # Archive the prepared files
+    - name: Archive artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: deploy-artifact
+        path: deploy
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Download artifact
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: deploy-artifact
+        
+   # Step 2: Deploy to AWS CodeDeploy
+    - name: Deploy to AWS CodeDeploy
+      uses: aws-actions/aws-codedeploy@v1
+      with:
+        application-name: merchant-api
+        deployment-group-name: production
+        deployment-bucket: cucibayargo-deploy
+        deployment-key: deploy/deploy.zip
+        region: ap-southeast-1
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
