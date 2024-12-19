@@ -68,7 +68,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Swagger configuration
 const swaggerServerUrl = environment === 'production'
   ? process.env.API_URL || 'https://api.cucibayargo.com'
-  : 'http://localhost:3000/api';
+  : 'http://localhost:3000/v1';
 
 const swaggerOptions = {
   definition: {
@@ -104,7 +104,7 @@ routerV1.use("/duration", durationRoutes);
 routerV1.use("/email-support", emailSupport);
 routerV1.use("/payment", paymentRoutes);
 
-app.use("/api/", routerV1);
+app.use("/v1/", routerV1);
 
 // Start HTTP server
 app.listen(PORT, () => {

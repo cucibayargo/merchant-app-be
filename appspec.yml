@@ -7,16 +7,16 @@ files:
     overwrite: true  
   - source: /dist/
     destination: /home/ec2-user/cucibayargo/dist/  
-  - source: /scripts/
-    destination: /home/ec2-user/cucibayargo/scripts/ 
+  - source: /aws/
+    destination: /home/ec2-user/cucibayargo/aws/ 
 
 hooks:
   AfterInstall:
-    - location: scripts/install_dependencies.sh
+    - location: aws/scripts/install_dependencies.sh
       timeout: 300
       runas: root
 
   ApplicationStart:
-    - location: scripts/start_server.sh
+    - location: aws/scripts/start_server.sh
       timeout: 300
       runas: root
