@@ -17,5 +17,5 @@ artifacts:
     - package-lock.json
     - package.json
     - 'dist/**/*'   
-    - 'aws/*'   
+    - 'aws/**/*'   
   discard-paths: no
