@@ -7,5 +7,5 @@ if ! command -v pm2 &> /dev/null; then
     sudo npm install -g pm2
 fi
 
-pm2 stop all || true
-pm2 start dist/api.js --name "node-app"
+/usr/local/bin/pm2 stop all || true
+/usr/local/bin/pm2 start dist/api.js --name "node-app"

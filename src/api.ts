@@ -21,7 +21,7 @@ import authMiddleware from "./middlewares";
 
 const app = express();
 const environment = process.env.NODE_ENV || 'development';
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Validate environment variables
 if (!process.env.SESSION_SECRET || !process.env.API_URL) {
