@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
-import { insertRow } from './controller';
-import { emailSupportSchema } from "./types";
+import { emailSupportSchema, SheetData } from "./types";
+import { sendToSheet } from "./controller";
 
 const router = express.Router();
 
@@ -82,15 +82,18 @@ router.post("/", async (req: Request, res: Response) => {
 
     const { title, message } = req.body;
 
-    // Data to insert
-    const rowData = [title, message, "Pending"];
-
-    // Insert the row
-    await insertRow(rowData).catch((error) => {
+    const data: SheetData = {
+        title: title,
+        message: message,
+        status: "Pending",
+    };
+  
+    await sendToSheet(data).catch((error) => {
         const err = error as Error;
         console.log(err.message);
-        res.status(500).json({ message: "Aplikasi mengalami gangguan. Silakan kontak kami langsung melalui cucibayargo@gmail.com." });
+        res.status(500).json({ message: "Aplikasi mengalami gangguan. Silakan kontak kami langsung melalui support@cucibayargo.com." });
     });
+    
     res.status(200).json({
         status: "success",
         message: "Email dukungan telah berhasil dikirim",
