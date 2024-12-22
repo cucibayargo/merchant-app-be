@@ -10,7 +10,6 @@ import { addPayment } from "../payments/controller";
 import { getCustomerById } from "../customer/controller";
 import { getDurationById } from "../duration/controller";
 import { getServiceDurationDetail } from "../services/controller";
-import escpos, { Adapter } from "escpos";
 
 export async function getTransactions(
   status: string | null = null,
@@ -320,6 +319,7 @@ export async function getTransactionById(
         t.customer_phone_number AS customer_phone_number,
         t.ready_to_pick_up_at,
         t.completed_at,
+        t.created_at,
         t.duration_name,
         t.status AS transaction_status,
         p.invoice_id AS invoice,
@@ -461,8 +461,11 @@ async function generateInvoiceId(transactionId: string, merchantId?: string): Pr
 
   try {
     const prefix = "INV";
+    
+    // Create a new Date object and convert it to Jakarta time
     const now = new Date();
-    const formattedDate = `${now.getDate().toString().padStart(2, "0")}${(now.getMonth() + 1).toString().padStart(2, "0")}${now.getFullYear()}`;
+    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+    const formattedDate = `${jakartaTime.getDate().toString().padStart(2, "0")}${(jakartaTime.getMonth() + 1).toString().padStart(2, "0")}${jakartaTime.getFullYear()}`;
 
     // Query to fetch order and merchant sequence_id in one go
     const query = `
@@ -487,27 +490,4 @@ async function generateInvoiceId(transactionId: string, merchantId?: string): Pr
   } finally {
     client.release();
   }
-}
-
-/**
- * Connect to thermal printer via usb and print the example format.
- * @returns {Promise<null>} - A promise that resolves to null.
- */
-export async function generateReceiptPrint(): Promise<null> {
-  const device = new escpos.USB();
-  const options = { encoding: "GB18030" };
-  const printer = new escpos.Printer(device, options);
-
-  return new Promise((resolve, reject) => {
-    device?.open(() => {
-      printer
-        .font("A")
-        .align("CT")
-        .style("B")
-        .size(1, 1)
-        .text("Store Name")
-        .cut()
-        .close(resolve);
-    });
-  });
 }

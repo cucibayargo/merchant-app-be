@@ -6,7 +6,6 @@ import {
   getTransactionById,
   getTransactions,
   updateTransaction,
-  generateReceiptPrint,
 } from "./controller";
 import { AuthenticatedRequest } from "../../middlewares";
 
@@ -382,16 +381,6 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
     res
       .status(500)
       .json({ status: "error", message: "Transaksi gagal dibuat" });
-  }
-});
-
-router.post("/print", async (req: Request, res: Response) => {
-  try {
-    await generateReceiptPrint();
-    res.status(200).json();
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Tidak ada printer yang terhubung" });
   }
 });
 

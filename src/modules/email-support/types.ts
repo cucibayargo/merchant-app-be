@@ -8,3 +8,9 @@ export const emailSupportSchema = Joi.object({
       'string.empty': 'Pesan wajib diisi',
   }),
 });
+
+export interface SheetData {
+  title: string;
+  message: string;
+  status: string;
+}
