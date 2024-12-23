@@ -30,11 +30,19 @@ if (!process.env.SESSION_SECRET || !process.env.API_URL) {
 // CORS configuration
 const allowedOrigins = environment === 'production'
   ? ['https://store.cucibayargo.com', 'https://cucibayargo.com']
-  : ['https://stg-store.cucibayargo.com', 'https://stg.cucibayargo.com', 'http://localhost:3000'];
+  : [
+      'https://stg-store.cucibayargo.com',
+      'https://stg.cucibayargo.com',
+      /^http:\/\/localhost(:\d+)?$/ // Allow all localhost origins
+    ];
 
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.some((allowedOrigin) => 
+        typeof allowedOrigin === 'string'
+          ? allowedOrigin === origin
+          : allowedOrigin.test(origin))
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
