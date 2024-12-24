@@ -1,6 +1,8 @@
 import pool from "../../database/postgres";
 import { SignUpInput, SignUpTokenInput, SubscriptionInput, SubscriptionPlan, User } from "./types";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import Mailjet from 'node-mailjet';
 
 /**
  * Retrieve a user by their email.
@@ -43,6 +45,21 @@ export async function getSubsPlanByCode(code: string): Promise<SubscriptionPlan>
 }
 
 /**
+ * Retrieve a App Plans by subscriotion id.
+ * @param id - The id of the plan to retrieve.
+ * @returns {Promise<string | null>} - A promise that resolves to the user if found, or null if not found.
+ */
+export async function getSubsPlanById(id: string): Promise<SubscriptionPlan> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query('SELECT * FROM app_plans WHERE id = $1', [id]);
+    return res.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Add a new user to the database.
  * @param user - The user data to add. Excludes 'id' as it's auto-generated.
  * @returns {Promise<User>} - A promise that resolves to the newly created user.
@@ -50,7 +67,7 @@ export async function getSubsPlanByCode(code: string): Promise<SubscriptionPlan>
 export async function addUser(user: Omit<SignUpInput, 'id'>): Promise<User> {
   const client = await pool.connect();
   try {
-    const { name, email, password, phone_number, oauth, status} = user;
+    const { name, email, password, phone_number, oauth, status } = user;
     const query = `
       INSERT INTO users (name, email, password, phone_number, oauth, status)
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
@@ -70,7 +87,7 @@ export async function addUser(user: Omit<SignUpInput, 'id'>): Promise<User> {
 export async function createSubscriptions(user: Omit<SubscriptionInput, 'id'>): Promise<User> {
   const client = await pool.connect();
   try {
-    const { start_date, end_date, user_id, plan_id} = user;
+    const { start_date, end_date, user_id, plan_id } = user;
     const query = `
       INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id)
       VALUES ($1, $2, $3, $4) RETURNING *;
@@ -111,12 +128,12 @@ export async function changeUserPassword(email: string, currentPassword: string,
     } finally {
       client.release();
     }
-  }
-  
+}
+
 export async function addUserSignUpToken(payload: Omit<SignUpTokenInput, 'id'>): Promise<void> {
   const client = await pool.connect();
   try {
-    const { name, email, phone_number, token, status, subscription_plan} = payload;
+    const { name, email, phone_number, token, status, subscription_plan } = payload;
     const query = `
       INSERT INTO users_signup (name, email, phone_number, token, status, subscription_plan)
       VALUES ($1, $2, $3, $4, $5, $6);
@@ -158,3 +175,90 @@ export async function updateUserSignupStatus(email: string, token: string, userI
     client.release();
   }
 }
+
+export const notifyUserToPaySubscription = async (
+  email: string
+): Promise<void> => {
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
+
+  // Generate JWT token for payment confirmation
+  const token = jwt.sign(
+    { email }, // Payload
+    process.env.JWT_SECRET as string, // Secret key
+    { expiresIn: '7d' } // Token expiration time (7 days in this example)
+  );
+
+  // Calculate payment deadline (5 days from now)
+  const paymentDeadline = new Date();
+  paymentDeadline.setDate(paymentDeadline.getDate() + 5);
+  const formattedDeadline = paymentDeadline.toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const paymentUrl = `https://example.com/complete-payment?token=${encodeURIComponent(token)}`;
+
+  const emailSubject = `Pendaftaran Berlangganan - Pembayaran Dibutuhkan`;
+  const emailBody = `
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+        <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+          <tr>
+            <td>
+              <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                <tr>
+                  <td style="text-align: center;">
+                    <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="text-align: center; padding: 20px;">
+                    <h1 style="color: #333333;">Pembayaran Dibutuhkan</h1>
+                    <p style="font-size: 16px; color: #555555;">
+                      Terima kasih telah mendaftar ke paket <strong>Berlangganan</strong>. Untuk melanjutkan, Anda perlu menyelesaikan pembayaran sebelum <strong>${formattedDeadline}</strong>.
+                    </p>
+                    <a href="${paymentUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Selesaikan Pembayaran</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                    Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>`;
+
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: 'no-reply@cucibayargo.com',
+          Name: 'Cucibayargo',
+        },
+        To: [
+          {
+            Email: email,
+          },
+        ],
+        Subject: emailSubject,
+        HTMLPart: emailBody,
+      },
+    ],
+  };
+
+  try {
+    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
+    console.log(`Payment notification sent to ${email} with response:`, response.body);
+  } catch (error) {
+    console.error(`Failed to send payment notification to ${email}:`, error);
+  }
+};
