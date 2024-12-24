@@ -3,9 +3,14 @@ import multer from "multer";
 import {
   checkUserSubscriptions,
   deleteTempFiles,
+  getInvoiceDetails,
+  getInvoices,
   getUserDetails,
+  setUserPlan,
+  updateInvoice,
   updateUserDetails,
   uploadTransactionFile,
+  verifyInvoiceValid,
 } from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
 import { AuthenticatedRequest } from "../../middlewares";
@@ -82,6 +87,40 @@ const upload = multer({
  *           nullable: true
  *           description: Address of the user (nullable)
  *           example: "123 Main St, Springfield"
+ *     Invoice:
+ *       type: object
+ *       required:
+ *         - invoice_id
+ *         - user_id
+ *         - status
+ *         - plan_id
+ *       properties:
+ *         invoice_id:
+ *           type: string
+ *           description: ID faktur yang akan diperbarui
+ *           example: "INV123456"
+ *         user_id:
+ *           type: string
+ *           description: ID pengguna yang terkait dengan faktur
+ *           example: "USR7890"
+ *         status:
+ *           type: string
+ *           description: Status dari faktur
+ *           example: "Dibayar"
+ *         plan_id:
+ *           type: string
+ *           description: ID rencana langganan yang terkait dengan faktur
+ *           example: "PLAN001"
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           description: Tanggal dan waktu faktur dibuat
+ *           example: "2024-08-10T10:15:30Z"
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Tanggal dan waktu faktur terakhir diperbarui
+ *           example: "2024-08-12T12:30:45Z"
  */
 
 /**
@@ -374,7 +413,7 @@ router.get("/delete-temp-files", async (req: AuthenticatedRequest, res: Response
 router.get("/check-subscriptions", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const token = req.headers["cron-job-token"];
-    if (token !== process.env.CRON_JOB_SECRET) {
+    if (token !== process.env.crToken) {
       return res.status(403).json({ message: "Forbidden: Invalid token" });
     }
 
@@ -433,7 +472,12 @@ router.post("/upload-subscriptions-invoice", upload.single("file"), async (req: 
     const { originalname, buffer, mimetype } = req.file;
     const fileName = `${Date.now()}_${originalname}`;
     const userId = req.userId; // Assumed that req.userId is set correctly by middleware
-    const { note } = req.body;
+    const { note, invoice_id } = req.body;
+
+    // Validate if the required fields are provided
+    if (!invoice_id) {
+      return res.status(400).json({ message: "Invoice ID diperlukan." });
+    }
 
     // Upload file to Supabase Storage
     const { error } = await supabase.storage
@@ -447,7 +491,7 @@ router.post("/upload-subscriptions-invoice", upload.single("file"), async (req: 
     }
 
     // Optionally save transaction record with userId and file path
-    await uploadTransactionFile(userId as string, note, `invoice/${fileName}`);
+    await uploadTransactionFile(userId as string, note, invoice_id, `invoice/${fileName}`);
 
     // Respond with success message
     res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan" });
@@ -457,6 +501,258 @@ router.post("/upload-subscriptions-invoice", upload.single("file"), async (req: 
   }
 });
 
+/**
+ * @swagger
+ * /user/invoice/{invoiceId}:
+ *   get:
+ *     summary: Retrieve user invoice details
+ *     description: Fetches the invoice details of a user by their ID.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: invoiceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the invoice to retrieve.
+ *     responses:
+ *       '200':
+ *         description: Detail tagihan pengguna berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       '400':
+ *         description: ID pengguna tidak valid atau tidak ada
+ *       '404':
+ *         description: Tagihan tidak ditemukan
+ *       '500':
+ *         description: Terjadi kesalahan pada server
+ */
+router.get(
+  "/invoice/:invoiceId",
+  async (req: AuthenticatedRequest, res: Response) => {
 
+    try {
+      const invoiceId = req.params.invoiceId;
+      const invoice = await getInvoiceDetails(invoiceId);
+
+      if (!invoice) {
+        return res.status(404).json({ message: "Tagihan tidak ditemukan." });
+      }
+      res.json(invoice)
+    } catch (error) {
+      console.error("Error fetching invoice details:", error);
+      res.status(500).json({ message: "Terjadi kesalahan saat mengambil detail tagihan." });
+    }
+  }
+);
+
+
+/**
+ * @swagger
+ * /user/invoices:
+ *   get:
+ *     summary: Retrieve all user invoices
+ *     description: Fetches the details of all invoices for a user.
+ *     tags: [User]
+ *     responses:
+ *       '200':
+ *         description: Tagihan berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Invoice'
+ *       '404':
+ *         description: Tidak ada tagihan ditemukan
+ *       '500':
+ *         description: Terjadi kesalahan pada server
+ */
+router.get(
+  "/invoices",
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const invoices = await getInvoices();
+
+      if (!invoices || invoices.length === 0) {
+        return res.status(404).json({ message: "Tidak ada tagihan ditemukan." });
+      }
+
+      res.status(200).json(invoices);
+    } catch (error) {
+      console.error("Error fetching invoice details:", error);
+      res
+        .status(500)
+        .json({ message: "Terjadi kesalahan saat mengambil detail tagihan." });
+    }
+  }
+);
+
+
+/**
+ * @swagger
+ * /user/plan:
+ *   post:
+ *     summary: Set a new plan for the user
+ *     description: Assign a new plan to a user based on the provided plan code.
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               plan_code:
+ *                 type: string
+ *                 description: The code of the plan to be assigned to the user.
+ *     responses:
+ *       '200':
+ *         description: Rencana pengguna berhasil diatur
+ *       '400':
+ *         description: Input tidak valid atau data tidak lengkap
+ *       '404':
+ *         description: Rencana tidak ditemukan
+ *       '500':
+ *         description: Terjadi kesalahan pada server
+ */
+router.post(
+  "/plan",
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.userId;
+    const { plan_code } = req.body;
+
+    if (!userId || !plan_code) {
+      return res.status(400).json({ message: "ID pengguna dan Kode Rencana diperlukan." });
+    }
+
+    try {
+      const success = await setUserPlan({ user_id: userId, plan_code });
+
+      if (success) {
+        return res.status(200).json({ message: "Rencana pengguna berhasil diatur." });
+      }
+
+      res.status(404).json({ message: "Rencana tidak ditemukan atau langganan sudah ada." });
+    } catch (error) {
+      console.error("Error setting user plan:", error);
+      res.status(500).json({ message: "Terjadi kesalahan saat mengatur rencana pengguna." });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /user/invoice-update:
+ *   post:
+ *     summary: Perbarui faktur untuk pengguna
+ *     description: Perbarui faktur untuk pengguna berdasarkan ID faktur yang diberikan.
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 description: Diterima atau Ditolak
+ *               invoice_id:
+ *                 type: string
+ *                 description: ID faktur yang akan diperbarui.
+ *     responses:
+ *       '200':
+ *         description: Faktur berhasil diperbarui
+ *       '400':
+ *         description: Input tidak valid atau data tidak lengkap
+ *       '404':
+ *         description: Faktur tidak ditemukan
+ *       '500':
+ *         description: Terjadi kesalahan pada server saat memperbarui faktur
+ */
+router.post(
+  "/invoice-update",
+  async (req: AuthenticatedRequest, res: Response) => {
+    const token = req.headers["cron-job-token"];
+    if (token !== process.env.CRON_JOB_SECRET) {
+      return res.status(403).json({ message: "Forbidden: Invalid token" });
+    }
+
+    const userId = req.userId;
+    const { invoice_id, status } = req.body;
+
+    // Validasi input
+    if (!userId || !invoice_id) {
+      return res.status(400).json({ message: "ID pengguna dan ID faktur diperlukan." });
+    }
+
+    try {
+      // Mengasumsikan `updateInvoice` adalah fungsi untuk memperbarui faktur
+      const success = await updateInvoice({invoice_id, status});
+
+      if (success) {
+        return res.status(200).json({ message: "Faktur berhasil diperbarui." });
+      }
+
+      res.status(404).json({ message: "Faktur tidak ditemukan atau pembaruan gagal." });
+    } catch (error) {
+      console.error("Error memperbarui faktur:", error);
+      res.status(500).json({ message: "Terjadi kesalahan saat memperbarui faktur." });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /user/verify-invoice:
+ *   post:
+ *     summary: Validate Invoice Token
+ *     description: Perbarui faktur untuk pengguna berdasarkan ID faktur yang diberikan.
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: JWT TOKEN
+ *     responses:
+ *       '200':
+ *         description: Successfully
+ *       '400':
+ *         description: Error
+ *       '500':
+ *         description: Server Error
+ */
+router.post(
+  "/verify-invoice",
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { token } = req.body;
+
+    // Validasi input
+    if (!token) {
+      return res.status(400).json({ message: "Token diperlukan." });
+    }
+
+    try {
+      const success = await verifyInvoiceValid(token);
+
+      if (success) {
+        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan." });
+      }
+
+      res.status(404).json({ message: "Invoice Sudah Kedaluarsa." });
+    } catch (error) {
+      console.error("Error validate invoice:", error);
+      res.status(500).json({ message: "Terjadi kesalahan pada server." });
+    }
+  }
+);
 
 export default router;

@@ -1,6 +1,6 @@
 import express from "express";
 import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema, SubscriptionPlan } from "./types";
-import { addUser, addUserSignUpToken, changeUserPassword, createSubscriptions, getSubsPlanByCode, getUserByEmail, updateUserSignupStatus, validateToken } from "./controller";
+import { addUser, addUserSignUpToken, changeUserPassword, createSubscriptions, getSubsPlanByCode, getUserByEmail, notifyUserToPaySubscription, updateUserSignupStatus, validateToken } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import passport from "./passportConfig";
@@ -438,13 +438,24 @@ router.post("/signup", async (req, res) => {
     // Step 4: Update users_signup table with the status and user_id
     await updateUserSignupStatus(email, token, newUser.id);
 
-    // Step 5: Insert User subscription
-    await createSubscriptions({
-      user_id: newUser.id,
-      plan_id: subscriptionPlan.id,
-      start_date: new Date().toISOString(), // Sets the start date to current date in ISO format
-      end_date: new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString() // Adds duration in days
-    });
+    if (subscriptionPlan.code == "berlangganan") {
+        // Step 5: Insert User subscription
+        await createSubscriptions({
+          user_id: newUser.id,
+          plan_id: subscriptionPlan.id,
+          start_date: new Date().toISOString(), // Sets the start date to current date in ISO format
+          end_date: new Date(Date.now()).toISOString() // Adds duration in days
+        });
+        notifyUserToPaySubscription(email);
+    } else {
+      // Step 5: Insert User subscription
+      await createSubscriptions({
+        user_id: newUser.id,
+        plan_id: subscriptionPlan.id,
+        start_date: new Date().toISOString(), // Sets the start date to current date in ISO format
+        end_date: new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString() // Adds duration in days
+      });
+    }
 
     // Generate verification token
     const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {

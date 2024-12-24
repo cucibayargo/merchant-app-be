@@ -1098,6 +1098,15 @@
             },
             "required": false,
             "description": "Filter services by a specific duration ID."
+          },
+          {
+            "in": "query",
+            "name": "filter",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "description": "Filter services by a specific service Name."
           }
         ],
         "responses": {
@@ -1851,6 +1860,195 @@
           },
           "500": {
             "description": "Failed to upload file or process the transaction"
+          }
+        }
+      }
+    },
+    "/user/invoice/{invoiceId}": {
+      "get": {
+        "summary": "Retrieve user invoice details",
+        "description": "Fetches the invoice details of a user by their ID.",
+        "tags": [
+          "User"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the invoice to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail tagihan pengguna berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID pengguna tidak valid atau tidak ada"
+          },
+          "404": {
+            "description": "Tagihan tidak ditemukan"
+          },
+          "500": {
+            "description": "Terjadi kesalahan pada server"
+          }
+        }
+      }
+    },
+    "/user/invoices": {
+      "get": {
+        "summary": "Retrieve all user invoices",
+        "description": "Fetches the details of all invoices for a user.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Tagihan berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Invoice"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tidak ada tagihan ditemukan"
+          },
+          "500": {
+            "description": "Terjadi kesalahan pada server"
+          }
+        }
+      }
+    },
+    "/user/plan": {
+      "post": {
+        "summary": "Set a new plan for the user",
+        "description": "Assign a new plan to a user based on the provided plan code.",
+        "tags": [
+          "User"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plan_code": {
+                    "type": "string",
+                    "description": "The code of the plan to be assigned to the user."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rencana pengguna berhasil diatur"
+          },
+          "400": {
+            "description": "Input tidak valid atau data tidak lengkap"
+          },
+          "404": {
+            "description": "Rencana tidak ditemukan"
+          },
+          "500": {
+            "description": "Terjadi kesalahan pada server"
+          }
+        }
+      }
+    },
+    "/user/invoice-update": {
+      "post": {
+        "summary": "Perbarui faktur untuk pengguna",
+        "description": "Perbarui faktur untuk pengguna berdasarkan ID faktur yang diberikan.",
+        "tags": [
+          "User"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "Diterima atau Ditolak"
+                  },
+                  "invoice_id": {
+                    "type": "string",
+                    "description": "ID faktur yang akan diperbarui."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Faktur berhasil diperbarui"
+          },
+          "400": {
+            "description": "Input tidak valid atau data tidak lengkap"
+          },
+          "404": {
+            "description": "Faktur tidak ditemukan"
+          },
+          "500": {
+            "description": "Terjadi kesalahan pada server saat memperbarui faktur"
+          }
+        }
+      }
+    },
+    "/user/verify-invoice": {
+      "post": {
+        "summary": "Validate Invoice Token",
+        "description": "Perbarui faktur untuk pengguna berdasarkan ID faktur yang diberikan.",
+        "tags": [
+          "User"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "description": "JWT TOKEN"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully"
+          },
+          "400": {
+            "description": "Error"
+          },
+          "500": {
+            "description": "Server Error"
           }
         }
       }
@@ -2729,6 +2927,49 @@
             "nullable": true,
             "description": "Address of the user (nullable)",
             "example": "123 Main St, Springfield"
+          }
+        }
+      },
+      "Invoice": {
+        "type": "object",
+        "required": [
+          "invoice_id",
+          "user_id",
+          "status",
+          "plan_id"
+        ],
+        "properties": {
+          "invoice_id": {
+            "type": "string",
+            "description": "ID faktur yang akan diperbarui",
+            "example": "INV123456"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "ID pengguna yang terkait dengan faktur",
+            "example": "USR7890"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status dari faktur",
+            "example": "Dibayar"
+          },
+          "plan_id": {
+            "type": "string",
+            "description": "ID rencana langganan yang terkait dengan faktur",
+            "example": "PLAN001"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Tanggal dan waktu faktur dibuat",
+            "example": "2024-08-10T10:15:30Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Tanggal dan waktu faktur terakhir diperbarui",
+            "example": "2024-08-12T12:30:45Z"
           }
         }
       }
