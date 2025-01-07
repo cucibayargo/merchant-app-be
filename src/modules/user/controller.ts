@@ -496,7 +496,7 @@ export async function setUserPlan(planDetail: Omit<setPlanInput, 'id'>): Promise
       VALUES ($1, $2, $3, $4)
     `;
     const startDate = new Date().toISOString();
-    const endDate = new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString();
+    const endDate = new Date(Date.now()).toISOString();
 
     await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, startDate, endDate]);
 
