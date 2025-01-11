@@ -228,6 +228,9 @@ const sendEmailNotification = async (
     { options: { timeout: 20000 } }
   );
 
+  const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
+  const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
+
   // Generate JWT token with expiration time
   const token = jwt.sign(
     { email }, // Payload
@@ -257,7 +260,7 @@ const sendEmailNotification = async (
                     <td style="text-align: center; padding: 20px;">
                       <h1 style="color: #333333;">Akun Gratis Anda Akan Ditutup</h1>
                       <p style="font-size: 16px; color: #555555;">
-                        Akun gratis Anda akan ditutup pada <strong>${endDate}</strong>. Untuk terus menggunakan layanan kami, silakan beralih ke paket berlangganan sebelum tanggal tersebut.
+                        Akun gratis Anda akan ditutup pada <strong>${formattedEndDate}</strong>. Untuk terus menggunakan layanan kami, silakan beralih ke paket berlangganan sebelum tanggal tersebut.
                       </p>
                       <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Pilih Paket Berlangganan</a>
                     </td>
@@ -289,7 +292,7 @@ const sendEmailNotification = async (
                     <td style="text-align: center; padding: 20px;">
                       <h1 style="color: #333333;">Langganan Anda Akan Segera Berakhir</h1>
                       <p style="font-size: 16px; color: #555555;">
-                        Langganan Anda akan berakhir pada <strong>${endDate}</strong>. Jangan lupa untuk memperpanjang langganan Anda sebelum tanggal tersebut agar tetap dapat menikmati layanan kami.
+                        Langganan Anda akan berakhir pada <strong>${formattedEndDate}</strong>. Jangan lupa untuk memperpanjang langganan Anda sebelum tanggal tersebut agar tetap dapat menikmati layanan kami.
                       </p>
                       <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Perpanjang Sekarang</a>
                     </td>
@@ -705,6 +708,9 @@ const sendInvoiceApproved = async (email: string, endDate: string): Promise<void
     { options: { timeout: 20000 } }
   );
 
+  const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
+  const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
+
   const emailData = {
     Messages: [
       {
@@ -737,7 +743,7 @@ const sendInvoiceApproved = async (email: string, endDate: string): Promise<void
                             Email: <strong>${email}</strong>
                           </p>
                           <p style="font-size: 16px; color: #555555;">
-                            Masa Aktif Hingga: <strong>${endDate}</strong>
+                            Masa Aktif Hingga: <strong>${formattedEndDate}</strong>
                           </p>
                         </td>
                       </tr>
