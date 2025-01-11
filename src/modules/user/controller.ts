@@ -235,7 +235,7 @@ const sendEmailNotification = async (
     { expiresIn: '7d' } // Token expiration time (7 days in this example)
   );
 
-  const verificationUrl = `https://example.com/verify?token=${encodeURIComponent(token)}`;
+  const verificationUrl = `https://store.cucibayargo.com/verify?token=${encodeURIComponent(token)}`;
   const isGratis = planCode === 'gratis';
   const emailSubject = isGratis
     ? 'Akun Gratis Anda Akan Ditutup'
@@ -656,15 +656,22 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
  * @returns {Promise<boolean>} - A promise that resolves to true if the plan is set successfully, otherwise false.
  */
 export async function verifyInvoiceValid(token: string): Promise<boolean> {
+  const client = await pool.connect();
   try {
     // Verify the JWT token
     const decoded = await verifyJwt(token);
-    
+    const userDetail = `
+      SELECT name
+      FROM users 
+      WHERE email = $1
+    `;
+    const result = await client.query(userDetail, [decoded.email]);
+
     if (!decoded) {
       throw new Error('Token is invalid or expired.');
     }
 
-    return true;
+    return result?.rows[0]?.name;
   } catch (error) {
     console.error('Error verifying invoice:', error);
     return false;
