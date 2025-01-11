@@ -741,13 +741,13 @@ router.post(
     }
 
     try {
-      const success = await verifyInvoiceValid(token);
+      const userName = await verifyInvoiceValid(token);
 
-      if (success) {
-        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan." });
+      if (userName) {
+        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan.", name: userName  });
       }
 
-      res.status(404).json({ message: "Invoice Sudah Kedaluarsa." });
+      res.status(404).json({ message: "Invoice Sudah Kedaluarsa.", name: userName });
     } catch (error) {
       console.error("Error validate invoice:", error);
       res.status(500).json({ message: "Terjadi kesalahan pada server." });
