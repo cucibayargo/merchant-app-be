@@ -347,7 +347,8 @@ export const uploadTransactionFile = async (
   userId: string,
   note: string,
   invoice_id: string,
-  filePath: string
+  filePath: string,
+  fileUrl: string
 ) => {
   const client = await pool.connect();
   try {
@@ -367,6 +368,33 @@ export const uploadTransactionFile = async (
     if (updateInvoice.rowCount === 0) {
       throw new Error(`Invoice with ID ${invoice_id} not found.`);
     }
+
+    const userDetailQuery = `
+      SELECT 
+        u.name, 
+        u.email, 
+        u.phone_number, 
+        t.end_date
+      FROM users u
+      INNER JOIN app_subscriptions t ON u.id = t.user_id
+      WHERE u.id = $1
+    `;
+
+    const queryResult = await client.query(userDetailQuery, [userId]);
+    const userDetail = queryResult.rows[0];
+
+    if (!userDetail) {
+      throw new Error(`User with ID ${userId} not found.`);
+    }
+
+    await sendPayemntNotification(
+      userDetail.email,
+      userDetail.end_date,
+      invoice_id,
+      userDetail.name,
+      userDetail.phone_number,
+      fileUrl
+    );
 
     return true; // Successfully processed
   } catch (error) {
@@ -692,7 +720,7 @@ async function verifyJwt(token: string): Promise<any | null> {
     return decoded;
   } catch (error) {
     console.error('JWT verification failed:', error);
-    return null; 
+    return null;
   }
 }
 
@@ -844,3 +872,94 @@ const sendInvoiceCancelled = async (email: string): Promise<void> => {
   }
 };
 
+
+/**
+ * Kirim notifikasi email ketika langganan diterima.
+ * @param email - Alamat email pengguna.
+ * @param endDate - Tanggal akhir masa aktif langganan.
+ * @param invoiceId - ID Faktur.
+ * @param userName - Nama pengguna.
+ * @param userPhone - Nomor HP pengguna.
+ * @param fileLink - Link file yang akan dilampirkan.
+ */
+const sendPayemntNotification = async (
+  email: string,
+  endDate: string,
+  invoiceId: string,
+  userName: string,
+  userPhone: string,
+  fileLink: string
+): Promise<void> => {
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
+
+  const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
+  const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
+
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: 'no-reply@cucibayargo.com',
+          Name: 'Cucibayargo',
+        },
+        To: [
+          {
+            Email: 'support@cucibayargo.com',
+          },
+          {
+            Email: 'laundryapps225@gmail.com',
+          }
+        ],
+        Subject: 'Pembayaran Pengguna Baru: Mohon Verifikasi Segera',
+        HTMLPart: `
+          <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+              <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+                <tr>
+                  <td>
+                    <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                      <tr>
+                        <td style="text-align: center;">
+                          <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="text-align: center; padding: 20px;">
+                          <h1 style="color: #333333;">Detail Langganan Pengguna</h1>
+                          <p style="font-size: 16px; color: #555555;">
+                            <strong>ID Faktur:</strong> ${invoiceId}<br />
+                            <strong>Nama:</strong> ${userName}<br />
+                            <strong>Nomor HP:</strong> ${userPhone}<br />
+                            <strong>Masa Aktif Hingga:</strong> ${formattedEndDate}
+                          </p>
+                          <p style="font-size: 16px; color: #555555;">
+                            <a href="${fileLink}" style="color: #007bff; text-decoration: none;">Unduh File</a>
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                          Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+          </html>`
+      },
+    ],
+  };
+
+  try {
+    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
+    console.log(`Email berhasil dikirim ke support@cucibayargo.com dengan respon:`, response.body);
+  } catch (error) {
+    console.error(`Gagal mengirim email ke support@cucibayargo.com:`, error);
+  }
+};
