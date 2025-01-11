@@ -311,7 +311,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         .remove([logo]);
 
       if (deleteError) {
-        return res.status(500).json({ message: 'Gagal menghapus file logo sementara'});
+        return res.status(500).json({ message: 'Gagal menghapus file logo sementara' });
       }
 
       // Get the public URL for the new logo
@@ -334,7 +334,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     res.status(200).json({ message: 'Rincian pengguna berhasil diperbarui', user: updatedUser });
   } catch (error) {
     const err = error as Error;
-    res.status(500).json({ message: 'Terjadi kesalahan server.'});
+    res.status(500).json({ message: 'Terjadi kesalahan server.' });
   }
 });
 
@@ -479,19 +479,23 @@ router.post("/upload-subscriptions-invoice", upload.single("file"), async (req: 
       return res.status(400).json({ message: "Invoice ID diperlukan." });
     }
 
-    // Upload file to Supabase Storage
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("app_transactions")
       .upload(`invoice/${fileName}`, buffer, {
         contentType: mimetype,
       });
 
-    if (error) {
+    if (uploadError) {
+      console.error("Gagal mengunggah file ke Supabase Storage:", uploadError);
       return res.status(500).json({ message: "Gagal mengunggah file" });
     }
 
+    const { data: publicUrlData } = supabase.storage
+      .from("app_transactions")
+      .getPublicUrl(`invoice/${fileName}`);
+
     // Optionally save transaction record with userId and file path
-    await uploadTransactionFile(userId as string, note, invoice_id, `invoice/${fileName}`);
+    await uploadTransactionFile(userId as string, note, invoice_id, `invoice/${fileName}`, publicUrlData.publicUrl);
 
     // Respond with success message
     res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan" });
@@ -691,7 +695,7 @@ router.post(
 
     try {
       // Mengasumsikan `updateInvoice` adalah fungsi untuk memperbarui faktur
-      const success = await updateInvoice({invoice_id, status});
+      const success = await updateInvoice({ invoice_id, status });
 
       if (success) {
         return res.status(200).json({ message: "Faktur berhasil diperbarui." });
@@ -744,7 +748,7 @@ router.post(
       const userName = await verifyInvoiceValid(token);
 
       if (userName) {
-        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan.", name: userName  });
+        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan.", name: userName });
       }
 
       res.status(404).json({ message: "Invoice Sudah Kedaluarsa.", name: userName });
