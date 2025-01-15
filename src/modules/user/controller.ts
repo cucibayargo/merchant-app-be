@@ -3,7 +3,7 @@ import pool from "../../database/postgres";
 import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
-import { InvoiceDetails, setPlanInput, updateInvoiceInput } from "./types";
+import { InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
 import { createSubscriptions, getSubsPlanByCode, getSubsPlanById } from "../auth/controller";
 
 /**
@@ -686,13 +686,13 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
  * @param planDetail - The plan details including user_id and plan_code.
  * @returns {Promise<boolean>} - A promise that resolves to true if the plan is set successfully, otherwise false.
  */
-export async function verifyInvoiceValid(token: string): Promise<boolean> {
+export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceResponse | null> {
   const client = await pool.connect();
   try {
     // Verify the JWT token
     const decoded = await verifyJwt(token);
     const userDetail = `
-      SELECT name
+      SELECT name,status
       FROM users 
       WHERE email = $1
     `;
@@ -702,10 +702,10 @@ export async function verifyInvoiceValid(token: string): Promise<boolean> {
       throw new Error('Token is invalid or expired.');
     }
 
-    return result?.rows[0]?.name;
+    return { name: result?.rows[0]?.name, status: result?.rows[0]?.status, valid: true };
   } catch (error) {
     console.error('Error verifying invoice:', error);
-    return false;
+    return null;
   }
 }
 
