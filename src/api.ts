@@ -33,6 +33,7 @@ const allowedOrigins = environment === 'production'
   : [
       'https://stg-store.cucibayargo.com',
       'https://stg.cucibayargo.com',
+      'http://localhost:3000',
       /^http:\/\/localhost(:\d+)?$/ // Allow all localhost origins
     ];
 
