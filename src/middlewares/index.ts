@@ -11,6 +11,9 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     '/docs',
     '/transaction/:id',
     '/auth/signup/token',
+    '/verify-invoice',
+    '/upload-subscriptions-invoice',
+    '/invoice/:invoiceId'
   ];
   
   const cronJobRoutes = [
