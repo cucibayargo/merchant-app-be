@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   checkUserSubscriptions,
   deleteTempFiles,
+  getInvoiceByUserId,
   getInvoiceDetails,
   getInvoices,
   getUserDetails,
@@ -747,8 +748,8 @@ router.post(
     try {
       const verifyInvoiceResponse = await verifyInvoiceValid(token);
 
-      if (verifyInvoiceResponse?.name) {
-        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan.", name: verifyInvoiceResponse?.name, verifyInvoiceResponse?.status });
+      if (verifyInvoiceResponse?.valid) {
+        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan.", name: verifyInvoiceResponse?.name, status: verifyInvoiceResponse?.status });
       }
 
       res.status(404).json({ message: "Invoice Sudah Kedaluarsa." });
@@ -758,5 +759,42 @@ router.post(
     }
   }
 );
+
+/**
+ * @swagger
+ * /user/get-invoice:
+ *   get:
+ *     summary: Retrieve invoice ID
+ *     description: Fetches the invoice ID of a user by their ID.
+ *     tags: [User]
+ *     responses:
+ *       '200':
+ *         description: Invoice ID details retrieved successfully
+ *         content:
+ *           application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Invoice ID
+ *       '404':
+ *         description: Invoice tidak ditemukan
+ */
+router.get("/get-invoice", async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.userId as string;
+
+  try {
+    const invoiceId = await getInvoiceByUserId(userId);
+    if (invoiceId) {
+      res.json({invoice_id: invoiceId});
+    } else {
+      res.status(404).json({ message: "Invoice tidak ditemukan" });
+    }
+  } catch (error) {
+    const err = error as Error;
+    res.status(500).json({ message: err.message });
+  }
+});
 
 export default router;
