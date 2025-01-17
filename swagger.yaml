@@ -2052,6 +2052,35 @@
           }
         }
       }
+    },
+    "/user/get-invoice": {
+      "get": {
+        "summary": "Retrieve invoice ID",
+        "description": "Fetches the invoice ID of a user by their ID.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice ID details retrieved successfully",
+            "content": {
+              "application/json": null,
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "description": "Invoice ID"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invoice tidak ditemukan"
+          }
+        }
+      }
     }
   },
   "components": {

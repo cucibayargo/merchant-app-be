@@ -5,6 +5,7 @@ import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
 import { InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
 import { createSubscriptions, getSubsPlanByCode, getSubsPlanById } from "../auth/controller";
+import jwt from 'jsonwebtoken';
 
 /**
  * Update the user's profile with the logo URL.
@@ -182,6 +183,36 @@ export async function checkUserSubscriptions(): Promise<void> {
       return diffDays === 5;
     });
 
+    const justExpiredSubscriptions = result.rows.filter((row) => {
+      const endDate = new Date(row.end_date); // Parse the end date from the row
+      const now = new Date(); // Current date
+
+      // Set both dates to midnight for accurate day comparison
+      endDate.setHours(0, 0, 0, 0);
+      now.setHours(0, 0, 0, 0);
+
+      // Calculate the difference in days
+      const diffDays = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Check if the subscription expired exactly 1 day ago
+      return diffDays === 1;
+    });
+
+    console.log(`Just expired subscriptions: ${justExpiredSubscriptions.length}`);
+    console.log(soonExpiringSubscriptions);
+
+    // Send email notifications for just expired subscriptions
+    await Promise.all(
+      justExpiredSubscriptions.map(async (user) => {
+        try {
+          console.log(`Sending email expired notification to: ${user.email}, end date: ${user.end_date}, plan: ${user.code}`);
+          await sendEmailNotificationExpiredAccount(user.email, user.end_date, user.code);
+        } catch (error) {
+          console.error(`Error processing user ${user.id}:`, error);
+        }
+      })
+    );
+
     console.log(`Subscriptions expiring soon: ${soonExpiringSubscriptions.length}`);
     console.log(soonExpiringSubscriptions);
 
@@ -207,6 +238,8 @@ export async function checkUserSubscriptions(): Promise<void> {
       })
     );
 
+
+
     console.log('Email notifications sent successfully for expiring subscriptions.');
   } catch (error) {
     console.error('Error checking user subscriptions:', error);
@@ -214,127 +247,6 @@ export async function checkUserSubscriptions(): Promise<void> {
     client.release();
   }
 }
-
-import jwt from 'jsonwebtoken';
-
-const sendEmailNotification = async (
-  email: string,
-  endDate: string,
-  planCode: string
-): Promise<void> => {
-  const mailjet = Mailjet.apiConnect(
-    process.env.MAILJET_API_KEY as string,
-    process.env.MAILJET_API_SECRET as string,
-    { options: { timeout: 20000 } }
-  );
-
-  const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
-  const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
-
-  // Generate JWT token with expiration time
-  const token = jwt.sign(
-    { email }, // Payload
-    process.env.JWT_SECRET as string, // Secret key
-    { expiresIn: '7d' } // Token expiration time (7 days in this example)
-  );
-
-  const verificationUrl = `https://store.cucibayargo.com/verify?token=${encodeURIComponent(token)}`;
-  const isGratis = planCode === 'gratis';
-  const emailSubject = isGratis
-    ? 'Akun Gratis Anda Akan Ditutup'
-    : 'Langganan Anda Akan Segera Berakhir!';
-  const emailBody = isGratis
-    ? `
-      <html>
-        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
-          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
-            <tr>
-              <td>
-                <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                  <tr>
-                    <td style="text-align: center;">
-                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="text-align: center; padding: 20px;">
-                      <h1 style="color: #333333;">Akun Gratis Anda Akan Ditutup</h1>
-                      <p style="font-size: 16px; color: #555555;">
-                        Akun gratis Anda akan ditutup pada <strong>${formattedEndDate}</strong>. Untuk terus menggunakan layanan kami, silakan beralih ke paket berlangganan sebelum tanggal tersebut.
-                      </p>
-                      <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Pilih Paket Berlangganan</a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
-                      Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-      </html>`
-    : `
-      <html>
-        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
-          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
-            <tr>
-              <td>
-                <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                  <tr>
-                    <td style="text-align: center;">
-                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="text-align: center; padding: 20px;">
-                      <h1 style="color: #333333;">Langganan Anda Akan Segera Berakhir</h1>
-                      <p style="font-size: 16px; color: #555555;">
-                        Langganan Anda akan berakhir pada <strong>${formattedEndDate}</strong>. Jangan lupa untuk memperpanjang langganan Anda sebelum tanggal tersebut agar tetap dapat menikmati layanan kami.
-                      </p>
-                      <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Perpanjang Sekarang</a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
-                      Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-      </html>`;
-
-  const emailData = {
-    Messages: [
-      {
-        From: {
-          Email: 'no-reply@cucibayargo.com',
-          Name: 'Cucibayargo',
-        },
-        To: [
-          {
-            Email: email,
-          },
-        ],
-        Subject: emailSubject,
-        HTMLPart: emailBody,
-      },
-    ],
-  };
-
-  try {
-    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
-    console.log(`Email sent to ${email} with response:`, response.body);
-  } catch (error) {
-    console.error(`Failed to send email to ${email}:`, error);
-  }
-};
-
 
 /**
  * Handles invoice transfer uploads.
@@ -710,6 +622,30 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
 }
 
 /**
+ * Get Invoice By User Id
+ * @param userId.
+ * @returns {Promise<string>} - A promise that resolves to string if the plan is set successfully, otherwise null.
+ */
+export async function getInvoiceByUserId(userId: string): Promise<string | null> {
+  const client = await pool.connect();
+  try {
+    const query = `
+      SELECT invoice_id
+      FROM app_invoices 
+      WHERE user_id = $1
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `;
+    const result = await client.query(query, [userId]);
+
+    return result?.rows[0]?.invoice_id
+  } catch (error) {
+    console.error('Error verifying invoice:', error);
+    return null;
+  }
+}
+
+/**
  * Verifies the JWT token and checks if it's expired.
  * @param token - The JWT token.
  * @returns {Promise<any | null>} - The decoded token if valid, otherwise null.
@@ -963,3 +899,203 @@ const sendPayemntNotification = async (
     console.error(`Gagal mengirim email ke support@cucibayargo.com:`, error);
   }
 };
+
+const sendEmailNotification = async (
+  email: string,
+  endDate: string,
+  planCode: string
+): Promise<void> => {
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
+
+  const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
+  const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
+
+  // Generate JWT token with expiration time
+  const token = jwt.sign(
+    { email }, // Payload
+    process.env.JWT_SECRET as string, // Secret key
+    { expiresIn: '7d' } // Token expiration time (7 days in this example)
+  );
+
+  const verificationUrl = `https://store.cucibayargo.com/verify?token=${encodeURIComponent(token)}`;
+  const isGratis = planCode === 'gratis';
+  const emailSubject = isGratis
+    ? 'Akun Gratis Anda Akan Ditutup'
+    : 'Langganan Anda Akan Segera Berakhir!';
+  const emailBody = isGratis
+    ? `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+            <tr>
+              <td>
+                <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                  <tr>
+                    <td style="text-align: center;">
+                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center; padding: 20px;">
+                      <h1 style="color: #333333;">Akun Gratis Anda Akan Ditutup</h1>
+                      <p style="font-size: 16px; color: #555555;">
+                        Akun gratis Anda akan ditutup pada <strong>${formattedEndDate}</strong>. Untuk terus menggunakan layanan kami, silakan beralih ke paket berlangganan sebelum tanggal tersebut.
+                      </p>
+                      <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Pilih Paket Berlangganan</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                      Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>`
+    : `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+            <tr>
+              <td>
+                <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                  <tr>
+                    <td style="text-align: center;">
+                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center; padding: 20px;">
+                      <h1 style="color: #333333;">Langganan Anda Akan Segera Berakhir</h1>
+                      <p style="font-size: 16px; color: #555555;">
+                        Langganan Anda akan berakhir pada <strong>${formattedEndDate}</strong>. Jangan lupa untuk memperpanjang langganan Anda sebelum tanggal tersebut agar tetap dapat menikmati layanan kami.
+                      </p>
+                      <a href="${verificationUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Perpanjang Sekarang</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                      Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>`;
+
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: 'no-reply@cucibayargo.com',
+          Name: 'Cucibayargo',
+        },
+        To: [
+          {
+            Email: email,
+          },
+        ],
+        Subject: emailSubject,
+        HTMLPart: emailBody,
+      },
+    ],
+  };
+
+  try {
+    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
+    console.log(`Email sent to ${email} with response:`, response.body);
+  } catch (error) {
+    console.error(`Failed to send email to ${email}:`, error);
+  }
+};
+
+const sendEmailNotificationExpiredAccount = async (
+  email: string,
+  endDate: string,
+  planCode: string
+): Promise<void> => {
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
+
+  const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
+  const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
+
+  const waTemplate = encodeURIComponent(
+    `Halo admin, saya dengan email ${email} ingin melakukan aktivasi akun. Mohon bantuannya.`
+  );
+  const whatsappUrl = `https://wa.me/6285283811719?text=${waTemplate}`;
+  const isGratis = planCode === 'gratis';
+  const emailSubject = isGratis
+    ? 'Akun Gratis Anda Sudah Berakhir'
+    : 'Langganan Anda Telah Berakhir!';
+  const emailBody = `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #f4f4f4; padding: 40px 0;">
+            <tr>
+              <td>
+                <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                  <tr>
+                    <td style="text-align: center;">
+                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center; padding: 20px;">
+                      <h1 style="color: #333333;">${emailSubject}</h1>
+                      <p style="font-size: 16px; color: #555555;">
+                        Langganan Anda telah berakhir pada <strong>${formattedEndDate}</strong>. Silakan hubungi admin untuk melanjutkan aktivasi langganan Anda dengan mudah.
+                      </p>
+                      <a href="${whatsappUrl}" style="background-color: #25D366; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; margin-top: 20px;">Chat Admin via WhatsApp</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+                      Jika Anda merasa menerima email ini karena kesalahan, abaikan saja.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>`;
+
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: 'no-reply@cucibayargo.com',
+          Name: 'Cucibayargo',
+        },
+        To: [
+          {
+            Email: email,
+          },
+        ],
+        Subject: emailSubject,
+        HTMLPart: emailBody,
+      },
+    ],
+  };
+
+  try {
+    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
+    console.log(`Email sent to ${email} with response:`, response.body);
+  } catch (error) {
+    console.error(`Failed to send email to ${email}:`, error);
+  }
+};
+
