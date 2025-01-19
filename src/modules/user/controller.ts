@@ -3,7 +3,7 @@ import pool from "../../database/postgres";
 import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
-import { InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
+import { getInvoiceResponse, InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
 import { createSubscriptions, getSubsPlanByCode, getSubsPlanById } from "../auth/controller";
 import jwt from 'jsonwebtoken';
 
@@ -226,12 +226,18 @@ export async function checkUserSubscriptions(): Promise<void> {
       soonExpiringSubscriptions.map(async (user) => {
         try {
           console.log(`Creating invoice for user: ${user.id}, plan: ${user.code}`);
+          const token = jwt.sign(
+            { email: user.email }, // Payload
+            process.env.JWT_SECRET as string, // Secret key
+            { expiresIn: '7d' } // Token expiration time (7 days in this example)
+          );        
           await createInvoice({
             user_id: user.id,
-            plan_code: user.code
+            plan_code: user.code,
+            token: token
           });
           console.log(`Sending email notification to: ${user.email}, end date: ${user.end_date}, plan: ${user.code}`);
-          await sendEmailNotification(user.email, user.end_date, user.code);
+          await sendEmailNotification(user.email, user.end_date, user.code, token);
         } catch (error) {
           console.error(`Error processing user ${user.id}:`, error);
         }
@@ -461,7 +467,7 @@ export async function setUserPlan(planDetail: Omit<setPlanInput, 'id'>): Promise
 export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promise<boolean> {
   const client = await pool.connect();
   try {
-    const { user_id, plan_code } = planDetail;
+    const { user_id, plan_code, token } = planDetail;
     const subscriptionPlan = await getSubsPlanByCode(plan_code);
 
     if (!subscriptionPlan) {
@@ -482,10 +488,10 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
 
     // Insert new invoice
     const insertSubscriptionQuery = `
-      INSERT INTO app_invoices (user_id, plan_id, amount, status, due_date, invoice_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO app_invoices (user_id, plan_id, amount, status, due_date, invoice_id, token)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
     `;
-    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, subscriptionPlan.price, "Menunggu Pembayaran", rows[0]?.end_date, invoiceId]);
+    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, subscriptionPlan.price, "Menunggu Pembayaran", rows[0]?.end_date, invoiceId, token]);
 
     return true;
   } catch (error) {
@@ -604,8 +610,9 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
     // Verify the JWT token
     const decoded = await verifyJwt(token);
     const userDetail = `
-      SELECT name,status
+      SELECT name,app_invoices.status
       FROM users 
+      LEFT JOIN app_invoices ON users.id = app_invoices.user_id
       WHERE email = $1
     `;
     const result = await client.query(userDetail, [decoded.email]);
@@ -624,13 +631,13 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
 /**
  * Get Invoice By User Id
  * @param userId.
- * @returns {Promise<string>} - A promise that resolves to string if the plan is set successfully, otherwise null.
+ * @returns {Promise<string>} - A promise that resolves to InvoiceResponseObject if the plan is set successfully, otherwise null.
  */
-export async function getInvoiceByUserId(userId: string): Promise<string | null> {
+export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResponse | null> {
   const client = await pool.connect();
   try {
     const query = `
-      SELECT invoice_id
+      SELECT invoice_id, token
       FROM app_invoices 
       WHERE user_id = $1
       ORDER BY created_at DESC 
@@ -638,7 +645,7 @@ export async function getInvoiceByUserId(userId: string): Promise<string | null>
     `;
     const result = await client.query(query, [userId]);
 
-    return result?.rows[0]?.invoice_id
+    return { invoice: result?.rows[0]?.invoice_id, token: result?.rows[0]?.token}
   } catch (error) {
     console.error('Error verifying invoice:', error);
     return null;
@@ -903,7 +910,8 @@ const sendPayemntNotification = async (
 const sendEmailNotification = async (
   email: string,
   endDate: string,
-  planCode: string
+  planCode: string,
+  token: string
 ): Promise<void> => {
   const mailjet = Mailjet.apiConnect(
     process.env.MAILJET_API_KEY as string,
@@ -913,14 +921,7 @@ const sendEmailNotification = async (
 
   const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
   const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
-
-  // Generate JWT token with expiration time
-  const token = jwt.sign(
-    { email }, // Payload
-    process.env.JWT_SECRET as string, // Secret key
-    { expiresIn: '7d' } // Token expiration time (7 days in this example)
-  );
-
+  
   const verificationUrl = `https://store.cucibayargo.com/verify?token=${encodeURIComponent(token)}`;
   const isGratis = planCode === 'gratis';
   const emailSubject = isGratis

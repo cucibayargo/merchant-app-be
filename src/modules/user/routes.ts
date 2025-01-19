@@ -433,6 +433,13 @@ router.get("/check-subscriptions", async (req: AuthenticatedRequest, res: Respon
  *     summary: Uploads a subscription invoice file
  *     description: Uploads an invoice file to Supabase Storage and returns the file path.
  *     tags: [User]
+ *     parameters:
+ *       - in: header
+ *         name: invoice-token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Token for validating access to upload the subscription invoice.
  *     requestBody:
  *       required: true
  *       content:
@@ -447,6 +454,9 @@ router.get("/check-subscriptions", async (req: AuthenticatedRequest, res: Respon
  *               note:
  *                 type: string
  *                 description: Optional note to associate with the invoice
+ *               invoice_id:
+ *                 type: string
+ *                 description: The ID of the invoice associated with the file
  *     responses:
  *       '200':
  *         description: File uploaded successfully and transaction recorded
@@ -459,59 +469,78 @@ router.get("/check-subscriptions", async (req: AuthenticatedRequest, res: Respon
  *                   type: string
  *                   description: Success message confirming the file upload
  *       '400':
- *         description: No file uploaded
+ *         description: Bad request - missing file or required fields
+ *       '403':
+ *         description: Forbidden - invalid token
  *       '500':
  *         description: Failed to upload file or process the transaction
  */
 
-router.post("/upload-subscriptions-invoice", upload.single("file"), async (req: AuthenticatedRequest, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "Tidak ada file yang diunggah" });
+router.post(
+  "/upload-subscriptions-invoice",
+  upload.single("file"),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const token = req.headers["invoice-token"] as string;
+
+      // Validate the token
+      if (!token || !(await verifyInvoiceValid(token))) {
+        return res.status(403).json({ message: "Forbidden: Invalid token" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Tidak ada file yang diunggah" });
+      }
+
+      const { originalname, buffer, mimetype } = req.file;
+      const fileName = `${Date.now()}_${originalname}`;
+      const userId = req.userId; // Assumed that req.userId is set correctly by middleware
+      const { note, invoice_id } = req.body;
+
+      // Validate if the required fields are provided
+      if (!invoice_id) {
+        return res.status(400).json({ message: "Invoice ID diperlukan." });
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from("app_transactions")
+        .upload(`invoice/${fileName}`, buffer, {
+          contentType: mimetype,
+        });
+
+      if (uploadError) {
+        console.error("Gagal mengunggah file ke Supabase Storage:", uploadError);
+        return res.status(500).json({ message: "Gagal mengunggah file" });
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("app_transactions")
+        .getPublicUrl(`invoice/${fileName}`);
+
+      // Optionally save transaction record with userId and file path
+      await uploadTransactionFile(
+        userId as string,
+        note,
+        invoice_id,
+        `invoice/${fileName}`,
+        publicUrlData.publicUrl
+      );
+
+      // Respond with success message
+      res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan" });
+    } catch (err) {
+      console.error(err); // Log the error for debugging
+      res.status(500).json({ message: "Terjadi kesalahan server." });
     }
-
-    const { originalname, buffer, mimetype } = req.file;
-    const fileName = `${Date.now()}_${originalname}`;
-    const userId = req.userId; // Assumed that req.userId is set correctly by middleware
-    const { note, invoice_id } = req.body;
-
-    // Validate if the required fields are provided
-    if (!invoice_id) {
-      return res.status(400).json({ message: "Invoice ID diperlukan." });
-    }
-
-    const { error: uploadError } = await supabase.storage
-      .from("app_transactions")
-      .upload(`invoice/${fileName}`, buffer, {
-        contentType: mimetype,
-      });
-
-    if (uploadError) {
-      console.error("Gagal mengunggah file ke Supabase Storage:", uploadError);
-      return res.status(500).json({ message: "Gagal mengunggah file" });
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("app_transactions")
-      .getPublicUrl(`invoice/${fileName}`);
-
-    // Optionally save transaction record with userId and file path
-    await uploadTransactionFile(userId as string, note, invoice_id, `invoice/${fileName}`, publicUrlData.publicUrl);
-
-    // Respond with success message
-    res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan" });
-  } catch (err) {
-    console.error(err); // Log the error for debugging
-    res.status(500).json({ message: "Terjadi kesalahan server." });
   }
-});
+);
 
 /**
  * @swagger
  * /user/invoice/{invoiceId}:
  *   get:
  *     summary: Retrieve user invoice details
- *     description: Fetches the invoice details of a user by their ID.
+ *     description: Fetches the invoice details of a user by their invoice ID.
  *     tags: [User]
  *     parameters:
  *       - in: path
@@ -520,39 +549,63 @@ router.post("/upload-subscriptions-invoice", upload.single("file"), async (req: 
  *         schema:
  *           type: string
  *         description: The ID of the invoice to retrieve.
+ *       - in: header
+ *         name: invoice-token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Token for validating access to the invoice.
  *     responses:
  *       '200':
- *         description: Detail tagihan pengguna berhasil diambil
+ *         description: User invoice details retrieved successfully.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/User'
+ *               $ref: '#/components/schemas/UserInvoice'
  *       '400':
- *         description: ID pengguna tidak valid atau tidak ada
+ *         description: Invalid or missing invoice ID.
+ *       '403':
+ *         description: Forbidden: Invalid token.
  *       '404':
- *         description: Tagihan tidak ditemukan
+ *         description: Invoice not found.
  *       '500':
- *         description: Terjadi kesalahan pada server
+ *         description: Internal server error.
  */
 router.get(
   "/invoice/:invoiceId",
   async (req: AuthenticatedRequest, res: Response) => {
-
     try {
-      const invoiceId = req.params.invoiceId;
+      const token = req.headers["invoice-token"] as string;
+
+      // Validate the token
+      if (!token || !(await verifyInvoiceValid(token))) {
+        return res.status(403).json({ message: "Forbidden: Invalid token" });
+      }
+  
+      const { invoiceId } = req.params;
+
+      // Validate the invoiceId
+      if (!invoiceId) {
+        return res.status(400).json({ message: "Invalid or missing invoice ID." });
+      }
+
+      // Fetch invoice details
       const invoice = await getInvoiceDetails(invoiceId);
 
       if (!invoice) {
-        return res.status(404).json({ message: "Tagihan tidak ditemukan." });
+        return res.status(404).json({ message: "Invoice not found." });
       }
-      res.json(invoice)
+
+      // Return the invoice details
+      res.status(200).json(invoice);
     } catch (error) {
       console.error("Error fetching invoice details:", error);
-      res.status(500).json({ message: "Terjadi kesalahan saat mengambil detail tagihan." });
+      res.status(500).json({
+        message: "An error occurred while retrieving invoice details.",
+      });
     }
   }
 );
-
 
 /**
  * @swagger
@@ -634,7 +687,7 @@ router.post(
     }
 
     try {
-      const success = await setUserPlan({ user_id: userId, plan_code });
+      const success = await setUserPlan({ user_id: userId, plan_code, token: "" });
 
       if (success) {
         return res.status(200).json({ message: "Rencana pengguna berhasil diatur." });
@@ -785,9 +838,9 @@ router.get("/get-invoice", async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.userId as string;
 
   try {
-    const invoiceId = await getInvoiceByUserId(userId);
-    if (invoiceId) {
-      res.json({invoice_id: invoiceId});
+    const data = await getInvoiceByUserId(userId);
+    if (data) {
+      res.json(data);
     } else {
       res.status(404).json({ message: "Invoice tidak ditemukan" });
     }
