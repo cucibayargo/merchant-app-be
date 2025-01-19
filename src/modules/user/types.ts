@@ -14,6 +14,7 @@ export interface InvoiceDetails {
   export interface setPlanInput {
     user_id: string;
     plan_code: string;
+    token?: string;
   }
   
 
@@ -26,4 +27,9 @@ export interface verifyInvoiceResponse {
   name: string
   status: string
   valid: boolean
+}
+
+export interface getInvoiceResponse {
+  invoice: string
+  token: string
 }
