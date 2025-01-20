@@ -839,7 +839,7 @@ router.get("/get-invoice", async (req: AuthenticatedRequest, res: Response) => {
 
   try {
     const data = await getInvoiceByUserId(userId);
-    if (data) {
+    if (data?.invoice) {
       res.json(data);
     } else {
       res.status(404).json({ message: "Invoice tidak ditemukan" });
