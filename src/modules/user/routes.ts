@@ -213,10 +213,16 @@ router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = await getUserDetails(userId);
     if (user) {
-      const now = new Date();
-      const endDate = new Date(user?.subscription_end as string);
-      const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      user.isInExpiry = diffDays == 5;
+      const endDate = new Date(user?.subscription_end as string); // Parse the end date from the row
+      const now = new Date(); // Current date
+
+      // Set both dates to midnight for accurate day comparison
+      endDate.setHours(0, 0, 0, 0);
+      now.setHours(0, 0, 0, 0);
+
+      // Calculate the difference in days
+      const diffDays = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+      user.isInExpiry = diffDays <= 5;
     }
     if (user) {
       res.json(user);

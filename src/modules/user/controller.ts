@@ -42,7 +42,7 @@ export async function getUserDetails(id?: string): Promise<User | null> {
         users.phone_number,
         users.logo,
         users.address,
-        app_subscriptions.end_date AS subscription_end_date,
+        app_subscriptions.end_date AS subscription_end,
         app_plans.name AS plan_name
       FROM users 
       LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id
