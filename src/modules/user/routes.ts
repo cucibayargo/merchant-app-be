@@ -213,18 +213,17 @@ router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = await getUserDetails(userId);
     if (user) {
-      const endDate = new Date(user?.subscription_end as string); // Parse the end date from the row
-      const now = new Date(); // Current date
+      console.log("Subscription End:", user.subscription_end); 
 
-      // Set both dates to midnight for accurate day comparison
+      const endDate = new Date(user.subscription_end as string);
+      const now = new Date();
+
       endDate.setHours(0, 0, 0, 0);
       now.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)); // Use Math.floor
+      console.log("Diff Days:", diffDays); 
 
-      // Calculate the difference in days
-      const diffDays = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
-      user.isInExpiry = diffDays <= 5;
-    }
-    if (user) {
+      user.isInExpiry = diffDays <= 5; 
       res.json(user);
     } else {
       res.status(404).json({ message: "User tidak ditemukan" });
@@ -234,6 +233,7 @@ router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 /**
  * @swagger
