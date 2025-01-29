@@ -27,32 +27,17 @@ if (!process.env.SESSION_SECRET || !process.env.API_URL) {
   process.exit(1);
 }
 
-// CORS configuration
-const allowedOrigins = environment === 'production'
-  ? ['https://store.cucibayargo.com', 'https://cucibayargo.com']
-  : [
-      'https://stg-store.cucibayargo.com',
-      'https://stg.cucibayargo.com',
-      'http://localhost:3000',
-      /^http:\/\/localhost(:\d+)?$/ // Allow all localhost origins
-    ];
-
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.some((allowedOrigin) => 
-        typeof allowedOrigin === 'string'
-          ? allowedOrigin === origin
-          : allowedOrigin.test(origin))
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Allow any origin dynamically
+    callback(null, true); // This will allow all origins
   },
-  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,  // Allow credentials (cookies, HTTP authentication, etc.)
 };
 
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 app.use(compression());
