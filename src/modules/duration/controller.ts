@@ -186,7 +186,7 @@ export async function deleteDuration(id: string): Promise<void> {
     const services = await client.query(query, [id]);
 
     if (services.rowCount !== null && services.rowCount > 0) {
-      throw new Error("Duration is used by a service");
+      throw new Error("Durasi sedang digunakan oleh layanan");
     } else {
       await client.query("DELETE FROM duration WHERE id = $1", [id]);
     }
