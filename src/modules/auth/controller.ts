@@ -119,7 +119,7 @@ export async function changeUserPassword(email: string, currentPassword: string,
     const user = res.rows[0];
     const validPassword = await bcrypt.compare(currentPassword, user.password);
     if (!validPassword) {
-      throw new Error('Current password is incorrect.');
+      throw new Error('Password tidak sesuai. Silakan coba lagi.');
     }
 
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
