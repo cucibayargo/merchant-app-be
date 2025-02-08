@@ -6,3 +6,5 @@ dist
 .netlify
 src/config/cucibayargo-06faa754b656.json
 .vercel
+.DS_Store
+src/.DS_Store
