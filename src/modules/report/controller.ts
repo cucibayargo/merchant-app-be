@@ -17,7 +17,7 @@ export async function generateReport(start_date: string, end_date: string, merch
     worksheet.addRow([]);
 
     // Add title
-    worksheet.mergeCells('A6:D6');
+    worksheet.mergeCells('A6:F6');
     const titleCell = worksheet.getCell('A6');
     titleCell.value = `Laporan dari tanggal ${start_date} sampai ${end_date}`;
     titleCell.font = { bold: true, size: 16 };
@@ -60,7 +60,7 @@ export async function generateReport(start_date: string, end_date: string, merch
         row.getCell(serviceList.length + 2).numFmt = '#,##0'; // Format Total Transaksi as number
 
         totalRevenue += data.total_revenue;
-        totalTransactions += data.total_transactions;
+        totalTransactions += Number(data.total_transactions);
         totalDays++;
         serviceList.forEach((s, i) => serviceTotals[i] += Number(data[s.service_id] || 0) as number);
     });
@@ -94,16 +94,16 @@ async function getReportData(start_date: string, end_date: string, merchantId: s
         // Build the final SQL query dynamically
         const query = `
             SELECT 
-                TO_CHAR(ti.created_at, 'DD-MM-YYYY') AS date,
+                TO_CHAR(DATE(t.created_at), 'DD-MM-YYYY') AS date,
                 COUNT(ti.id) AS total_transactions,
                 SUM(ti.qty * ti.price) AS total_revenue,
                 ${serviceColumns}
             FROM transaction_item ti
             LEFT JOIN transaction t ON ti.transaction_id = t.id
-            WHERE ti.created_at BETWEEN $1 AND $2
+            WHERE DATE(t.created_at) BETWEEN $1 AND $2
             AND t.status = 'Selesai' AND t.merchant_id = $3
-            GROUP BY ti.created_at
-            ORDER BY ti.created_at;
+            GROUP BY DATE(t.created_at)
+            ORDER BY DATE(t.created_at);
         `;
 
         console.log(query);
