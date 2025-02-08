@@ -14,6 +14,7 @@ import paymentRoutes from "./modules/payments/routes";
 import emailSupport from "./modules/email-support/routes";
 import notesRoutes from "./modules/notes/routes";
 import users from "./modules/user/routes";
+import reportRoutes from "./modules/report/routes";
 import passport from "./modules/auth/passportConfig";
 import authMiddleware from "./middlewares";
 
@@ -103,6 +104,7 @@ routerV1.use("/service", serviceRoutes);
 routerV1.use("/duration", durationRoutes);
 routerV1.use("/email-support", emailSupport);
 routerV1.use("/payment", paymentRoutes);
+routerV1.use("/report", reportRoutes);
 
 app.use("/v1/", routerV1);
 

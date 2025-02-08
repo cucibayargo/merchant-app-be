@@ -571,7 +571,7 @@ router.post(
  *       '400':
  *         description: Invalid or missing invoice ID.
  *       '403':
- *         description: Forbidden: Invalid token.
+ *         description: Forbidden Invalid token.
  *       '404':
  *         description: Invoice not found.
  *       '500':
