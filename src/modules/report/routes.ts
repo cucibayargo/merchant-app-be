@@ -1,6 +1,7 @@
 import express from 'express';
 import { generateReport } from './controller';
 import { AuthenticatedRequest } from '../../middlewares';
+import { differenceInDays, parseISO } from 'date-fns';
 const router = express.Router();
 
 /**
@@ -46,21 +47,35 @@ router.get('/download', async (req: AuthenticatedRequest, res) => {
         const { start_date, end_date } = req.query;
 
         if (!start_date || !end_date) {
-            return res.status(400).json({ error: "start_date and end_date are required." });
+            return res.status(400).json({ error: "Tanggal mulai dan tanggal akhir wajib diisi." });
+        }
+
+        // Parse dates and validate range
+        const startDate = parseISO(start_date as string);
+        const endDate = parseISO(end_date as string);
+        const dayDifference = differenceInDays(endDate, startDate);
+
+        if (dayDifference < 0) {
+            return res.status(400).json({ error: "Tanggal akhir harus setelah tanggal mulai." });
+        }
+        
+        if (dayDifference > 31) {
+            return res.status(400).json({ error: "Rentang tanggal tidak boleh lebih dari 31 hari." });
         }
 
         // Generate Excel report buffer
-        const reportBuffer = await generateReport(start_date as string, end_date as string,req.userId as string);
+        const { filename, file } = await generateReport(start_date as string, end_date as string, req.userId as string);
 
         // Set response headers for downloading the file
-        res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
         // Send the Excel file
-        res.send(reportBuffer);
+        res.send(file);
     } catch (error) {
-        console.error("Error generating report:", error);
-        res.status(500).json({ error: "Internal server error" });
+        console.error("Kesalahan saat membuat laporan:", error);
+        res.status(500).json({ error: "Terjadi kesalahan pada server." });
     }
 });
+
 export default router;
