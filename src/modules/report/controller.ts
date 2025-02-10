@@ -2,26 +2,36 @@ import { Workbook } from 'exceljs';
 import { ReportData, ServiceData } from './types';
 import pool from '../../database/postgres';
 import axios from 'axios';
+import { getUserDetails } from '../user/controller';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
-export async function generateReport(start_date: string, end_date: string, merchant_id: string): Promise<Buffer> {
+export async function generateReport(start_date: string, end_date: string, merchant_id: string): Promise<{filename: string, file: Buffer}> {
     const workbook = new Workbook();
     const worksheet = workbook.addWorksheet('Report', {
         properties: { tabColor: { argb: '1E90FF' } }
     });
     worksheet.views = [{ showGridLines: false }];
 
+    const merchantDetail = await getUserDetails(merchant_id);
+
     // Add logo
-    const imageResponse = await axios.get('https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z', { responseType: 'arraybuffer' });
+    const imageResponse = await axios.get(merchantDetail?.logo || 'https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z', { responseType: 'arraybuffer' });
     const imageId = workbook.addImage({ buffer: imageResponse.data, extension: 'png' });
     worksheet.addImage(imageId, 'A1:B4');
     worksheet.addRow([]);
 
     // Add title
-    worksheet.mergeCells('A6:F6');
+    worksheet.mergeCells('A6:D6');
     const titleCell = worksheet.getCell('A6');
-    titleCell.value = `Laporan dari tanggal ${start_date} sampai ${end_date}`;
+    titleCell.value = `Laporan dari tanggal ${format(start_date, 'dd-MM-yyyy', { locale: id })} sampai ${format(end_date, 'dd-MM-yyyy', { locale: id })}`;;
     titleCell.font = { bold: true, size: 16 };
-    titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    worksheet.mergeCells('A7:D7');
+    const merchantTitle = worksheet.getCell('A7');
+    merchantTitle.value = merchantDetail?.name;
+    merchantTitle.font = { bold: true, size: 16 };
+    merchantTitle.alignment = { vertical: 'middle', horizontal: 'center' };
 
     worksheet.addRow([]);
     worksheet.addRow([]);
@@ -53,7 +63,7 @@ export async function generateReport(start_date: string, end_date: string, merch
 
     reportData.forEach(data => {
         const rowValues: (string | number)[] = [data.date, ...serviceList.map(s => Number(data[s.service_id]
-         ) || 0), Number(data.total_transactions),Number(data.total_revenue)];
+        ) || 0), Number(data.total_transactions), Number(data.total_revenue)];
         const row = worksheet.addRow(rowValues);
 
         row.getCell(serviceList.length + 3).numFmt = '"Rp"#,##0.00'; // Format Total Uang Masuk as currency
@@ -77,14 +87,17 @@ export async function generateReport(start_date: string, end_date: string, merch
     totalRow.getCell(serviceList.length + 2).numFmt = '#,##0'; // Format Total Transaksi as number
 
     const buffer = await workbook.xlsx.writeBuffer();
-    return Buffer.from(buffer);
+
+    const formattedStartDate = format(start_date, 'dd-MM-yyyy', { locale: id });
+    const formattedEndDate = format(end_date, 'dd-MM-yyyy', { locale: id });
+    return { filename: `${merchantDetail?.name?.replace(/\s+/g, '').toLowerCase() || 'report'}_${formattedStartDate}:${formattedEndDate}`, file: Buffer.from(buffer) };
 }
 
 async function getReportData(start_date: string, end_date: string, merchantId: string): Promise<ReportData[]> {
     const client = await pool.connect();
     try {
         // Get the list of unique services dynamically
-        const services = await getServiceList(start_date, end_date,merchantId);
+        const services = await getServiceList(start_date, end_date, merchantId);
 
         // Generate dynamic CASE WHEN statements for each service
         const serviceColumns = services.map(service => `
@@ -93,20 +106,20 @@ async function getReportData(start_date: string, end_date: string, merchantId: s
 
         // Build the final SQL query dynamically
         const query = `
+            WITH date_series AS (
+                    SELECT generate_series($1::DATE, $2::DATE, '1 day') AS date
+            )
             SELECT 
-                TO_CHAR(DATE(t.created_at), 'DD-MM-YYYY') AS date,
-                COUNT(ti.id) AS total_transactions,
-                SUM(ti.qty * ti.price) AS total_revenue,
-                ${serviceColumns}
-            FROM transaction_item ti
-            LEFT JOIN transaction t ON ti.transaction_id = t.id
-            WHERE DATE(t.created_at) BETWEEN $1 AND $2
-            AND t.status = 'Selesai' AND t.merchant_id = $3
-            GROUP BY DATE(t.created_at)
-            ORDER BY DATE(t.created_at);
+                TO_CHAR(ds.date, 'DD-MM-YYYY') AS date,
+                COALESCE(COUNT(ti.id), 0) AS total_transactions,
+                COALESCE(SUM(ti.qty * ti.price), 0) AS total_revenue
+                ${serviceColumns ? `, ${serviceColumns}` : ""}
+            FROM date_series ds
+            LEFT JOIN transaction t ON t.created_at::DATE = ds.date AND t.merchant_id = $3 AND t.status = 'Selesai'
+            LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
+            GROUP BY ds.date
+            ORDER BY ds.date;   
         `;
-
-        console.log(query);
         
         const result = await client.query(query, [start_date, end_date, merchantId]);
         return result.rows;
