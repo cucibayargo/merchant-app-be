@@ -1100,3 +1100,12 @@ const sendEmailNotificationExpiredAccount = async (
   }
 };
 
+export async function TriggerSupabaseCloud(): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    return true
+  } catch (error) {
+    console.error('Error connect into supabase cloud:', error);
+    return false;
+  }
+}

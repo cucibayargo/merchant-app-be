@@ -8,6 +8,7 @@ import {
   getInvoices,
   getUserDetails,
   setUserPlan,
+  TriggerSupabaseCloud,
   updateInvoice,
   updateUserDetails,
   uploadTransactionFile,
@@ -741,7 +742,7 @@ router.post(
   "/invoice-update",
   async (req: AuthenticatedRequest, res: Response) => {
     const token = req.headers["cron-job-token"];
-    if (token !== process.env.CRON_JOB_SECRET) {
+    if (token !== process.env.crToken) {
       return res.status(403).json({ message: "Forbidden: Invalid token" });
     }
 
@@ -855,5 +856,47 @@ router.get("/get-invoice", async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+/**
+ * @swagger
+ * /user/trigger-supabase-cloud:
+ *   get:
+ *     summary: Connect into supabase cloud
+ *     description: Connect into supabase cloud and trigger the function
+ *     tags: [User]
+ *     parameters:
+ *       - in: header
+ *         name: cron-job-token
+ *         required: true
+ *         description: The secret token required to authorize the request.
+ *         schema:
+ *           type: string
+ *           example: "d5f811"
+ *     responses:
+ *       '200':
+ *         description: Connnected into supabase cloud
+ *       '400':
+ *         description: Failed to connect into database
+ */
+router.get("/trigger-supabase-cloud", async (req: AuthenticatedRequest, res: Response) => {
+    const token = req.headers["cron-job-token"];
+    if (token !== process.env.crToken) {
+      return res.status(403).json({ message: "Forbidden: Invalid token" });
+    }
+
+    try {
+      const success = await TriggerSupabaseCloud();
+
+      if (success) {
+        return res.status(200).json({ message: "Success connect into supabase cloud" });
+      }
+
+      res.status(404).json({ message: "Failed to connect into database" });
+    } catch (error) {
+      console.error("Error memperbarui faktur:", error);
+      res.status(500).json({ message: "Terjadi kesalahan saat memperbarui faktur." });
+    }
+  }
+);
 
 export default router;
