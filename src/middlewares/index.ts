@@ -13,7 +13,8 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     '/auth/signup/token',
     '/user/verify-invoice',
     '/user/upload-subscriptions-invoice',
-    '/user/invoice/:invoiceId'
+    '/user/invoice/:invoiceId',
+    '/user/trigger-supabase-cloud'
   ];
   
   const cronJobRoutes = [
