@@ -177,6 +177,7 @@ router.post("/upload-logo", upload.single("file"), async (req, res) => {
       });
 
     if (error) {
+      console.log(error);
       return res
         .status(500)
         .json({ message: "Gagal mengunggah file" });
@@ -310,6 +311,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         .move(logo, newLogoPath);
 
       if (moveError) {
+        console.log(moveError);
         return res.status(500).json({ message: 'Gagal memindahkan file logo' });
       }
 
