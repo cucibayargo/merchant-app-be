@@ -17,7 +17,7 @@ import users from "./modules/user/routes";
 import reportRoutes from "./modules/report/routes";
 import passport from "./modules/auth/passportConfig";
 import authMiddleware from "./middlewares";
-import fs from "fs";
+// import fs from "fs";
 
 const app = express();
 const environment = process.env.NODE_ENV || 'development';
@@ -82,8 +82,8 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Convert swaggerSpec to a string
-const swaggerSpecString = JSON.stringify(swaggerSpec, null, 2);
-fs.writeFileSync('swagger.yaml', swaggerSpecString);
+// const swaggerSpecString = JSON.stringify(swaggerSpec, null, 2);
+// fs.writeFileSync('swagger.yaml', swaggerSpecString);
 
 const routerV1 = Router();
 
