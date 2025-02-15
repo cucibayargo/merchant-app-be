@@ -1082,6 +1082,52 @@
         }
       }
     },
+    "/report/download": {
+      "get": {
+        "summary": "Retrieve a report of all transactions.",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The start date for the report (YYYY-MM-DD)."
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The end date for the report (YYYY-MM-DD)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report of all transactions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
     "/service/all": {
       "get": {
         "summary": "Retrieve all services",
@@ -1817,6 +1863,17 @@
         "tags": [
           "User"
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "invoice-token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token for validating access to upload the subscription invoice."
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1832,6 +1889,10 @@
                   "note": {
                     "type": "string",
                     "description": "Optional note to associate with the invoice"
+                  },
+                  "invoice_id": {
+                    "type": "string",
+                    "description": "The ID of the invoice associated with the file"
                   }
                 }
               }
@@ -1856,7 +1917,10 @@
             }
           },
           "400": {
-            "description": "No file uploaded"
+            "description": "Bad request - missing file or required fields"
+          },
+          "403": {
+            "description": "Forbidden - invalid token"
           },
           "500": {
             "description": "Failed to upload file or process the transaction"
@@ -1867,7 +1931,7 @@
     "/user/invoice/{invoiceId}": {
       "get": {
         "summary": "Retrieve user invoice details",
-        "description": "Fetches the invoice details of a user by their ID.",
+        "description": "Fetches the invoice details of a user by their invoice ID.",
         "tags": [
           "User"
         ],
@@ -1880,27 +1944,39 @@
               "type": "string"
             },
             "description": "The ID of the invoice to retrieve."
+          },
+          {
+            "in": "header",
+            "name": "invoice-token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token for validating access to the invoice."
           }
         ],
         "responses": {
           "200": {
-            "description": "Detail tagihan pengguna berhasil diambil",
+            "description": "User invoice details retrieved successfully.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/UserInvoice"
                 }
               }
             }
           },
           "400": {
-            "description": "ID pengguna tidak valid atau tidak ada"
+            "description": "Invalid or missing invoice ID."
+          },
+          "403": {
+            "description": "Forbidden Invalid token."
           },
           "404": {
-            "description": "Tagihan tidak ditemukan"
+            "description": "Invoice not found."
           },
           "500": {
-            "description": "Terjadi kesalahan pada server"
+            "description": "Internal server error."
           }
         }
       }
@@ -2078,6 +2154,35 @@
           },
           "404": {
             "description": "Invoice tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/user/trigger-supabase-cloud": {
+      "get": {
+        "summary": "Connect into supabase cloud",
+        "description": "Connect into supabase cloud and trigger the function",
+        "tags": [
+          "User"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cron-job-token",
+            "required": true,
+            "description": "The secret token required to authorize the request.",
+            "schema": {
+              "type": "string",
+              "example": "d5f811"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connnected into supabase cloud"
+          },
+          "400": {
+            "description": "Failed to connect into database"
           }
         }
       }
@@ -3028,6 +3133,10 @@
     {
       "name": "Payment",
       "description": "Payment management APIs"
+    },
+    {
+      "name": "Reports",
+      "description": "Report Download and Generation"
     },
     {
       "name": "Services",
