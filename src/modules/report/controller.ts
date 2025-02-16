@@ -14,6 +14,7 @@ export async function generateReport(start_date: string, end_date: string, merch
     worksheet.views = [{ showGridLines: false }];
 
     const merchantDetail = await getUserDetails(merchant_id);
+    const serviceList = await getServiceList(start_date, end_date, merchant_id);
 
     // Add logo
     const imageResponse = await axios.get(merchantDetail?.logo || 'https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/sign/asset/logo-B3sUIac6.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJhc3NldC9sb2dvLUIzc1VJYWM2LnBuZyIsImlhdCI6MTczMjM3Nzk1NSwiZXhwIjozMzA5MTc3OTU1fQ.81ldrpdW5_BYGJglW6bwmMk6Dmi0x1vNBwy44dmZfGM&t=2024-11-23T16%3A05%3A55.422Z', { responseType: 'arraybuffer' });
@@ -22,12 +23,12 @@ export async function generateReport(start_date: string, end_date: string, merch
     worksheet.addRow([]);
 
     // Add title
-    worksheet.mergeCells('A6:D6');
+    worksheet.mergeCells(`A6:${String.fromCharCode(65 + serviceList.length + 2)}6`);
     const titleCell = worksheet.getCell('A6');
     titleCell.value = `Laporan dari tanggal ${format(start_date, 'dd-MM-yyyy', { locale: id })} sampai ${format(end_date, 'dd-MM-yyyy', { locale: id })}`;;
     titleCell.font = { bold: true, size: 16 };
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    worksheet.mergeCells('A7:D7');
+    worksheet.mergeCells(`A7:${String.fromCharCode(65 + serviceList.length + 2)}7`);
     const merchantTitle = worksheet.getCell('A7');
     merchantTitle.value = merchantDetail?.name;
     merchantTitle.font = { bold: true, size: 16 };
@@ -37,7 +38,6 @@ export async function generateReport(start_date: string, end_date: string, merch
     worksheet.addRow([]);
 
     // Get services
-    const serviceList = await getServiceList(start_date, end_date, merchant_id);
     const headers: string[] = ['Tanggal', ...serviceList.map(s => s.service_name), 'Total Transaksi', 'Total Uang Masuk'];
 
     // Add header row

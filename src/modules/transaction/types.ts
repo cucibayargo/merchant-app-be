@@ -22,6 +22,7 @@ export interface TransactionData {
   invoice: string;
   status: 'Diproses' | 'Selesai' | 'Siap Diambil';
   created_at: Date;
+  estimated_date: Date;
   ready_to_pick_up_at: Date | null;
   completed_at: Date | null;
 }

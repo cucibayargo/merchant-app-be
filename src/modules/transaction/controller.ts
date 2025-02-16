@@ -28,7 +28,7 @@ export async function getTransactions(
 
     switch (status) {
       case "Diproses":
-        dateColumn = "t.created_at";
+        dateColumn = "t.estimated_date";
         break;
       case "Siap Diambil":
         dateColumn = "t.ready_to_pick_up_at";
@@ -89,6 +89,7 @@ export async function getTransactions(
         p.invoice_id AS invoice,
         t.status,
         t.created_at,
+        t.estimated_date,
         t.ready_to_pick_up_at,
         t.completed_at
       FROM transaction t
@@ -138,6 +139,8 @@ export async function addTransaction(
   const client = await pool.connect();
   try {
     const { customer, duration, status, items } = transaction;
+    console.log(duration);
+    
     const customerDetail = await getCustomerById(customer);
     const durationDetail = await getDurationById(duration);
 
@@ -153,10 +156,21 @@ export async function addTransaction(
         duration_length,
         duration_length_type,
         status, 
-        merchant_id
+        merchant_id,
+        estimated_date
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id;
     `;
+
+    let currentDate = new Date(); // Current date and time
+    let estimatedDate;
+
+    if (durationDetail?.type === 'Jam') {
+      estimatedDate = new Date(currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000);
+    } else if (durationDetail?.type === 'Hari') {
+      estimatedDate = new Date(currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000);
+    }
+
     const values = [
       customerDetail?.id,
       customerDetail?.name,
@@ -169,6 +183,7 @@ export async function addTransaction(
       durationDetail?.type,
       status,
       merchant_id,
+      estimatedDate,
     ];
     const result = await client.query(query, values);
     const newTransactionId = result.rows?.[0]?.id;
@@ -319,6 +334,7 @@ export async function getTransactionById(
         t.customer_phone_number AS customer_phone_number,
         t.ready_to_pick_up_at,
         t.completed_at,
+        t.estimated_date,
         t.created_at,
         t.duration_name,
         t.status AS transaction_status,
