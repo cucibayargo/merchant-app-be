@@ -139,8 +139,6 @@ export async function addTransaction(
   const client = await pool.connect();
   try {
     const { customer, duration, status, items } = transaction;
-    console.log(duration);
-    
     const customerDetail = await getCustomerById(customer);
     const durationDetail = await getDurationById(duration);
 

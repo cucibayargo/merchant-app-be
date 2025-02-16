@@ -277,8 +277,6 @@ export async function getServiceDurationDetail(service: string, duration: string
       WHERE service.id = $1 AND service_duration.duration = $2
     `
      const result = await client.query(query, [service, duration]);
-     console.log(query, service, duration);
-     
      return result?.rows?.[0];
   } finally {
     client.release();
