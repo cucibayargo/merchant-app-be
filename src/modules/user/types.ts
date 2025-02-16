@@ -25,6 +25,7 @@ export interface updateInvoiceInput {
 
 export interface verifyInvoiceResponse {
   name: string
+  user_id: string
   status: string
   valid: boolean
 }

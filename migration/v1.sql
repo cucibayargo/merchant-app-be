@@ -192,3 +192,4 @@ ALTER TABLE app_invoices ADD COLUMN plan_id uuid;
 ALTER TABLE app_transactions ADD COLUMN invoice_id character varying;
 ALTER TABLE app_invoices DROP COLUMN transaction_id;
 ALTER TABLE app_invoices DROP COLUMN invoice_date;
+ALTER TABLE "transaction" ADD COLUMN estimated_date TIMESTAMP;

@@ -264,9 +264,6 @@ export async function deleteService(id: string): Promise<void> {
 
 
 export async function getServiceDurationDetail(service: string, duration: string): Promise<ServiceDurationDetail> {
-  console.log(service);
-  console.log(duration);
-  
   const client = await pool.connect();
   try {
     const query = `
@@ -280,9 +277,9 @@ export async function getServiceDurationDetail(service: string, duration: string
       WHERE service.id = $1 AND service_duration.duration = $2
     `
      const result = await client.query(query, [service, duration]);
-     console.log(result.rows);
+     console.log(query, service, duration);
      
-     return result.rowCount ? result.rows[0] : null;
+     return result?.rows?.[0];
   } finally {
     client.release();
   }

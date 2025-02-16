@@ -74,6 +74,7 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      maxAge: 172800000, // 2 days
     });
 
     next();

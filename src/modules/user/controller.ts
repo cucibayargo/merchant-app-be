@@ -549,6 +549,16 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
           throw new Error("Paket Aplikasi Tidak ditemukan.");
         }
 
+        // Get new plan details
+        const getMainPlan = `
+          SELECT id
+          FROM app_plans
+          WHERE code = 'berlangganan'
+          LIMIT 1
+        `;
+        const newMainPlanResult = await client.query(getMainPlan);
+        const newMainPlan = newMainPlanResult.rows[0];
+
         // Check if the user already has this plan active
         const checkSubscriptionQuery = `
           SELECT * 
@@ -566,15 +576,15 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
 
         // Update the subscription end date
         const newEndDate = new Date(subscription.end_date);
-        newEndDate.setMonth(newEndDate.getMonth() + subscriptionPlan.duration);
+        newEndDate.setMonth(newEndDate.getMonth() + 1);
 
         const updateSubscriptionQuery = `
           UPDATE app_subscriptions 
-          SET end_date = $3 
+          SET end_date = $3, plan_id = $4
           WHERE plan_id = $1 AND user_id = $2 
           RETURNING *
         `;
-        await client.query(updateSubscriptionQuery, [invoice.plan_id, invoice.user_id, newEndDate]);
+        await client.query(updateSubscriptionQuery, [invoice.plan_id, invoice.user_id, newEndDate, newMainPlan.id]);
 
         // Send email notification for accepted status
         await sendInvoiceApproved(invoice.email, newEndDate.toISOString());
@@ -610,7 +620,7 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
     // Verify the JWT token
     const decoded = await verifyJwt(token);
     const userDetail = `
-      SELECT name,app_invoices.status
+      SELECT name, users.id as user_id, app_invoices.status
       FROM users 
       LEFT JOIN app_invoices ON users.id = app_invoices.user_id
       WHERE email = $1
@@ -621,7 +631,7 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
       throw new Error('Token is invalid or expired.');
     }
 
-    return { name: result?.rows[0]?.name, status: result?.rows[0]?.status, valid: true };
+    return { name: result?.rows[0]?.name, status: result?.rows[0]?.status, valid: true, user_id: result?.rows[0]?.user_id };
   } catch (error) {
     console.error('Error verifying invoice:', error);
     return null;

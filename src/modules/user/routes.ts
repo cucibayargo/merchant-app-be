@@ -491,9 +491,9 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const token = req.headers["invoice-token"] as string;
-
+      const invoiceDetail = await verifyInvoiceValid(token);
       // Validate the token
-      if (!token || !(await verifyInvoiceValid(token))) {
+      if (!token || !invoiceDetail) {
         return res.status(403).json({ message: "Forbidden: Invalid token" });
       }
 
@@ -503,7 +503,6 @@ router.post(
 
       const { originalname, buffer, mimetype } = req.file;
       const fileName = `${Date.now()}_${originalname}`;
-      const userId = req.userId; // Assumed that req.userId is set correctly by middleware
       const { note, invoice_id } = req.body;
 
       // Validate if the required fields are provided
@@ -526,9 +525,8 @@ router.post(
         .from("app_transactions")
         .getPublicUrl(`invoice/${fileName}`);
 
-      // Optionally save transaction record with userId and file path
       await uploadTransactionFile(
-        userId as string,
+        invoiceDetail.user_id,
         note,
         invoice_id,
         `invoice/${fileName}`,
@@ -717,6 +715,14 @@ router.post(
  *     summary: Perbarui faktur untuk pengguna
  *     description: Perbarui faktur untuk pengguna berdasarkan ID faktur yang diberikan.
  *     tags: [User]
+ *     parameters:
+ *       - in: header
+ *         name: cron-job-token
+ *         required: true
+ *         description: The secret token required to authorize the request.
+ *         schema:
+ *           type: string
+ *           example: "d5f811"
  *     requestBody:
  *       required: true
  *       content:
