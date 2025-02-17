@@ -412,7 +412,8 @@ export async function getInvoiceById(
               'name', u.name,
               'logo', u.logo,
               'address', u.address,
-              'note', n.notes
+              'note', n.notes,
+              'phone_number', u.phone_number
           ) as merchant,
           json_build_object(
               'name', t.customer_name,
@@ -424,6 +425,7 @@ export async function getInvoiceById(
               'entry_date', TO_CHAR(t.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'ready_to_pickup_date', TO_CHAR(t.ready_to_pick_up_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'completed_date', TO_CHAR(t.completed_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+              'estimated_date', TO_CHAR(t.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'duration', t.duration_name,
               'services', json_agg(
                   json_build_object(
