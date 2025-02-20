@@ -25,19 +25,24 @@ export async function getTransactions(
   try {
     // Determine the date column based on the status
     let dateColumn: string;
+    let sortType: string;
 
     switch (status) {
       case "Diproses":
         dateColumn = "t.estimated_date";
+        sortType = "ASC";
         break;
       case "Siap Diambil":
         dateColumn = "t.ready_to_pick_up_at";
+        sortType = "DESC";
         break;
       case "Selesai":
         dateColumn = "t.completed_at";
+        sortType = "DESC";
         break;
       default:
         dateColumn = "t.created_at";
+        sortType = "DESC"; 
         break;
     }
 
@@ -95,7 +100,7 @@ export async function getTransactions(
       FROM transaction t
       LEFT JOIN payment p ON t.id = p.transaction_id
       WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
-      ORDER BY ${dateColumn} DESC
+      ORDER BY ${dateColumn} ${sortType}
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
     `;
 
