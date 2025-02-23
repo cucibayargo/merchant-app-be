@@ -620,7 +620,7 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
     // Verify the JWT token
     const decoded = await verifyJwt(token);
     const userDetail = `
-      SELECT name, users.id as user_id, app_invoices.status
+      SELECT name, users.id as user_id, app_invoices.status, app_invoices.invoice_id
       FROM users 
       LEFT JOIN app_invoices ON users.id = app_invoices.user_id
       WHERE email = $1
@@ -631,7 +631,7 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
       throw new Error('Token is invalid or expired.');
     }
 
-    return { name: result?.rows[0]?.name, status: result?.rows[0]?.status, valid: true, user_id: result?.rows[0]?.user_id };
+    return { ...result.rows[0], valid: true };
   } catch (error) {
     console.error('Error verifying invoice:', error);
     return null;
