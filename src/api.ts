@@ -35,7 +35,7 @@ const corsOptions: CorsOptions = {
     callback(null, true); // This will allow all origins
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'invoice-token'],
   credentials: true,  // Allow credentials (cookies, HTTP authentication, etc.)
 };
 
