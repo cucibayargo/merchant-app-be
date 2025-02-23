@@ -503,12 +503,7 @@ router.post(
 
       const { originalname, buffer, mimetype } = req.file;
       const fileName = `${Date.now()}_${originalname}`;
-      const { note, invoice_id } = req.body;
-
-      // Validate if the required fields are provided
-      if (!invoice_id) {
-        return res.status(400).json({ message: "Invoice ID diperlukan." });
-      }
+      const { note } = req.body;
 
       const { error: uploadError } = await supabase.storage
         .from("app_transactions")
@@ -528,7 +523,7 @@ router.post(
       await uploadTransactionFile(
         invoiceDetail.user_id,
         note,
-        invoice_id,
+        invoiceDetail.invoice_id,
         `invoice/${fileName}`,
         publicUrlData.publicUrl
       );

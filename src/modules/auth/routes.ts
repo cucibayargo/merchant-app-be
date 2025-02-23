@@ -19,7 +19,7 @@ function isDisposableEmail(email: string): boolean {
 }
 
 const sendEmailRegistration = async (registrationEmail: string, verificationToken: string) => {
-  const verificationUrl = `https://${process.env.API_URL}/api/auth/verify-email?token=${verificationToken}`;
+  const verificationUrl = `https://${process.env.API_URL}/${process.env.NODE_ENV === "production" ? "v1" : "api"}/auth/verify-email?token=${verificationToken}`;
 
   // Initialize the Mailjet client with your API keys
   const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string, { options: { timeout: 20000 } });

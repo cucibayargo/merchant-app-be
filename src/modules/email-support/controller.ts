@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { SheetData } from './types';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 // Function to send data to Google Apps Script
 export const sendToSheet = async (data: SheetData): Promise<void> => {
-  const sheetUrl = 'https://script.google.com/macros/s/AKfycbzSt6SKFgvYZa7u8EosmpOxM7PXQvd1-M7DmF_zv1tLE9sKPpiWuHOl3LpjxLIqodG0/exec';
+  const sheetUrl = `${process.env.GOOGLE_SHEET_API}`;
   try {
     const response = await axios.post(sheetUrl, data, {
       headers: {
