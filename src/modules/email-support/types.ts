@@ -12,5 +12,6 @@ export const emailSupportSchema = Joi.object({
 export interface SheetData {
   title: string;
   message: string;
+  email: string;
   status: string;
 }
