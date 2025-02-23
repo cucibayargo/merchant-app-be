@@ -1,6 +1,8 @@
 import express, { Request, Response } from "express";
 import { emailSupportSchema, SheetData } from "./types";
 import { sendToSheet } from "./controller";
+import { AuthenticatedRequest } from "../../middlewares";
+import { getUserDetails } from "../user/controller";
 
 const router = express.Router();
 
@@ -66,28 +68,32 @@ const router = express.Router();
  */
 
 
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", async (req: AuthenticatedRequest, res: Response) => {
     const { error, value } = emailSupportSchema.validate(req.body, { abortEarly: false });
 
     if (error) {
-    return res.status(400).json({
-        errors: error.details.map(err => ({
-        type: 'field',
-        msg: err.message,
-        path: err.path[0],
-        location: 'body'
-        }))
-    });
+        return res.status(400).json({
+            errors: error.details.map(err => ({
+            type: 'field',
+            msg: err.message,
+            path: err.path[0],
+            location: 'body'
+            }))
+        });
     }
 
+    const userDetail = await getUserDetails(req.userId);
     const { title, message } = req.body;
 
     const data: SheetData = {
         title: title,
         message: message,
+        email: userDetail?.email || "",
         status: "Pending",
     };
   
+    console.log(data);
+    
     await sendToSheet(data).catch((error) => {
         const err = error as Error;
         console.log(err.message);
