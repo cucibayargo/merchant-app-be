@@ -6,4 +6,4 @@ npm install --omit=dev
 fuser -k 3000/tcp || true
 
 # Start the Node.js app in the background
-nohup node dist/api.js > app.log 2>&1 &
+# nohup node dist/api.js > app.log 2>&1 &
