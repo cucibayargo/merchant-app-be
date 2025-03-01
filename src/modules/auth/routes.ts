@@ -3,7 +3,6 @@ import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, Sign
 import { addUser, addUserSignUpToken, changeUserPassword, createSubscriptions, getSubsPlanByCode, getUserByEmail, notifyUserToPaySubscription, updateUserSignupStatus, validateToken } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import passport from "./passportConfig";
 import { getUserDetails, updateUserDetails } from "../user/controller";
 import * as dotenv from 'dotenv';
 import crypto from 'crypto';
@@ -669,7 +668,7 @@ router.post("/change-password", async (req, res) => {
  *       '302':
  *         description: Redirects to Google for authentication
  */
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+// router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 /**
  * @swagger
@@ -684,18 +683,18 @@ router.get("/google", passport.authenticate("google", { scope: ["profile", "emai
  *       '500':
  *         description: Terjadi kesalahan server
  */
-router.get("/google/callback", passport.authenticate("google", { session: false }), (req, res) => {
-  if (req.user) {
-    const user = req.user as any;
-    const token = jwt.sign({ id: user.id }, "secret_key", {
-      expiresIn: "2d",
-    });
-    res.cookie("auth_token", token, { httpOnly: true, sameSite: 'none', secure: true});
-    res.redirect("https://store.cucibayargo.com/login-google"); 
-  } else {
-    res.status(500).json({ message: "Authentication failed" });
-  }
-});
+// router.get("/google/callback", passport.authenticate("google", { session: false }), (req, res) => {
+//   if (req.user) {
+//     const user = req.user as any;
+//     const token = jwt.sign({ id: user.id }, "secret_key", {
+//       expiresIn: "2d",
+//     });
+//     res.cookie("auth_token", token, { httpOnly: true, sameSite: 'none', secure: true});
+//     res.redirect("https://store.cucibayargo.com/login-google"); 
+//   } else {
+//     res.status(500).json({ message: "Authentication failed" });
+//   }
+// });
 
 /**
  * @swagger

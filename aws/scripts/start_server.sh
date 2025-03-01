@@ -1,12 +1,8 @@
 #!/bin/bash
 cd /home/ec2-user/cucibayargo
 
-# Check if pm2 is installed
-if command -v pm2 &> /dev/null; then
-    echo "pm2 is already installed at $(command -v pm2)"
-    pm2 stop all || true
-    pm2 restart all || true
-fi
+# Stop any existing Node.js process on port 3000 (if running)
+fuser -k 3000/tcp || true
 
-# /usr/local/bin/pm2 stop all || true
-# /usr/local/bin/pm2 start dist/api.js --name "node-app"
+# Start the Node.js app in the background
+nohup node dist/api.js > app.log 2>&1 &

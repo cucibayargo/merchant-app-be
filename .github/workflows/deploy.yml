@@ -67,6 +67,6 @@ jobs:
     - name: Deploy to CodeDeploy
       run: |
         aws deploy create-deployment \
-          --application-name merchant-api \
+          --application-name merchant-api-poduction-v2 \
           --deployment-group-name production \
           --s3-location bucket=cucibayargo-deploy,bundleType=zip,key=deploy.zip
