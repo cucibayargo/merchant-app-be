@@ -1,5 +1,5 @@
 import express from "express";
-import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema, SubscriptionPlan } from "./types";
+import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema } from "./types";
 import { addUser, addUserSignUpToken, changeUserPassword, createSubscriptions, getSubsPlanByCode, getUserByEmail, notifyUserToPaySubscription, updateUserSignupStatus, validateToken } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -327,13 +327,7 @@ router.post("/logout", async (req, res) => {
       sameSite: 'none', 
       expires: new Date(0), 
     });
-
-    req.session.destroy(err => {
-      if (err) {
-        return res.status(500).json({ message: "Terjadi kesalahan pada server." });
-      }
-      res.status(200).json({ message: "Logout berhasil." });
-    });
+    res.status(200).json({ message: "Logout berhasil." });
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }

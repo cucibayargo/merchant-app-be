@@ -12,6 +12,7 @@ import notesRoutes from "./modules/notes/routes";
 import users from "./modules/user/routes";
 import reportRoutes from "./modules/report/routes";
 import authMiddleware from "./middlewares";
+import cookieParser from 'cookie-parser';
 
 const app = express();
 const environment = process.env.NODE_ENV || 'development';
@@ -40,6 +41,7 @@ const corsOptions: CorsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(compression());
+app.use(cookieParser());
 
 // Routes setup
 const routerV1 = Router();
