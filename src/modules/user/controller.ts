@@ -650,7 +650,7 @@ export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResp
       SELECT invoice_id, token
       FROM app_invoices 
       WHERE user_id = $1
-      ORDER BY created_at DESC 
+      ORDER BY created_at ASC 
       LIMIT 1
     `;
     const result = await client.query(query, [userId]);
