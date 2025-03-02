@@ -749,12 +749,11 @@ router.post(
       return res.status(403).json({ message: "Forbidden: Invalid token" });
     }
 
-    const userId = req.userId;
     const { invoice_id, status } = req.body;
 
     // Validasi input
-    if (!userId || !invoice_id) {
-      return res.status(400).json({ message: "ID pengguna dan ID faktur diperlukan." });
+    if (!invoice_id) {
+      return res.status(400).json({ message: "ID faktur diperlukan." });
     }
 
     try {
