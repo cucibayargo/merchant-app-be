@@ -29,11 +29,7 @@ const allowedOrigins = ['https://store.cucibayargo.com', 'https://cucibayargo.co
 
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log(`Blocked by CORS: ${origin}`);
-    }
+    callback(null, true);
   },
   credentials: true,
 };
