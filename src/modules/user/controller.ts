@@ -624,6 +624,8 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
       FROM users 
       LEFT JOIN app_invoices ON users.id = app_invoices.user_id
       WHERE email = $1
+      ORDER BY app_invoices.created_at ASC
+      limit 1 
     `;
     const result = await client.query(userDetail, [decoded.email]);
 

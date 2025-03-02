@@ -803,7 +803,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     const { token } = req.body;
 
-    // Validasi input
+    // Validasi input 
     if (!token) {
       return res.status(400).json({ message: "Token diperlukan." });
     }
@@ -812,7 +812,7 @@ router.post(
       const verifyInvoiceResponse = await verifyInvoiceValid(token);
 
       if (verifyInvoiceResponse?.valid) {
-        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan.", name: verifyInvoiceResponse?.name, status: verifyInvoiceResponse?.status });
+        return res.status(200).json({ name: verifyInvoiceResponse?.name, status: verifyInvoiceResponse?.status });
       }
 
       res.status(404).json({ message: "Invoice Sudah Kedaluarsa." });
