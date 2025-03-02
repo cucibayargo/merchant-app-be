@@ -60,18 +60,4 @@ app.listen(PORT, () => {
   console.log(`Server running in ${environment} mode on http://localhost:${PORT}`);
 });
 
-const jwt = require('jsonwebtoken');
-
-const payload = {
-  email: "gexojaf203@bnsteps.com",
-  iat: 1740299264,
-  exp: 1740904064
-};
-
-const secret = "secret_key"; // Replace with your actual secret key
-const token = jwt.sign(payload, secret);
-
-console.log(token);
-
-
 export default app;
