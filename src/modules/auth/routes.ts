@@ -425,7 +425,7 @@ router.post("/signup", async (req, res) => {
       email,
       password: hashedPassword,
       phone_number,
-      status: 'pending', // Initially set user status to 'pending'
+      status: 'verified', // Initially set user status to 'verified'
     });
 
 
@@ -452,14 +452,14 @@ router.post("/signup", async (req, res) => {
     }
 
     // Generate verification token
-    const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {
-      expiresIn: "1d",
-    });
+    // const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {
+    //   expiresIn: "1d",
+    // });
 
     // Send verification email
-    await sendEmailRegistration(email, verificationToken);
+    // await sendEmailRegistration(email, verificationToken);
 
-    res.status(201).json({ message: "Daftar berhasil. Silahkan cek email anda untuk verifikasi"});
+    res.status(201).json({ message: "Daftar akun berhasil, silakan login untuk melanjutkan."});
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
