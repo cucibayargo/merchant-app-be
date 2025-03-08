@@ -20,15 +20,19 @@ const PORT = 3000;
 
 if (global.gc) {
   setInterval(() => {
-    const usedMemory = process.memoryUsage().heapUsed / 1024 / 1024; // Convert to MB
-    console.log(`Heap Memory Usage: ${usedMemory.toFixed(2)} MB`);
+    const memoryUsage = process.memoryUsage();
+    const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
+    const heapTotalMB = memoryUsage.heapTotal / 1024 / 1024;
+    const heapUsagePercent = (heapUsedMB / heapTotalMB) * 100;
 
-    if (usedMemory > 200 && global.gc) { // Run GC only when memory exceeds 200MB
-      console.warn("Memory limit exceeded! Running manual garbage collection...");
+    console.log(`Heap Memory: ${heapUsedMB.toFixed(2)} MB / ${heapTotalMB.toFixed(2)} MB (${heapUsagePercent.toFixed(2)}%)`);
+
+    if (heapUsagePercent > 85 && global.gc) { // Run GC only if heap usage > 85%
+      console.warn("⚠️ High memory usage detected! Running garbage collection...");
       global.gc();
       console.log(`After GC: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`);
     }
-  }, 120000); // Check memory every 20 seconds
+  }, 60000); // Check every 15 seconds
 } else {
   console.warn("Garbage collection is not exposed. Start Node with --expose-gc");
 }
