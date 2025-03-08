@@ -18,6 +18,19 @@ const app = express();
 const environment = process.env.NODE_ENV || 'development';
 const PORT = 3000;
 
+if (global.gc) {
+  setInterval(() => {
+    console.log("Running manual garbage collection...");
+    if (global.gc) {
+      console.log("Before GC:", process.memoryUsage());
+      global.gc();
+      console.log("After GC:", process.memoryUsage());
+    }
+  }, 60000); // Run GC every 60 seconds
+} else {
+  console.warn("Garbage collection is not exposed. Start Node with --expose-gc");
+}
+
 // Validate environment variables
 if (!process.env.API_URL) {
   console.error("Critical environment variables are missing.");
