@@ -1,4 +1,4 @@
-const Joi = require('joi');
+const Joi = require("joi");
 interface TransactionItemDetail {
   service: string;
   service_name: string;
@@ -11,16 +11,17 @@ export interface Transaction {
   duration: string;
   customer_name: string;
   duration_name: string;
-  status: 'Diproses' | 'Selesai' | 'Siap Diambil';
+  status: "Diproses" | "Selesai" | "Siap Diambil";
   items?: TransactionItemDetail[];
   total?: number;
+  note?: string;
 }
 export interface TransactionData {
   id: string;
   customer: string;
   payment_status: string;
   invoice: string;
-  status: 'Diproses' | 'Selesai' | 'Siap Diambil';
+  status: "Diproses" | "Selesai" | "Siap Diambil";
   created_at: Date;
   estimated_date: Date;
   ready_to_pick_up_at: Date | null;
@@ -48,39 +49,26 @@ export interface TransactionDetails {
 }
 
 export const transactionSchema = Joi.object({
-  customer: Joi.string()
-    .uuid()
-    .required(),
+  customer: Joi.string().uuid().required(),
 
-  duration: Joi.string()
-    .uuid()
-    .required(),
+  duration: Joi.string().uuid().required(),
 
-  status: Joi.string()
-    .valid('Diproses', 'Selesai', 'Siap Diambil')
-    .required(),
+  status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil").required(),
 
   items: Joi.array()
     .items(
       Joi.object({
-        service: Joi.string()
-          .uuid()
-          .required(),
+        service: Joi.string().uuid().required(),
 
-        qty: Joi.number()
-          .integer()
-          .positive()
-          .required()
+        qty: Joi.number().integer().positive().required(),
       })
     )
-    .required()
+    .required(),
 });
 
 export const transactionUpdateSchema = Joi.object({
-  status: Joi.string()
-    .required()
+  status: Joi.string().required(),
 });
-
 
 interface InvoiceMerchant {
   name: string;
@@ -120,7 +108,7 @@ export interface InvoiceDetails {
   transaction: Transaction;
 }
 
-export interface TransactionQuery { 
+export interface TransactionQuery {
   text: string;
   values: any[];
 }

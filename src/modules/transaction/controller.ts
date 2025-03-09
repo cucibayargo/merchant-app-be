@@ -42,7 +42,7 @@ export async function getTransactions(
         break;
       default:
         dateColumn = "t.created_at";
-        sortType = "DESC"; 
+        sortType = "DESC";
         break;
     }
 
@@ -95,6 +95,7 @@ export async function getTransactions(
         t.status,
         t.created_at,
         t.estimated_date,
+        t.note,
         t.ready_to_pick_up_at,
         t.completed_at
       FROM transaction t
@@ -115,7 +116,7 @@ export async function getTransactions(
       SELECT COUNT(*) AS total_count
       FROM transaction t
       LEFT JOIN payment p ON t.id = p.transaction_id
-      WHERE ${conditions.length > 0 ? conditions.join(' AND ') : 'TRUE'}
+      WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
     `;
 
     // Execute the query for total count
@@ -143,7 +144,7 @@ export async function addTransaction(
 ): Promise<any | null> {
   const client = await pool.connect();
   try {
-    const { customer, duration, status, items } = transaction;
+    const { customer, duration, status, items, note } = transaction;
     const customerDetail = await getCustomerById(customer);
     const durationDetail = await getDurationById(duration);
 
@@ -160,18 +161,23 @@ export async function addTransaction(
         duration_length_type,
         status, 
         merchant_id,
-        estimated_date
+        estimated_date,
+        note
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id;
     `;
 
     let currentDate = new Date(); // Current date and time
     let estimatedDate;
 
-    if (durationDetail?.type === 'Jam') {
-      estimatedDate = new Date(currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000);
-    } else if (durationDetail?.type === 'Hari') {
-      estimatedDate = new Date(currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000);
+    if (durationDetail?.type === "Jam") {
+      estimatedDate = new Date(
+        currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000
+      );
+    } else if (durationDetail?.type === "Hari") {
+      estimatedDate = new Date(
+        currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000
+      );
     }
 
     const values = [
@@ -187,6 +193,7 @@ export async function addTransaction(
       status,
       merchant_id,
       estimatedDate,
+      note,
     ];
     const result = await client.query(query, values);
     const newTransactionId = result.rows?.[0]?.id;
@@ -283,13 +290,15 @@ async function getInvoiceTotalPrice(
  */
 export async function updateTransaction(
   status: string,
+  note: string,
   invoiceId: string
 ): Promise<TransactionDetails> {
   const client = await pool.connect();
   try {
     const query = `
       UPDATE transaction
-      SET 
+      SET
+        note = $2,
         status = $1::text, 
         completed_at = CASE 
                           WHEN $1 = 'Selesai' THEN NOW() 
@@ -308,7 +317,7 @@ export async function updateTransaction(
       RETURNING *;
     `;
 
-    const values = [status, invoiceId];
+    const values = [status, invoiceId, note];
 
     const result = await client.query(query, values);
     const transactionDetail = getTransactionByTransactionId(result.rows[0].id);
@@ -339,6 +348,7 @@ export async function getTransactionById(
         t.completed_at,
         t.estimated_date,
         t.created_at,
+        t.note,
         t.duration_name,
         t.status AS transaction_status,
         p.invoice_id AS invoice,
@@ -432,6 +442,7 @@ export async function getInvoiceById(
               'completed_date', TO_CHAR(t.completed_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'estimated_date', TO_CHAR(t.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'duration', t.duration_name,
+              'note', t.note,
               'services', json_agg(
                   json_build_object(
                       'service_name', ti.service_name,
@@ -467,26 +478,36 @@ export async function getInvoiceById(
 
 /**
  * Generates a unique invoice ID based on a transaction's order and the current date.
- * 
+ *
  * - The invoice ID format is: `INV-DDMMYYYY.order`
  * - Prefix: `INV`
  * - Date: The current date in DDMMYYYY format
  * - Order: The `order` value retrieved from the `transaction` table for the given transaction ID
- * 
+ *
  * @param transactionId - The ID of the transaction for which the invoice ID is to be generated.
  * @returns A string representing the unique invoice ID.
  * @throws Will throw an error if the transaction ID does not exist or if the query fails.
  */
-async function generateInvoiceId(transactionId: string, merchantId?: string): Promise<string> {
+async function generateInvoiceId(
+  transactionId: string,
+  merchantId?: string
+): Promise<string> {
   const client = await pool.connect();
 
   try {
     const prefix = "INV";
-    
+
     // Create a new Date object and convert it to Jakarta time
     const now = new Date();
-    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-    const formattedDate = `${jakartaTime.getDate().toString().padStart(2, "0")}${(jakartaTime.getMonth() + 1).toString().padStart(2, "0")}${jakartaTime.getFullYear()}`;
+    const jakartaTime = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+    );
+    const formattedDate = `${jakartaTime
+      .getDate()
+      .toString()
+      .padStart(2, "0")}${(jakartaTime.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}${jakartaTime.getFullYear()}`;
 
     // Query to fetch order and merchant sequence_id in one go
     const query = `
@@ -499,11 +520,13 @@ async function generateInvoiceId(transactionId: string, merchantId?: string): Pr
     const { rows } = await client.query(query, [transactionId, merchantId]);
 
     if (rows.length === 0) {
-      throw new Error(`Transaction with ID ${transactionId} or Merchant with ID ${merchantId} not found.`);
+      throw new Error(
+        `Transaction with ID ${transactionId} or Merchant with ID ${merchantId} not found.`
+      );
     }
 
     const { order, sequence_id: merchantSeqId } = rows[0];
-    
+
     return `${prefix}-${order}${formattedDate}${merchantSeqId}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);

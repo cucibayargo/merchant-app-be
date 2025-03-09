@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction, Router } from "express";
-import cors, { CorsOptions } from 'cors';
-import cookieParser from 'cookie-parser';
-import compression from 'compression';
+import cors, { CorsOptions } from "cors";
+import cookieParser from "cookie-parser";
+import compression from "compression";
 import session from "express-session";
 import authRoutes from "./modules/auth/routes";
 import TransactionRoutes from "./modules/transaction/routes";
@@ -18,7 +18,7 @@ import authMiddleware from "./middlewares";
 // import fs from "fs";
 
 const app = express();
-const environment = process.env.NODE_ENV || 'development';
+const environment = process.env.NODE_ENV || "development";
 const PORT = process.env.PORT || 3000;
 
 // Validate environment variables
@@ -32,9 +32,9 @@ const corsOptions: CorsOptions = {
     // Allow any origin dynamically
     callback(null, true); // This will allow all origins
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'invoice-token'],
-  credentials: true,  // Allow credentials (cookies, HTTP authentication, etc.)
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "invoice-token"],
+  credentials: true, // Allow credentials (cookies, HTTP authentication, etc.)
 };
 
 app.use(cors(corsOptions));
@@ -43,11 +43,13 @@ app.use(express.json());
 app.use(compression());
 
 // Session configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET!,
-  resave: false,
-  saveUninitialized: false,
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET!,
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -55,7 +57,7 @@ app.use(passport.session());
 
 // Middleware for debugging
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log('Request Body:', req.body);
+  console.log("Request Body:", req.body);
   next();
 });
 
