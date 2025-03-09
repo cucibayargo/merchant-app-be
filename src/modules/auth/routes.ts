@@ -276,8 +276,7 @@ router.post("/login", async (req, res) => {
 
     res.cookie("auth_token", token, {
       secure: true, 
-      sameSite: "lax", 
-      domain: ".cucibayargo.com", 
+      sameSite: "none",
       maxAge: 172800000, 
     });    
 
