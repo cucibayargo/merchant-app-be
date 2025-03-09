@@ -60,22 +60,22 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // Swagger configuration
-const swaggerServerUrl = environment === 'production'
-  ? process.env.API_URL || 'https://api.cucibayargo.com'
-  : 'http://localhost:3000/api';
+// const swaggerServerUrl = environment === 'production'
+//   ? process.env.API_URL || 'https://api.cucibayargo.com'
+//   : 'http://localhost:3000/api';
 
-const swaggerOptions = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "Kasir Laundry Pro",
-      version: "1.0.0",
-      description: "API Routes and schema details of Kasir Laundry Pro Services",
-    },
-    servers: [{ url: swaggerServerUrl }],
-  },
-  apis: ["./src/modules/**/*.ts"],
-};
+// const swaggerOptions = {
+//   definition: {
+//     openapi: "3.0.0",
+//     info: {
+//       title: "Kasir Laundry Pro",
+//       version: "1.0.0",
+//       description: "API Routes and schema details of Kasir Laundry Pro Services",
+//     },
+//     servers: [{ url: swaggerServerUrl }],
+//   },
+//   apis: ["./src/modules/**/*.ts"],
+// };
 
 // const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
@@ -102,8 +102,8 @@ routerV1.use("/report", reportRoutes);
 app.use("/api/", routerV1);
 
 // Start server
-// app.listen(PORT, () => {
-//   console.log(`Server running in ${environment} mode on port ${PORT}`);
-// });
+app.listen(PORT, () => {
+  console.log(`Server running in ${environment} mode on port ${PORT}`);
+});
 
 export default app;
