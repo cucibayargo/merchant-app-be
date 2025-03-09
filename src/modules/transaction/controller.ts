@@ -95,6 +95,7 @@ export async function getTransactions(
         t.status,
         t.created_at,
         t.estimated_date,
+        t.note,
         t.ready_to_pick_up_at,
         t.completed_at
       FROM transaction t
@@ -143,7 +144,7 @@ export async function addTransaction(
 ): Promise<any | null> {
   const client = await pool.connect();
   try {
-    const { customer, duration, status, items } = transaction;
+    const { customer, duration, status, items, note } = transaction;
     const customerDetail = await getCustomerById(customer);
     const durationDetail = await getDurationById(duration);
 
@@ -160,9 +161,10 @@ export async function addTransaction(
         duration_length_type,
         status, 
         merchant_id,
-        estimated_date
+        estimated_date,
+        note
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id;
     `;
 
     let currentDate = new Date(); // Current date and time
@@ -191,6 +193,7 @@ export async function addTransaction(
       status,
       merchant_id,
       estimatedDate,
+      note,
     ];
     const result = await client.query(query, values);
     const newTransactionId = result.rows?.[0]?.id;
@@ -287,13 +290,15 @@ async function getInvoiceTotalPrice(
  */
 export async function updateTransaction(
   status: string,
+  note: string,
   invoiceId: string
 ): Promise<TransactionDetails> {
   const client = await pool.connect();
   try {
     const query = `
       UPDATE transaction
-      SET 
+      SET
+        note = $2,
         status = $1::text, 
         completed_at = CASE 
                           WHEN $1 = 'Selesai' THEN NOW() 
@@ -312,7 +317,7 @@ export async function updateTransaction(
       RETURNING *;
     `;
 
-    const values = [status, invoiceId];
+    const values = [status, invoiceId, note];
 
     const result = await client.query(query, values);
     const transactionDetail = getTransactionByTransactionId(result.rows[0].id);
@@ -343,6 +348,7 @@ export async function getTransactionById(
         t.completed_at,
         t.estimated_date,
         t.created_at,
+        t.note,
         t.duration_name,
         t.status AS transaction_status,
         p.invoice_id AS invoice,
@@ -440,6 +446,7 @@ export async function getInvoiceById(
               'completed_date', TO_CHAR(t.completed_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'estimated_date', TO_CHAR(t.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'duration', t.duration_name,
+              'note', t.note,
               'services', json_agg(
                   json_build_object(
                       'service_name', ti.service_name,
