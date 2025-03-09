@@ -1,6 +1,4 @@
 import express, { Request, Response, NextFunction, Router } from "express";
-import swaggerJsdoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
 import cors, { CorsOptions } from 'cors';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
@@ -79,18 +77,13 @@ const swaggerOptions = {
   apis: ["./src/modules/**/*.ts"],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Convert swaggerSpec to a string
 // const swaggerSpecString = JSON.stringify(swaggerSpec, null, 2);
 // fs.writeFileSync('swagger.yaml', swaggerSpecString);
 
 const routerV1 = Router();
-
-routerV1.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-routerV1.use("/docs-json", (req: Request, res: Response) => {
-  res.json(swaggerSpec);
-});
 
 // Routes setup
 routerV1.use("/auth", authRoutes);

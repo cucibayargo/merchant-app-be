@@ -749,12 +749,11 @@ router.post(
       return res.status(403).json({ message: "Forbidden: Invalid token" });
     }
 
-    const userId = req.userId;
     const { invoice_id, status } = req.body;
 
     // Validasi input
-    if (!userId || !invoice_id) {
-      return res.status(400).json({ message: "ID pengguna dan ID faktur diperlukan." });
+    if (!invoice_id) {
+      return res.status(400).json({ message: "ID faktur diperlukan." });
     }
 
     try {
@@ -803,7 +802,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     const { token } = req.body;
 
-    // Validasi input
+    // Validasi input 
     if (!token) {
       return res.status(400).json({ message: "Token diperlukan." });
     }
@@ -812,7 +811,7 @@ router.post(
       const verifyInvoiceResponse = await verifyInvoiceValid(token);
 
       if (verifyInvoiceResponse?.valid) {
-        return res.status(200).json({ message: "Invoice Masih Bisa Digunakan.", name: verifyInvoiceResponse?.name, status: verifyInvoiceResponse?.status });
+        return res.status(200).json({ name: verifyInvoiceResponse?.name, status: verifyInvoiceResponse?.status });
       }
 
       res.status(404).json({ message: "Invoice Sudah Kedaluarsa." });

@@ -107,27 +107,27 @@ export async function createSubscriptions(user: Omit<SubscriptionInput, 'id'>): 
  * @returns A promise that resolves if the password was successfully changed.
  */
 export async function changeUserPassword(email: string, currentPassword: string, newPassword: string): Promise<void> {
-  const client = await pool.connect();
-  try {
-    const userQuery = 'SELECT password FROM users WHERE email = $1';
-    const res = await client.query(userQuery, [email]);
-
-    if (res.rows.length === 0) {
-      throw new Error('User not found.');
+    const client = await pool.connect();
+    try {
+      const userQuery = 'SELECT password FROM users WHERE email = $1';
+      const res = await client.query(userQuery, [email]);
+  
+      if (res.rows.length === 0) {
+        throw new Error('User not found.');
+      }
+  
+      const user = res.rows[0];
+      const validPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!validPassword) {
+        throw new Error('Password tidak sesuai. Silakan coba lagi.');
+      }
+  
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      const updateQuery = 'UPDATE users SET password = $1 WHERE email = $2';
+      await client.query(updateQuery, [hashedNewPassword, email]);
+    } finally {
+      client.release();
     }
-
-    const user = res.rows[0];
-    const validPassword = await bcrypt.compare(currentPassword, user.password);
-    if (!validPassword) {
-      throw new Error('Password tidak sesuai. Silakan coba lagi.');
-    }
-
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-    const updateQuery = 'UPDATE users SET password = $1 WHERE email = $2';
-    await client.query(updateQuery, [hashedNewPassword, email]);
-  } finally {
-    client.release();
-  }
 }
 
 export async function addUserSignUpToken(payload: Omit<SignUpTokenInput, 'id'>): Promise<void> {

@@ -12,6 +12,7 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     '/transaction/:id',
     '/auth/signup/token',
     '/user/verify-invoice',
+    '/user/invoice-update',
     '/user/upload-subscriptions-invoice',
     '/user/invoice/:invoiceId',
     '/user/trigger-supabase-cloud'

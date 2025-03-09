@@ -1,9 +1,8 @@
 import express from "express";
-import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema, SubscriptionPlan } from "./types";
+import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema } from "./types";
 import { addUser, addUserSignUpToken, changeUserPassword, createSubscriptions, getSubsPlanByCode, getUserByEmail, notifyUserToPaySubscription, updateUserSignupStatus, validateToken } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import passport from "./passportConfig";
 import { getUserDetails, updateUserDetails } from "../user/controller";
 import * as dotenv from 'dotenv';
 import crypto from 'crypto';
@@ -276,11 +275,11 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign({ id: user.id, subscription_end: user.subscription_end }, "secret_key", { expiresIn: "2d" });
 
     res.cookie("auth_token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 172800000, // 2 days
-    });
+      secure: true, 
+      sameSite: "lax", 
+      domain: ".cucibayargo.com", 
+      maxAge: 172800000, 
+    });    
 
     res.status(200).json({ message: "Login berhasil."});
   } catch (err: any) {
@@ -328,13 +327,7 @@ router.post("/logout", async (req, res) => {
       sameSite: 'none', 
       expires: new Date(0), 
     });
-
-    req.session.destroy(err => {
-      if (err) {
-        return res.status(500).json({ message: "Terjadi kesalahan pada server." });
-      }
-      res.status(200).json({ message: "Logout berhasil." });
-    });
+    res.status(200).json({ message: "Logout berhasil." });
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
@@ -432,7 +425,7 @@ router.post("/signup", async (req, res) => {
       email,
       password: hashedPassword,
       phone_number,
-      status: 'pending', // Initially set user status to 'pending'
+      status: 'verified', // Initially set user status to 'verified'
     });
 
 
@@ -459,14 +452,14 @@ router.post("/signup", async (req, res) => {
     }
 
     // Generate verification token
-    const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {
-      expiresIn: "1d",
-    });
+    // const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {
+    //   expiresIn: "1d",
+    // });
 
     // Send verification email
-    await sendEmailRegistration(email, verificationToken);
+    // await sendEmailRegistration(email, verificationToken);
 
-    res.status(201).json({ message: "Daftar berhasil. Silahkan cek email anda untuk verifikasi"});
+    res.status(201).json({ message: "Daftar akun berhasil, silakan login untuk melanjutkan."});
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
@@ -669,7 +662,7 @@ router.post("/change-password", async (req, res) => {
  *       '302':
  *         description: Redirects to Google for authentication
  */
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+// router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 /**
  * @swagger
@@ -684,18 +677,18 @@ router.get("/google", passport.authenticate("google", { scope: ["profile", "emai
  *       '500':
  *         description: Terjadi kesalahan server
  */
-router.get("/google/callback", passport.authenticate("google", { session: false }), (req, res) => {
-  if (req.user) {
-    const user = req.user as any;
-    const token = jwt.sign({ id: user.id }, "secret_key", {
-      expiresIn: "2d",
-    });
-    res.cookie("auth_token", token, { httpOnly: true, sameSite: 'none', secure: true});
-    res.redirect("https://store.cucibayargo.com/login-google"); 
-  } else {
-    res.status(500).json({ message: "Authentication failed" });
-  }
-});
+// router.get("/google/callback", passport.authenticate("google", { session: false }), (req, res) => {
+//   if (req.user) {
+//     const user = req.user as any;
+//     const token = jwt.sign({ id: user.id }, "secret_key", {
+//       expiresIn: "2d",
+//     });
+//     res.cookie("auth_token", token, { httpOnly: true, sameSite: 'none', secure: true});
+//     res.redirect("https://store.cucibayargo.com/login-google"); 
+//   } else {
+//     res.status(500).json({ message: "Authentication failed" });
+//   }
+// });
 
 /**
  * @swagger
