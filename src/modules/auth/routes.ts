@@ -275,11 +275,11 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign({ id: user.id, subscription_end: user.subscription_end }, "secret_key", { expiresIn: "2d" });
 
     res.cookie("auth_token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 172800000, // 2 days
-    });
+      secure: true, 
+      sameSite: "lax", 
+      domain: ".cucibayargo.com", 
+      maxAge: 172800000, 
+    });    
 
     res.status(200).json({ message: "Login berhasil."});
   } catch (err: any) {
