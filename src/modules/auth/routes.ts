@@ -277,7 +277,7 @@ router.post("/login", async (req, res) => {
     res.cookie("auth_token", token, {
       secure: true, 
       sameSite: "none",
-      maxAge: 172800000, 
+      maxAge: 12 * 30 * 24 * 60 * 60 * 1000,
     });    
 
     res.status(200).json({ message: "Login berhasil."});
