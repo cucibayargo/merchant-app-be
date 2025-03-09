@@ -278,7 +278,7 @@ router.post("/login", async (req, res) => {
       secure: true, 
       sameSite: "lax", 
       domain: ".cucibayargo.com", 
-      maxAge: 172800000, 
+      maxAge: 12 * 30 * 24 * 60 * 60 * 1000, // 12 months 
     });    
 
     res.status(200).json({ message: "Login berhasil."});

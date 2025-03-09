@@ -67,16 +67,16 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
       });
     }
 
-    const newToken = jwt.sign({ id: decoded.id, subscription_end: decoded.subscription_end }, secretKey, {
-      expiresIn: "2d",
-    });
+    // const newToken = jwt.sign({ id: decoded.id, subscription_end: decoded.subscription_end }, secretKey, {
+    //   expiresIn: "2d",
+    // });
 
-    res.cookie("auth_token", newToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 172800000, // 2 days
-    });
+    // res.cookie("auth_token", newToken, {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: 'none',
+    //   maxAge: 172800000, // 2 days
+    // });
 
     next();
   } catch (error) {
