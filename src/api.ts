@@ -28,16 +28,14 @@ if (!process.env.SESSION_SECRET || !process.env.API_URL) {
 }
 
 const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow any origin dynamically
-    callback(null, true); // This will allow all origins
-  },
+  origin: "*", // Allows all origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'invoice-token'],
-  credentials: true,  // Allow credentials (cookies, HTTP authentication, etc.)
+  credentials: true,  // Allow credentials (cookies, authentication, etc.)
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handles preflight requests
 app.use(cookieParser());
 app.use(express.json());
 app.use(compression());
