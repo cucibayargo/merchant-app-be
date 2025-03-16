@@ -10,11 +10,11 @@ COPY package.json package-lock.json ./
 # Install dependencies
 RUN npm install --omit=dev
 
-# Rebuild bcrypt inside the container
-RUN npm rebuild bcrypt --build-from-source
-
 # Copy the rest of the app files
 COPY . .
+
+# Build TypeScript
+RUN npm run build
 
 # Expose port
 EXPOSE 3000
