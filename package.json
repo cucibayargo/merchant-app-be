@@ -2,6 +2,7 @@
   "scripts": {
     "start": "node dist/api.js",
     "build": "tsc",
+    "prestart": "npm run build",
     "vercel-build": "echo hello"
   },
   "dependencies": {
