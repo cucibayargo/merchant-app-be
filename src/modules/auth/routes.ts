@@ -324,8 +324,10 @@ router.post("/login", async (req, res) => {
     );
 
     res.cookie("auth_token", token, {
+      httpOnly: true,
       secure: true,
-      sameSite: "none",
+      sameSite: "strict",
+      domain: "cucibayargo.com",
       maxAge: 12 * 30 * 24 * 60 * 60 * 1000,
     });
 
