@@ -6,7 +6,7 @@ import {
   SubscriptionPlan,
   User,
 } from "./types";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Mailjet from "node-mailjet";
 

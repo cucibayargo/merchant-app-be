@@ -18,7 +18,7 @@ import {
   updateUserSignupStatus,
   validateToken,
 } from "./controller";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getUserDetails, updateUserDetails } from "../user/controller";
 import * as dotenv from "dotenv";

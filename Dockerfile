@@ -1,30 +1,22 @@
 # Use lightweight Node.js image
-FROM node:18-alpine AS builder
+FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copy package.json and package-lock.json first
 COPY package.json package-lock.json ./
+
+# Install dependencies
 RUN npm install --omit=dev
 
-# Copy source code
+# Rebuild bcrypt inside the container
+RUN npm rebuild bcrypt --build-from-source
+
+# Copy the rest of the app files
 COPY . .
 
-# Build TypeScript
-RUN npm run build
-
-# Production image (lighter)
-FROM node:18-alpine AS runner
-
-WORKDIR /app
-
-# Copy built files from the builder stage
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
-
-# Expose port (Cloud Run uses 3000 by default)
+# Expose port
 EXPOSE 3000
 
 # Start application
