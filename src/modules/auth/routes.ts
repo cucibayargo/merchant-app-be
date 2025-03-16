@@ -324,7 +324,7 @@ router.post("/login", async (req, res) => {
     );
 
     res.clearCookie("auth_token", {
-      domain: "cucibayargo.com",
+      domain: ".cucibayargo.com",
       path: "/",
       httpOnly: true,
       secure: true,
@@ -335,7 +335,7 @@ router.post("/login", async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
-      domain: "cucibayargo.com",
+      domain: ".cucibayargo.com",
       maxAge: 12 * 30 * 24 * 60 * 60 * 1000,
     });
 
