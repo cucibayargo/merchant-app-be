@@ -1,8 +1,14 @@
 import pool from "../../database/postgres";
-import { SignUpInput, SignUpTokenInput, SubscriptionInput, SubscriptionPlan, User } from "./types";
+import {
+  SignUpInput,
+  SignUpTokenInput,
+  SubscriptionInput,
+  SubscriptionPlan,
+  User,
+} from "./types";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import Mailjet from 'node-mailjet';
+import Mailjet from "node-mailjet";
 
 /**
  * Retrieve a user by their email.
@@ -12,7 +18,8 @@ import Mailjet from 'node-mailjet';
 export async function getUserByEmail(email: string): Promise<User | null> {
   const client = await pool.connect();
   try {
-    const res = await client.query(`
+    const res = await client.query(
+      `
       SELECT 
         users.*,
         app_plans.code as plan_code,
@@ -22,7 +29,9 @@ export async function getUserByEmail(email: string): Promise<User | null> {
       LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id 
       LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id 
       WHERE users.email = $1
-      `, [email]);
+      `,
+      [email]
+    );
     return res.rows[0] || null;
   } finally {
     client.release();
@@ -34,10 +43,14 @@ export async function getUserByEmail(email: string): Promise<User | null> {
  * @param code - The code of the plan to retrieve.
  * @returns {Promise<string | null>} - A promise that resolves to the user if found, or null if not found.
  */
-export async function getSubsPlanByCode(code: string): Promise<SubscriptionPlan> {
+export async function getSubsPlanByCode(
+  code: string
+): Promise<SubscriptionPlan> {
   const client = await pool.connect();
   try {
-    const res = await client.query('SELECT * FROM app_plans WHERE code = $1', [code]);
+    const res = await client.query("SELECT * FROM app_plans WHERE code = $1", [
+      code,
+    ]);
     return res.rows[0] || null;
   } finally {
     client.release();
@@ -52,7 +65,9 @@ export async function getSubsPlanByCode(code: string): Promise<SubscriptionPlan>
 export async function getSubsPlanById(id: string): Promise<SubscriptionPlan> {
   const client = await pool.connect();
   try {
-    const res = await client.query('SELECT * FROM app_plans WHERE id = $1', [id]);
+    const res = await client.query("SELECT * FROM app_plans WHERE id = $1", [
+      id,
+    ]);
     return res.rows[0] || null;
   } finally {
     client.release();
@@ -64,7 +79,7 @@ export async function getSubsPlanById(id: string): Promise<SubscriptionPlan> {
  * @param user - The user data to add. Excludes 'id' as it's auto-generated.
  * @returns {Promise<User>} - A promise that resolves to the newly created user.
  */
-export async function addUser(user: Omit<SignUpInput, 'id'>): Promise<User> {
+export async function addUser(user: Omit<SignUpInput, "id">): Promise<User> {
   const client = await pool.connect();
   try {
     const { name, email, password, phone_number, oauth, status } = user;
@@ -80,11 +95,12 @@ export async function addUser(user: Omit<SignUpInput, 'id'>): Promise<User> {
   }
 }
 
-
 /**
  * Add User Subscription
  */
-export async function createSubscriptions(user: Omit<SubscriptionInput, 'id'>): Promise<User> {
+export async function createSubscriptions(
+  user: Omit<SubscriptionInput, "id">
+): Promise<User> {
   const client = await pool.connect();
   try {
     const { start_date, end_date, user_id, plan_id } = user;
@@ -106,46 +122,63 @@ export async function createSubscriptions(user: Omit<SubscriptionInput, 'id'>): 
  * @param newPassword - The new password to set.
  * @returns A promise that resolves if the password was successfully changed.
  */
-export async function changeUserPassword(email: string, currentPassword: string, newPassword: string): Promise<void> {
-    const client = await pool.connect();
-    try {
-      const userQuery = 'SELECT password FROM users WHERE email = $1';
-      const res = await client.query(userQuery, [email]);
-  
-      if (res.rows.length === 0) {
-        throw new Error('User not found.');
-      }
-  
-      const user = res.rows[0];
-      const validPassword = await bcrypt.compare(currentPassword, user.password);
-      if (!validPassword) {
-        throw new Error('Password tidak sesuai. Silakan coba lagi.');
-      }
-  
-      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-      const updateQuery = 'UPDATE users SET password = $1 WHERE email = $2';
-      await client.query(updateQuery, [hashedNewPassword, email]);
-    } finally {
-      client.release();
-    }
-}
-
-export async function addUserSignUpToken(payload: Omit<SignUpTokenInput, 'id'>): Promise<void> {
+export async function changeUserPassword(
+  email: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
   const client = await pool.connect();
   try {
-    const { name, email, phone_number, token, status, subscription_plan } = payload;
+    const userQuery = "SELECT password FROM users WHERE email = $1";
+    const res = await client.query(userQuery, [email]);
+
+    if (res.rows.length === 0) {
+      throw new Error("User not found.");
+    }
+
+    const user = res.rows[0];
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!validPassword) {
+      throw new Error("Password tidak sesuai. Silakan coba lagi.");
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    const updateQuery = "UPDATE users SET password = $1 WHERE email = $2";
+    await client.query(updateQuery, [hashedNewPassword, email]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function addUserSignUpToken(
+  payload: Omit<SignUpTokenInput, "id">
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const { name, email, phone_number, token, status, subscription_plan } =
+      payload;
     const query = `
       INSERT INTO users_signup (name, email, phone_number, token, status, subscription_plan)
       VALUES ($1, $2, $3, $4, $5, $6);
     `;
-    const values = [name, email, phone_number, token, status, subscription_plan];
+    const values = [
+      name,
+      email,
+      phone_number,
+      token,
+      status,
+      subscription_plan,
+    ];
     await client.query(query, values);
   } finally {
     client.release();
   }
 }
 
-export async function validateToken(email: string, token: string): Promise<boolean> {
+export async function validateToken(
+  email: string,
+  token: string
+): Promise<boolean> {
   const client = await pool.connect();
   try {
     const query = `
@@ -162,7 +195,11 @@ export async function validateToken(email: string, token: string): Promise<boole
   }
 }
 
-export async function updateUserSignupStatus(email: string, token: string, userId: string): Promise<void> {
+export async function updateUserSignupStatus(
+  email: string,
+  token: string,
+  userId: string
+): Promise<void> {
   const client = await pool.connect();
   try {
     const query = `
@@ -189,19 +226,21 @@ export const notifyUserToPaySubscription = async (
   const token = jwt.sign(
     { email }, // Payload
     process.env.JWT_SECRET as string, // Secret key
-    { expiresIn: '7d' } // Token expiration time (7 days in this example)
+    { expiresIn: "7d" } // Token expiration time (7 days in this example)
   );
 
   // Calculate payment deadline (5 days from now)
   const paymentDeadline = new Date();
   paymentDeadline.setDate(paymentDeadline.getDate() + 5);
-  const formattedDeadline = paymentDeadline.toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  const formattedDeadline = paymentDeadline.toLocaleDateString("id-ID", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 
-  const paymentUrl = `https://example.com/complete-payment?token=${encodeURIComponent(token)}`;
+  const paymentUrl = `https://example.com/complete-payment?token=${encodeURIComponent(
+    token
+  )}`;
 
   const emailSubject = `Pendaftaran Berlangganan - Pembayaran Dibutuhkan`;
   const emailBody = `
@@ -241,8 +280,8 @@ export const notifyUserToPaySubscription = async (
     Messages: [
       {
         From: {
-          Email: 'no-reply@cucibayargo.com',
-          Name: 'Cucibayargo',
+          Email: "no-reply@cucibayargo.com",
+          Name: "Cucibayargo",
         },
         To: [
           {
@@ -256,9 +295,71 @@ export const notifyUserToPaySubscription = async (
   };
 
   try {
-    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
-    console.log(`Payment notification sent to ${email} with response:`, response.body);
+    const response = await mailjet
+      .post("send", { version: "v3.1" })
+      .request(emailData);
+    console.log(
+      `Payment notification sent to ${email} with response:`,
+      response.body
+    );
   } catch (error) {
     console.error(`Failed to send payment notification to ${email}:`, error);
   }
 };
+
+export async function initServiceAndDuration(
+  merchant_id: string
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const query = `
+        WITH inserted_durations AS (
+            INSERT INTO duration (duration, name, type, merchant_id) VALUES
+            (3, 'Reguler', 'Hari', $1),
+            (1, 'Express', 'Hari', $1),
+            (6, 'Kilat', 'Jam', $1)
+            RETURNING id, name
+        ),
+        inserted_services AS (
+            INSERT INTO service (unit, name, merchant_id) VALUES
+            ('KG', 'Kiloan - Cuci, Setrika', $1),
+            ('KG', 'Kiloan - Cuci', $1),
+            ('PCS', 'Jas', $1),
+            ('PCS', 'Boneka', $1),
+            ('PCS', 'Bedcover', $1),
+            ('PCS', 'Selimut', $1)
+            RETURNING id, name
+        )
+        INSERT INTO service_duration (price, duration, service) VALUES
+        (6000, (SELECT id FROM inserted_durations WHERE name = 'Reguler'), (SELECT id FROM inserted_services WHERE name = 'Kiloan - Cuci, Setrika')),
+        (8000, (SELECT id FROM inserted_durations WHERE name = 'Express'), (SELECT id FROM inserted_services WHERE name = 'Kiloan - Cuci, Setrika')),
+        (12000, (SELECT id FROM inserted_durations WHERE name = 'Kilat'), (SELECT id FROM inserted_services WHERE name = 'Kiloan - Cuci, Setrika')),
+
+        (4000, (SELECT id FROM inserted_durations WHERE name = 'Reguler'), (SELECT id FROM inserted_services WHERE name = 'Kiloan - Cuci')),
+        (6000, (SELECT id FROM inserted_durations WHERE name = 'Express'), (SELECT id FROM inserted_services WHERE name = 'Kiloan - Cuci')),
+        (8000, (SELECT id FROM inserted_durations WHERE name = 'Kilat'), (SELECT id FROM inserted_services WHERE name = 'Kiloan - Cuci')),
+
+        (20000, (SELECT id FROM inserted_durations WHERE name = 'Reguler'), (SELECT id FROM inserted_services WHERE name = 'Jas')),
+        (25000, (SELECT id FROM inserted_durations WHERE name = 'Express'), (SELECT id FROM inserted_services WHERE name = 'Jas')),
+        (30000, (SELECT id FROM inserted_durations WHERE name = 'Kilat'), (SELECT id FROM inserted_services WHERE name = 'Jas')),
+
+        (30000, (SELECT id FROM inserted_durations WHERE name = 'Reguler'), (SELECT id FROM inserted_services WHERE name = 'Boneka')),
+        (20000, (SELECT id FROM inserted_durations WHERE name = 'Express'), (SELECT id FROM inserted_services WHERE name = 'Boneka')),
+        (10000, (SELECT id FROM inserted_durations WHERE name = 'Kilat'), (SELECT id FROM inserted_services WHERE name = 'Boneka')),
+
+        (5000, (SELECT id FROM inserted_durations WHERE name = 'Reguler'), (SELECT id FROM inserted_services WHERE name = 'Bedcover')),
+        (10000, (SELECT id FROM inserted_durations WHERE name = 'Express'), (SELECT id FROM inserted_services WHERE name = 'Bedcover')),
+        (15000, (SELECT id FROM inserted_durations WHERE name = 'Kilat'), (SELECT id FROM inserted_services WHERE name = 'Bedcover')),
+
+        (5000, (SELECT id FROM inserted_durations WHERE name = 'Reguler'), (SELECT id FROM inserted_services WHERE name = 'Selimut')),
+        (10000, (SELECT id FROM inserted_durations WHERE name = 'Express'), (SELECT id FROM inserted_services WHERE name = 'Selimut')),
+        (15000, (SELECT id FROM inserted_durations WHERE name = 'Kilat'), (SELECT id FROM inserted_services WHERE name = 'Selimut'));
+      `;
+    const result = await client.query(query, [merchant_id]);
+
+    // Check if any rows were returned
+    return result.rows.length > 0;
+  } finally {
+    client.release();
+  }
+}

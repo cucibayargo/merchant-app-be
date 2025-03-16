@@ -42,7 +42,7 @@ export async function getTransactions(
         break;
       default:
         dateColumn = "t.created_at";
-        sortType = "DESC"; 
+        sortType = "DESC";
         break;
     }
 
@@ -115,7 +115,7 @@ export async function getTransactions(
       SELECT COUNT(*) AS total_count
       FROM transaction t
       LEFT JOIN payment p ON t.id = p.transaction_id
-      WHERE ${conditions.length > 0 ? conditions.join(' AND ') : 'TRUE'}
+      WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
     `;
 
     // Execute the query for total count
@@ -168,10 +168,14 @@ export async function addTransaction(
     let currentDate = new Date(); // Current date and time
     let estimatedDate;
 
-    if (durationDetail?.type === 'Jam') {
-      estimatedDate = new Date(currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000);
-    } else if (durationDetail?.type === 'Hari') {
-      estimatedDate = new Date(currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000);
+    if (durationDetail?.type === "Jam") {
+      estimatedDate = new Date(
+        currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000
+      );
+    } else if (durationDetail?.type === "Hari") {
+      estimatedDate = new Date(
+        currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000
+      );
     }
 
     const values = [
@@ -395,7 +399,11 @@ export async function getTransactionByTransactionId(
       WHERE transaction.id = $1
     `;
     const { rows } = await client.query(query, [invoiceId]);
-    return rows.length ? rows[0] : null;
+    if (!rows.length) {
+      throw new Error(`Transaction with ID ${invoiceId} not found.`);
+    }
+
+    return rows[0];
   } finally {
     client.release();
   }
@@ -467,26 +475,36 @@ export async function getInvoiceById(
 
 /**
  * Generates a unique invoice ID based on a transaction's order and the current date.
- * 
+ *
  * - The invoice ID format is: `INV-DDMMYYYY.order`
  * - Prefix: `INV`
  * - Date: The current date in DDMMYYYY format
  * - Order: The `order` value retrieved from the `transaction` table for the given transaction ID
- * 
+ *
  * @param transactionId - The ID of the transaction for which the invoice ID is to be generated.
  * @returns A string representing the unique invoice ID.
  * @throws Will throw an error if the transaction ID does not exist or if the query fails.
  */
-async function generateInvoiceId(transactionId: string, merchantId?: string): Promise<string> {
+async function generateInvoiceId(
+  transactionId: string,
+  merchantId?: string
+): Promise<string> {
   const client = await pool.connect();
 
   try {
     const prefix = "INV";
-    
+
     // Create a new Date object and convert it to Jakarta time
     const now = new Date();
-    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-    const formattedDate = `${jakartaTime.getDate().toString().padStart(2, "0")}${(jakartaTime.getMonth() + 1).toString().padStart(2, "0")}${jakartaTime.getFullYear()}`;
+    const jakartaTime = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+    );
+    const formattedDate = `${jakartaTime
+      .getDate()
+      .toString()
+      .padStart(2, "0")}${(jakartaTime.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}${jakartaTime.getFullYear()}`;
 
     // Query to fetch order and merchant sequence_id in one go
     const query = `
@@ -499,11 +517,13 @@ async function generateInvoiceId(transactionId: string, merchantId?: string): Pr
     const { rows } = await client.query(query, [transactionId, merchantId]);
 
     if (rows.length === 0) {
-      throw new Error(`Transaction with ID ${transactionId} or Merchant with ID ${merchantId} not found.`);
+      throw new Error(
+        `Transaction with ID ${transactionId} or Merchant with ID ${merchantId} not found.`
+      );
     }
 
     const { order, sequence_id: merchantSeqId } = rows[0];
-    
+
     return `${prefix}-${order}${formattedDate}${merchantSeqId}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);

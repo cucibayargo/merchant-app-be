@@ -1,6 +1,6 @@
-import express, { Request, Response, NextFunction, Router } from "express";
-import cors, { CorsOptions } from 'cors';
-import compression from 'compression';
+import express, { Router } from "express";
+import cors, { CorsOptions } from "cors";
+import compression from "compression";
 import authRoutes from "./modules/auth/routes";
 import TransactionRoutes from "./modules/transaction/routes";
 import customerRoutes from "./modules/customer/routes";
@@ -12,30 +12,11 @@ import notesRoutes from "./modules/notes/routes";
 import users from "./modules/user/routes";
 import reportRoutes from "./modules/report/routes";
 import authMiddleware from "./middlewares";
-import cookieParser from 'cookie-parser';
+import cookieParser from "cookie-parser";
 
 const app = express();
-const environment = process.env.NODE_ENV || 'development';
+const environment = process.env.NODE_ENV || "development";
 const PORT = 3000;
-
-if (global.gc) {
-  setInterval(() => {
-    const memoryUsage = process.memoryUsage();
-    const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
-    const heapTotalMB = memoryUsage.heapTotal / 1024 / 1024;
-    const heapUsagePercent = (heapUsedMB / heapTotalMB) * 100;
-
-    console.log(`Heap Memory: ${heapUsedMB.toFixed(2)} MB / ${heapTotalMB.toFixed(2)} MB (${heapUsagePercent.toFixed(2)}%)`);
-
-    if (heapUsagePercent > 85 && global.gc) { // Run GC only if heap usage > 85%
-      console.warn("⚠️ High memory usage detected! Running garbage collection...");
-      global.gc();
-      console.log(`After GC: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`);
-    }
-  }, 60000); // Check every 15 seconds
-} else {
-  console.warn("Garbage collection is not exposed. Start Node with --expose-gc");
-}
 
 // Validate environment variables
 if (!process.env.API_URL) {
@@ -44,7 +25,10 @@ if (!process.env.API_URL) {
 }
 
 // CORS configuration
-const allowedOrigins = ['https://store.cucibayargo.com', 'https://cucibayargo.com'];
+const allowedOrigins = [
+  "https://store.cucibayargo.com",
+  "https://cucibayargo.com",
+];
 
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
@@ -80,7 +64,9 @@ app.use("/v1/", routerV1);
 
 // Start HTTP server
 app.listen(PORT, () => {
-  console.log(`Server running in ${environment} mode on http://localhost:${PORT}`);
+  console.log(
+    `Server running in ${environment} mode on http://localhost:${PORT}`
+  );
 });
 
 export default app;
