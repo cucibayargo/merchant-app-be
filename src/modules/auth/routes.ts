@@ -320,7 +320,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, subscription_end: user.subscription_end },
       "secret_key",
-      { expiresIn: "2d" }
+      { expiresIn: "7d" }
     );
 
     // res.clearCookie("auth_token", {
@@ -334,9 +334,9 @@ router.post("/login", async (req, res) => {
     res.cookie("auth_token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
+      // sameSite: "strict",
       // domain: ".cucibayargo.com",
-      maxAge: 12 * 30 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({ message: "Login berhasil." });
