@@ -22,5 +22,8 @@ RUN npm run build
 # Expose port
 EXPOSE 3000
 
+# Set environment variable for Cloud Run
+ENV PORT=3000
+
 # Start application
 CMD ["node", "dist/api.js"]

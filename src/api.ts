@@ -16,7 +16,7 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 const environment = process.env.NODE_ENV || "development";
-const PORT = process.env.PORT;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Validate environment variables
 if (!process.env.API_URL) {
@@ -63,10 +63,8 @@ routerV1.use("/report", reportRoutes);
 app.use("/v1/", routerV1);
 
 // Start HTTP server
-app.listen(PORT, () => {
-  console.log(
-    `Server running in ${environment} mode on http://localhost:${PORT}`
-  );
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running in ${environment} mode on port ${PORT}`);
 });
 
 export default app;
