@@ -323,13 +323,13 @@ router.post("/login", async (req, res) => {
       { expiresIn: "2d" }
     );
 
-    res.clearCookie("auth_token", {
-      // domain: ".cucibayargo.com",
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-    });
+    // res.clearCookie("auth_token", {
+    //   // domain: ".cucibayargo.com",
+    //   path: "/",
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: "strict",
+    // });
 
     res.cookie("auth_token", token, {
       httpOnly: true,
