@@ -334,9 +334,8 @@ router.post("/login", async (req, res) => {
     res.cookie("auth_token", token, {
       httpOnly: true,
       secure: true,
-      // sameSite: "strict",
-      // domain: ".cucibayargo.com",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 2 days
     });
 
     res.status(200).json({ message: "Login berhasil." });
