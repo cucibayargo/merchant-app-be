@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install dependencies (include devDependencies for build)
-RUN npm install --omit=dev
+RUN npm install
 
 # Install TypeScript globally
 RUN npm install -g typescript
