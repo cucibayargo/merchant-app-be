@@ -1,27 +1,53 @@
 import express from "express";
-import { ChangePasswordSchema, CustomJwtPayload, LoginSchema, SignUpSchema, SignUpTokenSchema } from "./types";
-import { addUser, addUserSignUpToken, changeUserPassword, createSubscriptions, getSubsPlanByCode, getUserByEmail, notifyUserToPaySubscription, updateUserSignupStatus, validateToken } from "./controller";
+import {
+  ChangePasswordSchema,
+  CustomJwtPayload,
+  LoginSchema,
+  SignUpSchema,
+  SignUpTokenSchema,
+} from "./types";
+import {
+  addUser,
+  addUserSignUpToken,
+  changeUserPassword,
+  createSubscriptions,
+  getSubsPlanByCode,
+  getUserByEmail,
+  initServiceAndDuration,
+  notifyUserToPaySubscription,
+  updateUserSignupStatus,
+  validateToken,
+} from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { getUserDetails, updateUserDetails } from "../user/controller";
-import * as dotenv from 'dotenv';
-import crypto from 'crypto';
-import disposableDomains from 'disposable-email-domains';
-import Mailjet from 'node-mailjet';
+import * as dotenv from "dotenv";
+import crypto from "crypto";
+import disposableDomains from "disposable-email-domains";
+import Mailjet from "node-mailjet";
 
 const router = express.Router();
 dotenv.config();
 
 function isDisposableEmail(email: string): boolean {
-    const domain = email.split('@')[1];
-    return disposableDomains.includes(domain);
+  const domain = email.split("@")[1];
+  return disposableDomains.includes(domain);
 }
 
-const sendEmailRegistration = async (registrationEmail: string, verificationToken: string) => {
-  const verificationUrl = `https://${process.env.API_URL}/${process.env.NODE_ENV === "production" ? "v1" : "api"}/auth/verify-email?token=${verificationToken}`;
+const sendEmailRegistration = async (
+  registrationEmail: string,
+  verificationToken: string
+) => {
+  const verificationUrl = `https://${process.env.API_URL}/${
+    process.env.NODE_ENV === "production" ? "v1" : "api"
+  }/auth/verify-email?token=${verificationToken}`;
 
   // Initialize the Mailjet client with your API keys
-  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string, { options: { timeout: 20000 } });
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
 
   const emailData = {
     Messages: [
@@ -72,22 +98,32 @@ const sendEmailRegistration = async (registrationEmail: string, verificationToke
   };
 
   try {
-    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
-    console.log('Verification email sent successfully:', response.body);
+    const response = await mailjet
+      .post("send", { version: "v3.1" })
+      .request(emailData);
+    console.log("Verification email sent successfully:", response.body);
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    console.error("Error sending verification email:", error);
   }
 };
 
-
 const sendSignUpLink = async (
   registrationEmail: string,
-  params: string | string[][] | Record<string, string> | URLSearchParams | undefined
+  params:
+    | string
+    | string[][]
+    | Record<string, string>
+    | URLSearchParams
+    | undefined
 ) => {
   const queryParams = new URLSearchParams(params).toString();
   const verificationUrl = `https://${process.env.APP_URL}/register?${queryParams}`;
 
-  const mailjet = Mailjet.apiConnect(process.env.MAILJET_API_KEY as string, process.env.MAILJET_API_SECRET as string, { options: { timeout: 20000 } });
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
 
   const emailData = {
     Messages: [
@@ -138,10 +174,12 @@ const sendSignUpLink = async (
   };
 
   try {
-    const response = await mailjet.post('send', { version: 'v3.1' }).request(emailData);
-    console.log('Verification email sent successfully:', response.body);
+    const response = await mailjet
+      .post("send", { version: "v3.1" })
+      .request(emailData);
+    console.log("Verification email sent successfully:", response.body);
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    console.error("Error sending verification email:", error);
   }
 };
 
@@ -192,7 +230,6 @@ const sendSignUpLink = async (
  *           format: date-time
  *           description: Timestamp of when the user was last updated
  */
-
 
 /**
  * @swagger
@@ -256,36 +293,45 @@ router.post("/login", async (req, res) => {
     // Validate Expires user subscription
     const subscriptionEnd = new Date(user.subscription_end || "");
     if (isNaN(subscriptionEnd.getTime())) {
-      return res.status(400).json({ message: "Tanggal berakhir langganan tidak valid. Harap hubungi administrator." });
+      return res.status(400).json({
+        message:
+          "Tanggal berakhir langganan tidak valid. Harap hubungi administrator.",
+      });
     }
-    
+
     if (subscriptionEnd.getTime() <= Date.now()) {
-      return res.status(400).json({ message: "Langganan Anda telah berakhir. Harap bayar tagihan atau hubungi administrator." });
+      return res.status(400).json({
+        message:
+          "Langganan Anda telah berakhir. Harap bayar tagihan atau hubungi administrator.",
+      });
     }
-    
+
     if (user.status === "pending") {
-      return res.status(400).json({ message: "Tolong lakukan verifikasi email terlebih dahulu" });
+      return res
+        .status(400)
+        .json({ message: "Tolong lakukan verifikasi email terlebih dahulu" });
     }
-    
+
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(400).json({ message: "Password salah." });
     }
-        
-    const token = jwt.sign({ id: user.id, subscription_end: user.subscription_end }, "secret_key", { expiresIn: "2d" });
+
+    const token = jwt.sign(
+      { id: user.id, subscription_end: user.subscription_end },
+      "secret_key",
+      { expiresIn: "2d" }
+    );
 
     res.cookie("auth_token", token, {
-      secure: true, 
-      sameSite: "lax", 
-      domain: ".cucibayargo.com", 
-      maxAge: 12 * 30 * 24 * 60 * 60 * 1000, // 12 months 
-    });    
+      secure: true,
+      sameSite: "none",
+      maxAge: 12 * 30 * 24 * 60 * 60 * 1000,
+    });
 
-    res.status(200).json({ message: "Login berhasil."});
+    res.status(200).json({ message: "Login berhasil." });
   } catch (err: any) {
-    res
-      .status(500)
-      .json({ message: "Terjadi kesalahan pada server." });
+    res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 });
 
@@ -323,16 +369,15 @@ router.post("/logout", async (req, res) => {
     // Clear the authentication cookie
     res.cookie("auth_token", "", {
       httpOnly: true,
-      secure: true, 
-      sameSite: 'none', 
-      expires: new Date(0), 
+      secure: true,
+      sameSite: "none",
+      expires: new Date(0),
     });
     res.status(200).json({ message: "Logout berhasil." });
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 });
-
 
 /**
  * @swagger
@@ -396,11 +441,14 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  const { name, email, password, phone_number, token, subscription_plan} = req.body;
+  const { name, email, password, phone_number, token, subscription_plan } =
+    req.body;
 
   try {
     if (isDisposableEmail(email)) {
-      return res.status(400).json({ message: "Email tidak sesuai. Tolong gunakan alamat email yang valid." });
+      return res.status(400).json({
+        message: "Email tidak sesuai. Tolong gunakan alamat email yang valid.",
+      });
     }
 
     const existingUser = await getUserByEmail(email);
@@ -408,7 +456,6 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ message: "Email sudah digunakan." });
     }
 
-    // Step 2: Validate the token by checking if it matches the one in the database
     const isValidToken = await validateToken(email, token);
     if (!isValidToken) {
       return res.status(400).json({ message: "Invalid or expired token." });
@@ -416,7 +463,9 @@ router.post("/signup", async (req, res) => {
 
     const subscriptionPlan = await getSubsPlanByCode(subscription_plan);
     if (!subscriptionPlan) {
-      return res.status(400).json({ message: "Paket Aplikasi Tidak ditemukan." });
+      return res
+        .status(400)
+        .json({ message: "Paket Aplikasi Tidak ditemukan." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -425,31 +474,32 @@ router.post("/signup", async (req, res) => {
       email,
       password: hashedPassword,
       phone_number,
-      status: 'verified', // Initially set user status to 'verified'
+      status: "verified",
     });
 
-
-    // Step 4: Update users_signup table with the status and user_id
     await updateUserSignupStatus(email, token, newUser.id);
 
     if (subscriptionPlan.code == "berlangganan") {
-        // Step 5: Insert User subscription
-        await createSubscriptions({
-          user_id: newUser.id,
-          plan_id: subscriptionPlan.id,
-          start_date: new Date().toISOString(), // Sets the start date to current date in ISO format
-          end_date: new Date(Date.now()).toISOString() // Adds duration in days
-        });
-        notifyUserToPaySubscription(email);
-    } else {
-      // Step 5: Insert User subscription
       await createSubscriptions({
         user_id: newUser.id,
         plan_id: subscriptionPlan.id,
-        start_date: new Date().toISOString(), // Sets the start date to current date in ISO format
-        end_date: new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString() // Adds duration in days
+        start_date: new Date().toISOString(),
+        end_date: new Date(Date.now()).toISOString(),
+      });
+      notifyUserToPaySubscription(email);
+    } else {
+      await createSubscriptions({
+        user_id: newUser.id,
+        plan_id: subscriptionPlan.id,
+        start_date: new Date().toISOString(),
+        end_date: new Date(
+          Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000
+        ).toISOString(),
       });
     }
+
+    // Create Default Service and Duration
+    await initServiceAndDuration(newUser.id);
 
     // Generate verification token
     // const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {
@@ -459,7 +509,9 @@ router.post("/signup", async (req, res) => {
     // Send verification email
     // await sendEmailRegistration(email, verificationToken);
 
-    res.status(201).json({ message: "Daftar akun berhasil, silakan login untuk melanjutkan."});
+    res.status(201).json({
+      message: "Daftar akun berhasil, silakan login untuk melanjutkan.",
+    });
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
@@ -471,7 +523,7 @@ router.post("/signup", async (req, res) => {
  *   post:
  *     summary: Generate a signup link and send to the user's email
  *     description: Validates the user's input and checks if the email is already in use. If valid, creates a signup link and sends it to the user's email.
- *     tags: [Auth]  
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -531,7 +583,7 @@ router.post("/signup", async (req, res) => {
  *                   type: string
  *                   example: Terjadi kesalahan pada server.
  */
-router.post("/signup/token",  async (req, res) => {
+router.post("/signup/token", async (req, res) => {
   const { error } = SignUpTokenSchema.validate(req.body);
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
@@ -540,7 +592,9 @@ router.post("/signup/token",  async (req, res) => {
   const { name, email, phone_number, subscription_plan } = req.body;
   try {
     if (isDisposableEmail(email)) {
-      return res.status(400).json({ message: "Email tidak sesuai. Tolong gunakan alamat email yang valid." });
+      return res.status(400).json({
+        message: "Email tidak sesuai. Tolong gunakan alamat email yang valid.",
+      });
     }
 
     const existingUser = await getUserByEmail(email);
@@ -548,32 +602,51 @@ router.post("/signup/token",  async (req, res) => {
       return res.status(400).json({ message: "Email sudah digunakan." });
     }
 
-    let subscriptionPlan  = null;
+    let subscriptionPlan = null;
     if (subscription_plan) {
       subscriptionPlan = await getSubsPlanByCode(subscription_plan);
       if (!subscriptionPlan) {
-        return res.status(400).json({ message: "Paket Aplikasi Tidak ditemukan." });
+        return res
+          .status(400)
+          .json({ message: "Paket Aplikasi Tidak ditemukan." });
       }
     }
 
     // Generate a unique token using SHA256 hash
-    const signupToken = crypto.createHash('sha256').update(email + Date.now().toString()).digest('hex');
+    const signupToken = crypto
+      .createHash("sha256")
+      .update(email + Date.now().toString())
+      .digest("hex");
 
-    const userDetail = { name, email, phone_number, token: signupToken, subscriptionPlan: subscriptionPlan ? subscriptionPlan.id : null };
+    const userDetail = {
+      name,
+      email,
+      phone_number,
+      token: signupToken,
+      subscriptionPlan: subscriptionPlan ? subscriptionPlan.id : null,
+    };
 
     // Save the signup token and user details in the database
     await addUserSignUpToken(userDetail);
 
     // Send the signup email with the generated token
-    await sendSignUpLink(email, { token: signupToken, email, phone_number, name, subscription_plan: subscriptionPlan ? subscriptionPlan.code : '' });
+    await sendSignUpLink(email, {
+      token: signupToken,
+      email,
+      phone_number,
+      name,
+      subscription_plan: subscriptionPlan ? subscriptionPlan.code : "",
+    });
 
-    res.status(201).json({ message: "Link pendaftaran telah dibuat. Silahkan cek email anda untuk melanjutkan."});
+    res.status(201).json({
+      message:
+        "Link pendaftaran telah dibuat. Silahkan cek email anda untuk melanjutkan.",
+    });
   } catch (err: any) {
     console.log(err);
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
-})
-
+});
 
 /**
  * @swagger
@@ -644,12 +717,11 @@ router.post("/change-password", async (req, res) => {
 
   try {
     await changeUserPassword(email, currentPassword, newPassword);
-    res.status(200).json({ message: 'Password berhasil diperbarui.' });
+    res.status(200).json({ message: "Password berhasil diperbarui." });
   } catch (err: any) {
     res.status(400).json({ message: err.message });
   }
 });
-
 
 /**
  * @swagger
@@ -684,7 +756,7 @@ router.post("/change-password", async (req, res) => {
 //       expiresIn: "2d",
 //     });
 //     res.cookie("auth_token", token, { httpOnly: true, sameSite: 'none', secure: true});
-//     res.redirect("https://store.cucibayargo.com/login-google"); 
+//     res.redirect("https://store.cucibayargo.com/login-google");
 //   } else {
 //     res.status(500).json({ message: "Authentication failed" });
 //   }
@@ -716,7 +788,7 @@ router.get("/verify-email", async (req, res) => {
   const { token } = req.query;
 
   // Check if token is a string
-  if (typeof token !== 'string') {
+  if (typeof token !== "string") {
     return res.status(400).json({ message: "Token verifikasi tidak sesuai." });
   }
 
@@ -730,14 +802,16 @@ router.get("/verify-email", async (req, res) => {
     const userId = decoded.id;
 
     const user = await getUserDetails(userId);
-    if (!user || user.status === 'verified') {
-      return res.status(400).json({ message: "Salah Link Verifikasi atau email sudah terverifikasi." });
+    if (!user || user.status === "verified") {
+      return res.status(400).json({
+        message: "Salah Link Verifikasi atau email sudah terverifikasi.",
+      });
     }
 
     // Update user status to 'verified'
-    await updateUserDetails(userId, { status: 'verified' });
+    await updateUserDetails(userId, { status: "verified" });
 
-    res.redirect(`https://${process.env.APP_URL}/`); 
+    res.redirect(`https://${process.env.APP_URL}/`);
   } catch (err: any) {
     res.status(400).json({ message: "Link verifikasi sudah kedaluarsa." });
   }
