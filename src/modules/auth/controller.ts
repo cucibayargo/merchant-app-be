@@ -238,7 +238,7 @@ export const notifyUserToPaySubscription = async (
     day: "numeric",
   });
 
-  const paymentUrl = `https://example.com/complete-payment?token=${encodeURIComponent(
+  const paymentUrl = `https://${process.env.APP_URL}/complete-payment?token=${encodeURIComponent(
     token
   )}`;
 

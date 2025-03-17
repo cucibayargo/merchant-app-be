@@ -934,7 +934,7 @@ const sendEmailNotification = async (
   const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
   const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
   
-  const verificationUrl = `https://store.cucibayargo.com/verify?token=${encodeURIComponent(token)}`;
+  const verificationUrl = `https://${process.env.APP_URL}/verify?token=${encodeURIComponent(token)}`;
   const isGratis = planCode === 'gratis';
   const emailSubject = isGratis
     ? 'Akun Gratis Anda Akan Ditutup'
