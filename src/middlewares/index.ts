@@ -55,34 +55,28 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     return res.status(401).json({ message: 'Akses ditolak. Token tidak sesuai' });
   }
 
-  try {
-    const secretKey = process.env.JWT_SECRET || 'secret_key';
-    const decoded = jwt.verify(token, secretKey) as { id: string; subscription_end?: string };
-    req.userId = decoded.id;
+  const secretKey = process.env.JWT_SECRET || 'secret_key';
 
-    const subscriptionEnd = decoded.subscription_end ? new Date(decoded.subscription_end) : null;
-    if (subscriptionEnd && subscriptionEnd.getTime() <= Date.now()) {
+  try {
+    const { id, subscription_end, exp } = jwt.verify(token, secretKey) as { id: string; subscription_end?: string; exp?: number };
+    req.userId = id;
+  
+    if (subscription_end && new Date(subscription_end).getTime() <= Date.now()) {
       return res.status(403).json({
-        message: "Your subscription has expired. Please renew your subscription or contact the administrator."
+        message: "Langganan Anda telah kedaluwarsa. Silakan perbarui langganan Anda atau hubungi administrator."
       });
     }
-
-    // const newToken = jwt.sign({ id: decoded.id, subscription_end: decoded.subscription_end }, secretKey, {
-    //   expiresIn: "2d",
-    // });
-
-    // res.cookie("auth_token", newToken, {
-    //   httpOnly: true,
-    //   secure: true,
-    //   sameSite: 'none',
-    //   maxAge: 172800000, // 2 days
-    // });
-
-    next();
+  
+    // Refresh token if it's about to expire (e.g., within 24 hours)
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (exp && exp - currentTime <= 24 * 60 * 60) {
+      const newToken = jwt.sign({ id, subscription_end }, secretKey, { expiresIn: "7d" });
+      res.cookie("auth_token", newToken, { httpOnly: true, secure: true, sameSite: "none", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
   } catch (error) {
-    console.log(error);
-    res.status(401).json({ message: 'Token tidak valid atau telah kedaluwarsa' });
+    return res.status(401).json({ message: "Token tidak valid atau telah kedaluwarsa." });
   }
+  
 };
 
 export default authMiddleware;
