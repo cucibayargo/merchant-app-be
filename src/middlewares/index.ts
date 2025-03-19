@@ -73,6 +73,7 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
       const newToken = jwt.sign({ id, subscription_end }, secretKey, { expiresIn: "7d" });
       res.cookie("auth_token", newToken, { httpOnly: true, secure: true, sameSite: "none", maxAge: 7 * 24 * 60 * 60 * 1000 });
     }
+    next()
   } catch (error) {
     return res.status(401).json({ message: "Token tidak valid atau telah kedaluwarsa." });
   }
