@@ -537,12 +537,12 @@ router.post("/signup", async (req, res) => {
         end_date: new Date(Date.now()).toISOString(),
       });
 
-      await createInvoice({
+      const invoiceId = await createInvoice({
         user_id: newUser.id,
-        plan_code: subscriptionPlan.code,
+        plan_code: "berlangganan",
         token: token
       });
-      notifyUserToPaySubscription(email);
+      notifyUserToPaySubscription(email, invoiceId);
     } else {
       await createSubscriptions({
         user_id: newUser.id,
