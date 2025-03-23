@@ -405,7 +405,7 @@ export async function getTransactionByTransactionId(
       WHERE transaction.id = $1
     `;
     const { rows } = await client.query(query, [invoiceId]);
-    return rows.length ? rows[0] : null;
+    return rows[0];
   } finally {
     client.release();
   }

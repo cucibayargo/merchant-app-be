@@ -20,7 +20,7 @@ import {
 } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { getUserDetails, updateUserDetails } from "../user/controller";
+import { createInvoice, getUserDetails, updateUserDetails } from "../user/controller";
 import * as dotenv from "dotenv";
 import crypto from "crypto";
 import disposableDomains from "disposable-email-domains";
@@ -495,7 +495,13 @@ router.post("/signup", async (req, res) => {
         start_date: new Date().toISOString(),
         end_date: new Date(Date.now()).toISOString(),
       });
-      notifyUserToPaySubscription(email);
+
+      const invoiceId = await createInvoice({
+        user_id: newUser.id,
+        plan_code: "berlangganan",
+        token: token
+      });
+      notifyUserToPaySubscription(email, invoiceId);
     } else {
       await createSubscriptions({
         user_id: newUser.id,

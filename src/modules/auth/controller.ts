@@ -214,7 +214,8 @@ export async function updateUserSignupStatus(
 }
 
 export const notifyUserToPaySubscription = async (
-  email: string
+  email: string,
+  invoiceId: string
 ): Promise<void> => {
   const mailjet = Mailjet.apiConnect(
     process.env.MAILJET_API_KEY as string,
@@ -238,7 +239,7 @@ export const notifyUserToPaySubscription = async (
     day: "numeric",
   });
 
-  const paymentUrl = `https://${process.env.APP_URL}/complete-payment?token=${encodeURIComponent(
+  const paymentUrl = `https://${process.env.APP_URL}/subscription-payment/${invoiceId}?token=${encodeURIComponent(
     token
   )}`;
 
