@@ -51,7 +51,7 @@ export interface TransactionDetails {
 export const transactionSchema = Joi.object({
   customer: Joi.string().uuid().required(),
   duration: Joi.string().uuid().required(),
-  note: Joi.string(),
+  note: Joi.string().allow(''),
   status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil").required(),
   items: Joi.array()
     .items(
