@@ -74,6 +74,26 @@ export async function getSubsPlanById(id: string): Promise<SubscriptionPlan> {
   }
 }
 
+export async function verifySignupToken(token: string): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query(
+      `SELECT 
+        CASE WHEN status = 'signed' THEN false ELSE true END AS is_valid
+      FROM users_signup WHERE token = $1 LIMIT 1`,
+      [token]
+    );
+    if (res.rowCount === 0) {
+      return false; // Token not found
+    }
+    
+
+    return res.rows[0].is_valid;
+  } finally {
+    client.release();
+  }
+}
+
 /**
  * Add a new user to the database.
  * @param user - The user data to add. Excludes 'id' as it's auto-generated.

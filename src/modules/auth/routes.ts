@@ -17,6 +17,7 @@ import {
   notifyUserToPaySubscription,
   updateUserSignupStatus,
   validateToken,
+  verifySignupToken,
 } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -25,6 +26,7 @@ import * as dotenv from "dotenv";
 import crypto from "crypto";
 import disposableDomains from "disposable-email-domains";
 import Mailjet from "node-mailjet";
+import { valid } from "joi";
 
 const router = express.Router();
 dotenv.config();
@@ -531,6 +533,21 @@ router.post("/signup", async (req, res) => {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 });
+
+router.get("/verify-token", async (req, res) => { 
+  const token = req.query.token;
+  if (!token) {
+    return res.status(400).json({ message: "Token tidak ditemukan." });
+  }
+
+  const isValid = await verifySignupToken(token as string);
+  res.status(200).json({
+    valid: isValid,
+    message: isValid
+      ? "Token masih valid dan bisa digunakan."
+      : "Token tidak valid atau sudah digunakan.",
+  });  
+})
 
 /**
  * @swagger
