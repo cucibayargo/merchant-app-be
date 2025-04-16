@@ -185,6 +185,51 @@ const sendSignUpLink = async (
   }
 };
 
+const sendAdminNotification = async (registrationEmail: string) => {
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
+
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: "no-reply@cucibayargo.com",
+          Name: "Cucibayargo System",
+        },
+        To: [
+          {
+            Email: "laundryapps225@gmail.com",
+          },
+        ],
+        Subject: "Notifikasi Pendaftaran Baru",
+        TextPart: `Pengguna baru telah mendaftar dengan email: ${registrationEmail}`,
+        HTMLPart: `
+          <html>
+            <body style="font-family: Arial, sans-serif;">
+              <p>Halo Admin,</p>
+              <p>Pengguna baru telah mendaftar di Cucibayargo.</p>
+              <p><strong>Email:</strong> ${registrationEmail}</p>
+              <p><strong>Waktu:</strong> ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}</p>
+            </body>
+          </html>
+        `,
+      },
+    ],
+  };
+
+  try {
+    const response = await mailjet
+      .post("send", { version: "v3.1" })
+      .request(emailData);
+    console.log("Admin notification email sent successfully:", response.body);
+  } catch (error) {
+    console.error("Error sending admin notification email:", error);
+  }
+};
+
 /**
  * @swagger
  * tags:
@@ -656,6 +701,8 @@ router.post("/signup/token", async (req, res) => {
       name,
       subscription_plan: subscriptionPlan ? subscriptionPlan.code : "",
     });
+
+    await sendAdminNotification(email);
 
     res.status(201).json({
       message:
