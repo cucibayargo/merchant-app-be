@@ -57,6 +57,22 @@ export async function getSubsPlanByCode(
   }
 }
 
+export async function getUserPlanPrice(
+  user_id: string
+): Promise<{price: number} | null> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query(`
+      SELECT user_plan_price as price FROM app_subscriptions 
+      WHERE user_id = $1`, [
+      user_id,
+    ]);
+    return res.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 /**
  * Retrieve a App Plans by subscriotion id.
  * @param id - The id of the plan to retrieve.
@@ -123,12 +139,12 @@ export async function createSubscriptions(
 ): Promise<User> {
   const client = await pool.connect();
   try {
-    const { start_date, end_date, user_id, plan_id } = user;
+    const { start_date, end_date, user_id, plan_id, price } = user;
     const query = `
-      INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id)
-      VALUES ($1, $2, $3, $4) RETURNING *;
+      INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id, user_plan_price)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *;
     `;
-    const values = [start_date, end_date, user_id, plan_id];
+    const values = [start_date, end_date, user_id, plan_id, price];
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {

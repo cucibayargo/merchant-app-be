@@ -168,8 +168,9 @@ export interface SubscriptionPlan {
 }
 
 export interface SubscriptionInput {
-    start_date: string
-    end_date: string
-    user_id: string
-    plan_id: string
+  start_date: string
+  end_date: string
+  user_id: string
+  price: number
+  plan_id: string
 }
