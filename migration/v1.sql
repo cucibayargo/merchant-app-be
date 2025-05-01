@@ -195,3 +195,18 @@ ALTER TABLE app_invoices DROP COLUMN invoice_date;
 ALTER TABLE app_invoices ADD COLUMN token character varying;
 ALTER TABLE transaction ADD COLUMN note TEXT;
 ALTER TABLE "transaction" ADD COLUMN estimated_date TIMESTAMP;
+
+
+ALTER TABLE app_subscriptions ADD COLUMN user_plan_price double precision;
+UPDATE app_subscriptions AS s
+SET user_plan_price = p.price
+FROM app_plans AS p
+WHERE s.plan_id = p.id;
+
+UPDATE app_plans set name = 'Berlangganan 1 Bulan', code='1bulan', price=45000 where code = 'berlangganan';
+INSERT INTO app_plans (name, code, price, duration)
+VALUES
+('Berlangganan 3 Bulan', '3bulan', 125000, 90),
+('Berlangganan 6 Bulan', '6bulan', 260000, 180),
+('Berlangganan 9 Bulan', '12bulan',530000, 360);
+

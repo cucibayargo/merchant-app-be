@@ -4,7 +4,7 @@ import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
 import { getInvoiceResponse, InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
-import { createSubscriptions, getSubsPlanByCode, getSubsPlanById } from "../auth/controller";
+import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getUserPlanPrice } from "../auth/controller";
 import jwt from 'jsonwebtoken';
 
 /**
@@ -469,6 +469,7 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
   try {
     const { user_id, plan_code, token } = planDetail;
     const subscriptionPlan = await getSubsPlanByCode(plan_code);
+    const userPlanPrice = await getUserPlanPrice(user_id);
 
     if (!subscriptionPlan) {
       throw new Error("Paket Aplikasi Tidak ditemukan.");
@@ -491,7 +492,7 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
       INSERT INTO app_invoices (user_id, plan_id, amount, status, due_date, invoice_id, token)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
     `;
-    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, subscriptionPlan.price, "Menunggu Pembayaran", rows[0]?.end_date, invoiceId, token]);
+    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, userPlanPrice?.price, "Menunggu Pembayaran", rows[0]?.end_date, invoiceId, token]);
 
     return invoiceId;
   } catch (error) {
@@ -553,7 +554,7 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
         const getMainPlan = `
           SELECT id
           FROM app_plans
-          WHERE code = 'berlangganan'
+          WHERE code = '1bulan'
           LIMIT 1
         `;
         const newMainPlanResult = await client.query(getMainPlan);
@@ -576,7 +577,7 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
 
         // Update the subscription end date
         const newEndDate = new Date(subscription.end_date);
-        newEndDate.setMonth(newEndDate.getMonth() + 1);
+        newEndDate.setDate(newEndDate.getDate() + subscriptionPlan.duration);
 
         const updateSubscriptionQuery = `
           UPDATE app_subscriptions 

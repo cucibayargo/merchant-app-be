@@ -535,17 +535,18 @@ router.post("/signup", async (req, res) => {
 
     await updateUserSignupStatus(email, token, newUser.id);
 
-    if (subscriptionPlan.code == "berlangganan") {
+    if (subscriptionPlan.code !== "gratis") {
       await createSubscriptions({
         user_id: newUser.id,
         plan_id: subscriptionPlan.id,
+        price: subscriptionPlan.price,
         start_date: new Date().toISOString(),
         end_date: new Date(Date.now()).toISOString(),
       });
 
       const invoiceId = await createInvoice({
         user_id: newUser.id,
-        plan_code: "berlangganan",
+        plan_code: subscriptionPlan.code,
         token: token
       });
       notifyUserToPaySubscription(email, invoiceId);
@@ -554,6 +555,7 @@ router.post("/signup", async (req, res) => {
         user_id: newUser.id,
         plan_id: subscriptionPlan.id,
         start_date: new Date().toISOString(),
+        price: subscriptionPlan.price,
         end_date: new Date(
           Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000
         ).toISOString(),
@@ -700,7 +702,7 @@ router.post("/signup/token", async (req, res) => {
       email,
       phone_number,
       token: signupToken,
-      subscriptionPlan: subscriptionPlan ? subscriptionPlan.id : null,
+      subscription_plan: subscriptionPlan ? subscriptionPlan.id : undefined,
     };
 
     // Save the signup token and user details in the database
@@ -715,7 +717,9 @@ router.post("/signup/token", async (req, res) => {
       subscription_plan: subscriptionPlan ? subscriptionPlan.code : "",
     });
 
-    await sendAdminNotification(email);
+    if (process.env.NODE_ENV === "production") {
+      await sendEmailRegistration(email, signupToken);
+    }
 
     res.status(201).json({
       message:
