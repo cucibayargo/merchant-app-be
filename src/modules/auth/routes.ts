@@ -717,10 +717,12 @@ router.post("/signup/token", async (req, res) => {
       subscription_plan: subscriptionPlan ? subscriptionPlan.code : "",
     });
 
-    if (process.env.NODE_ENV === "production") {
-      await sendEmailRegistration(email, signupToken);
-    }
+    await sendEmailRegistration(email, signupToken);
 
+    if (process.env.NODE_ENV === "production") {
+      await sendAdminNotification(email);
+    }
+    
     res.status(201).json({
       message:
         "Link pendaftaran telah dibuat. Silahkan cek email anda untuk melanjutkan.",
