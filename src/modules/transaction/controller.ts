@@ -298,7 +298,6 @@ export async function updateTransaction(
     const query = `
       UPDATE transaction
       SET
-        note = $2,
         status = $1::text, 
         completed_at = CASE 
                           WHEN $1 = 'Selesai' THEN NOW() 
@@ -317,7 +316,7 @@ export async function updateTransaction(
       RETURNING *;
     `;
 
-    const values = [status, invoiceId, note];
+    const values = [status, invoiceId];
 
     const result = await client.query(query, values);
     const transactionDetail = getTransactionByTransactionId(result.rows[0].id);
