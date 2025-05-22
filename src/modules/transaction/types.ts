@@ -57,8 +57,7 @@ export const transactionSchema = Joi.object({
     .items(
       Joi.object({
         service: Joi.string().uuid().required(),
-
-        qty: Joi.number().integer().positive().required(),
+        qty: Joi.number().required(),
       })
     )
     .required(),
