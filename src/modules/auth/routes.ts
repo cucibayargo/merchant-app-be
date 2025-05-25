@@ -692,10 +692,10 @@ router.post("/signup/token", async (req, res) => {
     }
 
     // Generate a unique token using SHA256 hash
-    const signupToken = crypto
-      .createHash("sha256")
-      .update(email + Date.now().toString())
-      .digest("hex");
+    const signupToken = jwt.sign(
+      { email },
+      process.env.JWT_SECRET as string
+    );    
 
     const userDetail = {
       name,
@@ -717,7 +717,7 @@ router.post("/signup/token", async (req, res) => {
       subscription_plan: subscriptionPlan ? subscriptionPlan.code : "",
     });
 
-    await sendEmailRegistration(email, signupToken);
+    // await sendEmailRegistration(email, signupToken);
 
     if (process.env.NODE_ENV === "production") {
       await sendAdminNotification(email);
