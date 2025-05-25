@@ -539,7 +539,7 @@ router.post("/signup", async (req, res) => {
 
       const invoiceId = await createInvoice({
         user_id: newUser.id,
-        plan_code: "berlangganan",
+        plan_code: subscriptionPlan.code,
         token: token
       });
       notifyUserToPaySubscription(email, invoiceId);
