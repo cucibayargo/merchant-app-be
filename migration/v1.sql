@@ -210,3 +210,5 @@ VALUES
 ('Berlangganan 6 Bulan', '6bulan', 260000, 180),
 ('Berlangganan 9 Bulan', '12bulan',530000, 360);
 
+
+ALTER TABLE users ADD COLUMN is_deleted boolean DEFAULT false;
