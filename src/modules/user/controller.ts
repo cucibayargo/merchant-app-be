@@ -1123,3 +1123,13 @@ export async function TriggerSupabaseCloud(): Promise<boolean> {
     return false;
   }
 }
+
+export async function deleteUser(id: string): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query("UPDATE users SET is_deleted = true WHERE id = $1 RETURNING *", [id]);
+    return res.rows.length > 0;
+  } finally {
+    client.release();
+  }
+}

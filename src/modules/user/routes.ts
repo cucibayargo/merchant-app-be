@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   checkUserSubscriptions,
   deleteTempFiles,
+  deleteUser,
   getInvoiceByUserId,
   getInvoiceDetails,
   getInvoices,
@@ -900,5 +901,51 @@ router.get("/trigger-supabase-cloud", async (req: AuthenticatedRequest, res: Res
     }
   }
 );
+
+/**
+ * @swagger
+ * /user/delete/{id}:
+ *   delete:
+ *     summary: Delete a user from Supabase Cloud
+ *     description: Deletes a user by ID from Supabase Cloud and returns the result
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the user to delete
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: cron-job-token
+ *         required: true
+ *         description: The secret token required to authorize the request
+ *         schema:
+ *           type: string
+ *           example: "d5f811"
+ *     responses:
+ *       '200':
+ *         description: Successfully deleted user from Supabase Cloud
+ *       '404':
+ *         description: User not found or deletion failed
+ *       '500':
+ *         description: Server error while attempting to delete the user
+ */
+router.get("/delete/:id", async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const success = await deleteUser(id);
+
+    if (success) {
+      return res.status(200).json({ message: "Successfully deleted user." });
+    }
+
+    res.status(404).json({ message: "User not found or failed to delete from the database." });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ message: "An error occurred while deleting the user." });
+  }
+});
 
 export default router;
