@@ -467,7 +467,7 @@ export async function setUserPlan(planDetail: Omit<setPlanInput, 'id'>): Promise
 export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promise<string> {
   const client = await pool.connect();
   try {
-    const { user_id, plan_code, token } = planDetail;
+    const { user_id, plan_code } = planDetail;
     const subscriptionPlan = await getSubsPlanByCode(plan_code);
     const userPlanPrice = await getUserPlanPrice(user_id);
 
@@ -489,10 +489,10 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
 
     // Insert new invoice
     const insertSubscriptionQuery = `
-      INSERT INTO app_invoices (user_id, plan_id, amount, status, due_date, invoice_id, token)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO app_invoices (user_id, plan_id, amount, status, due_date, invoice_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
     `;
-    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, userPlanPrice?.price, "Menunggu Pembayaran", rows[0]?.end_date, invoiceId, token]);
+    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, userPlanPrice?.price, "Menunggu Pembayaran", rows[0]?.end_date, invoiceId]);
 
     return invoiceId;
   } catch (error) {
@@ -550,16 +550,6 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
           throw new Error("Paket Aplikasi Tidak ditemukan.");
         }
 
-        // Get new plan details
-        const getMainPlan = `
-          SELECT id
-          FROM app_plans
-          WHERE code = '1bulan'
-          LIMIT 1
-        `;
-        const newMainPlanResult = await client.query(getMainPlan);
-        const newMainPlan = newMainPlanResult.rows[0];
-
         // Check if the user already has this plan active
         const checkSubscriptionQuery = `
           SELECT * 
@@ -585,7 +575,7 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
           WHERE plan_id = $1 AND user_id = $2 
           RETURNING *
         `;
-        await client.query(updateSubscriptionQuery, [invoice.plan_id, invoice.user_id, newEndDate, newMainPlan.id]);
+        await client.query(updateSubscriptionQuery, [invoice.plan_id, invoice.user_id, newEndDate, subscriptionPlan.id]);
 
         // Send email notification for accepted status
         await sendInvoiceApproved(invoice.email, newEndDate.toISOString());
@@ -621,9 +611,10 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
     // Verify the JWT token
     const decoded = await verifyJwt(token);
     const userDetail = `
-      SELECT name, users.id as user_id, app_invoices.status, app_invoices.invoice_id
+      SELECT users.name, users.id as user_id, app_invoices.status, app_invoices.invoice_id, app_invoices.amount, app_plans.code as plan
       FROM users 
       LEFT JOIN app_invoices ON users.id = app_invoices.user_id
+      LEFT JOIN app_plans ON app_plans.id = app_invoices.plan_id
       WHERE email = $1
       ORDER BY app_invoices.created_at ASC
       limit 1 

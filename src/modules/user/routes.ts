@@ -812,7 +812,7 @@ router.post(
       const verifyInvoiceResponse = await verifyInvoiceValid(token);
 
       if (verifyInvoiceResponse?.valid) {
-        return res.status(200).json({ name: verifyInvoiceResponse?.name, status: verifyInvoiceResponse?.status });
+        return res.status(200).json({ name: verifyInvoiceResponse?.name, status: verifyInvoiceResponse?.status, amount: verifyInvoiceResponse?.amount, plan: verifyInvoiceResponse?.plan});
       }
 
       res.status(404).json({ message: "Invoice Sudah Kedaluarsa." });
