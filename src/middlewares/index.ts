@@ -10,6 +10,7 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     '/auth',
     '/docs',
     '/transaction/:id',
+    '/user/delete/:id',
     '/auth/signup/token',
     '/user/verify-invoice',
     '/user/invoice-update',
