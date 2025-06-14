@@ -28,6 +28,8 @@ export interface verifyInvoiceResponse {
   user_id: string
   invoice_id: string
   status: string
+  amount: number
+  plan: string
   valid: boolean
 }
 

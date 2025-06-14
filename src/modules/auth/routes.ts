@@ -497,7 +497,7 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  const { name, email, password, phone_number, token, subscription_plan } =
+  const { name, email, password, phone_number, subscription_plan } =
     req.body;
 
   try {
@@ -512,10 +512,10 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ message: "Email sudah digunakan." });
     }
 
-    const isValidToken = await validateToken(email, token);
-    if (!isValidToken) {
-      return res.status(400).json({ message: "Invalid or expired token." });
-    }
+    // const isValidToken = await validateToken(email, token);
+    // if (!isValidToken) {
+    //   return res.status(400).json({ message: "Invalid or expired token." });
+    // }
 
     const subscriptionPlan = await getSubsPlanByCode(subscription_plan);
     if (!subscriptionPlan) {
@@ -533,7 +533,7 @@ router.post("/signup", async (req, res) => {
       status: "verified",
     });
 
-    await updateUserSignupStatus(email, token, newUser.id);
+    // await updateUserSignupStatus(email, token, newUser.id);
 
     if (subscriptionPlan.code !== "gratis") {
       await createSubscriptions({
@@ -541,13 +541,12 @@ router.post("/signup", async (req, res) => {
         plan_id: subscriptionPlan.id,
         price: subscriptionPlan.price,
         start_date: new Date().toISOString(),
-        end_date: new Date(Date.now()).toISOString(),
+        end_date: new Date().toISOString(),
       });
 
       const invoiceId = await createInvoice({
         user_id: newUser.id,
-        plan_code: subscriptionPlan.code,
-        token: token
+        plan_code: subscriptionPlan.code
       });
       notifyUserToPaySubscription(email, invoiceId);
     } else {
@@ -573,9 +572,29 @@ router.post("/signup", async (req, res) => {
     // Send verification email
     // await sendEmailRegistration(email, verificationToken);
 
+    if (subscriptionPlan.code === "gratis") {
+      const token = jwt.sign(
+        { id: newUser.id, subscription_end: newUser.subscription_end },
+        "secret_key",
+        { expiresIn: "7d" }
+      );
+
+      
+      res.cookie("auth_token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 2 days
+      });
+    }
+
     res.status(201).json({
-      message: "Daftar akun berhasil, silakan login untuk melanjutkan.",
-    });
+      message: `Pendaftaran akun berhasil. ${
+        subscriptionPlan.code === "gratis"
+          ? "Silakan masuk untuk mulai menggunakan layanan kami."
+          : "Silakan periksa email Anda untuk langkah selanjutnya."
+      }`,
+    });    
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
