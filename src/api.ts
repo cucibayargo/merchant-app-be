@@ -16,7 +16,7 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 const environment = process.env.NODE_ENV || "development";
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = process.env.PORT || 3000;
 
 // Validate environment variables
 if (!process.env.API_URL) {
