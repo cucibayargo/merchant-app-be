@@ -373,9 +373,8 @@ router.post("/login", async (req, res) => {
     res.cookie("auth_token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
-      domain: ".cucibayargo.com",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 2 days
     });
 
     res.status(200).json({ message: "Login berhasil." });
@@ -566,8 +565,13 @@ router.post("/signup", async (req, res) => {
     // await sendEmailRegistration(email, verificationToken);
 
     if (subscriptionPlan.code === "gratis") {
+      const user = await getUserByEmail(email);
+      if (!user) {
+        return res.status(400).json({ message: "Email tidak ditemukan" });
+      }
+  
       const token = jwt.sign(
-        { id: newUser.id, subscription_end: newUser.subscription_end },
+        { id: user.id, subscription_end: user.subscription_end },
         "secret_key",
         { expiresIn: "7d" }
       );
