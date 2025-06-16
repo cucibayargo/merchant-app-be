@@ -581,6 +581,10 @@ router.post("/signup", async (req, res) => {
       });
     }
 
+    if (process.env.NODE_ENV === "production") {
+      await sendAdminNotification(email);
+    }
+    
     res.status(201).json({
       message: `Pendaftaran akun berhasil. ${
         subscriptionPlan.code === "gratis"
