@@ -41,4 +41,5 @@ export interface getInvoiceResponse {
 export interface CreateInvoiceResponse {
   invoice_id: string;
   status: string;
+  end_date: string;
 }
