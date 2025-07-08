@@ -14,6 +14,8 @@ import {
   getSubsPlanByCode,
   getUserByEmail,
   initServiceAndDuration,
+  insertReferral,
+  isReferralCodeValid,
   notifyUserToPaySubscription,
   updateUserSignupStatus,
   validateToken,
@@ -21,7 +23,7 @@ import {
 } from "./controller";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { createInvoice, getUserDetails, updateUserDetails } from "../user/controller";
+import { createInvoice, getUserDetails, sendInvoiceApproved, updateUserDetails } from "../user/controller";
 import * as dotenv from "dotenv";
 import crypto from "crypto";
 import disposableDomains from "disposable-email-domains";
@@ -489,7 +491,7 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  const { name, email, password, phone_number, subscription_plan } =
+  const { name, email, password, phone_number, subscription_plan, referral_code } =
     req.body;
 
   try {
@@ -515,6 +517,15 @@ router.post("/signup", async (req, res) => {
         .status(400)
         .json({ message: "Paket Aplikasi Tidak ditemukan." });
     }
+    
+    // If referral code is provided, insert referral data
+    let referralUser = null;
+    if (referral_code) {
+      referralUser = await isReferralCodeValid(referral_code);
+      if (!referralUser) {
+        return res.status(400).json({ message: "Kode referral tidak valid." });
+      }
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await addUser({
@@ -524,6 +535,15 @@ router.post("/signup", async (req, res) => {
       phone_number,
       status: "verified",
     });
+    
+    if (referralUser) {
+      // Referral Bonus For The New User
+      await insertReferral({
+        user_id: newUser.id,
+        referral_user_id: referralUser.id,
+        referral_reward: 50000, 
+      });
+    }
 
     // await updateUserSignupStatus(email, token, newUser.id);
 
@@ -536,11 +556,15 @@ router.post("/signup", async (req, res) => {
         end_date: new Date().toISOString(),
       });
 
-      const invoiceId = await createInvoice({
+      const invoiceResponse = await createInvoice({
         user_id: newUser.id,
         plan_code: subscriptionPlan.code
       });
-      notifyUserToPaySubscription(email, invoiceId);
+      if (invoiceResponse.status == "Diterima") {
+        sendInvoiceApproved(email, new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString())
+      } else {
+        notifyUserToPaySubscription(email, invoiceResponse.invoice_id);
+      }
     } else {
       await createSubscriptions({
         user_id: newUser.id,

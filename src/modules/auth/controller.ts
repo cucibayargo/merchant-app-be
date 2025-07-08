@@ -1,5 +1,6 @@
 import pool from "../../database/postgres";
 import {
+  ReferralInput,
   SignUpInput,
   SignUpTokenInput,
   SubscriptionInput,
@@ -52,6 +53,39 @@ export async function getSubsPlanByCode(
       code,
     ]);
     return res.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+export async function isReferralCodeValid(
+  code: string
+): Promise<User | null> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query("SELECT * FROM users WHERE referral_code = $1", [
+      code,
+    ]);
+    return res.rows[0] || null;
+  } catch (error) {
+    console.error(error);
+    return null; // Return null if an error occurs
+  } finally {
+    client.release();
+  }
+}
+
+export async function insertReferral(data: Omit<ReferralInput, "id">): Promise<User> {
+  const client = await pool.connect();
+  try {
+    const { user_id, referral_user_id, referral_reward} = data;
+    const query = `
+      INSERT INTO user_referral (user_id, referred_user_id, referral_reward)
+      VALUES ($1, $2, $3) RETURNING *;
+    `;
+    const values = [user_id, referral_user_id, referral_reward];
+    const result = await client.query(query, values);
+    return result.rows[0];
   } finally {
     client.release();
   }
@@ -120,15 +154,26 @@ export async function addUser(user: Omit<SignUpInput, "id">): Promise<User> {
   try {
     const { name, email, password, phone_number, oauth, status } = user;
     const query = `
-      INSERT INTO users (name, email, password, phone_number, oauth, status)
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+      INSERT INTO users (name, email, password, phone_number, oauth, status, referral_code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
     `;
-    const values = [name, email, password, phone_number, oauth, status];
+    const values = [name, email, password, phone_number, oauth, status, generateReferralCode()];
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
     client.release();
   }
+}
+
+function generateReferralCode(length = 5): string {
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 characters
+
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    code += charset[randomIndex];
+  }
+  return code;
 }
 
 /**
