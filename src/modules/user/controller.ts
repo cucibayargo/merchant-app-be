@@ -239,8 +239,12 @@ export async function checkUserSubscriptions(): Promise<void> {
             plan_code: user.code,
             token: token
           });
-          console.log(`Sending email notification to: ${user.email}, end date: ${user.end_date}, plan: ${user.code}`);
-          await sendEmailNotification(user.email, user.end_date, user.code, token, invoiceResponse.invoice_id);
+          if (invoiceResponse.status == "Diterima") {
+            sendInvoiceApproved(user.email, invoiceResponse.end_date)
+          } else {
+            console.log(`Sending email notification to: ${user.email}, end date: ${user.end_date}, plan: ${user.code}`);
+            await sendEmailNotification(user.email, user.end_date, user.code, token, invoiceResponse.invoice_id);
+          }
         } catch (error) {
           console.error(`Error processing user ${user.id}:`, error);
         }
@@ -506,7 +510,8 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
       VALUES ($1, $2, $3, $4, $5, $6)
     `;
     await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, amount, status, rows[0]?.end_date || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), invoiceId]);
-
+    
+    let newEndDate;
     if (redeemedPoints > 0) {
       const query = `
         UPDATE users 
@@ -519,7 +524,7 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
 
       if (status === "Diterima") {
         // Update the subscription end date
-        const newEndDate = rows[0]?.end_date ? new Date(rows[0].end_date) : new Date();
+        newEndDate = rows[0]?.end_date ? new Date(rows[0].end_date) : new Date();
         newEndDate.setDate(newEndDate.getDate() + subscriptionPlan.duration);
 
         const updateSubscriptionQuery = `
@@ -532,10 +537,10 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
       }
     }
 
-    return { invoice_id: invoiceId, status};
+    return { invoice_id: invoiceId, status, end_date: newEndDate?.toISOString() || '' };
   } catch (error) {
     console.error("Error setting user plan:", error);
-    return { invoice_id: '', status: 'error'};
+    return { invoice_id: '', status: 'error', end_date: '' };
   } finally {
     client.release();
   }
