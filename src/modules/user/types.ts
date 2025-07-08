@@ -37,3 +37,8 @@ export interface getInvoiceResponse {
   invoice: string
   token: string
 }
+
+export interface CreateInvoiceResponse {
+  invoice_id: string;
+  status: string;
+}

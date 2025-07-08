@@ -3,7 +3,7 @@ import pool from "../../database/postgres";
 import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
-import { getInvoiceResponse, InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
+import { CreateInvoiceResponse, getInvoiceResponse, InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
 import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getUserPlanPrice } from "../auth/controller";
 import jwt from 'jsonwebtoken';
 
@@ -43,7 +43,10 @@ export async function getUserDetails(id?: string): Promise<User | null> {
         users.logo,
         users.address,
         app_subscriptions.end_date AS subscription_end,
-        app_plans.name AS plan_name
+        app_plans.name AS plan_name,
+        users.referral_points,
+        users.referral_points_redeemed,
+        users.referral_code
       FROM users 
       LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id
       LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id
@@ -230,14 +233,14 @@ export async function checkUserSubscriptions(): Promise<void> {
             { email: user.email }, // Payload
             process.env.JWT_SECRET as string, // Secret key
             { expiresIn: '7d' } // Token expiration time (7 days in this example)
-          );        
-          const invoiceId = await createInvoice({
+          );
+          const invoiceResponse = await createInvoice({
             user_id: user.id,
             plan_code: user.code,
             token: token
           });
           console.log(`Sending email notification to: ${user.email}, end date: ${user.end_date}, plan: ${user.code}`);
-          await sendEmailNotification(user.email, user.end_date, user.code, token, invoiceId);
+          await sendEmailNotification(user.email, user.end_date, user.code, token, invoiceResponse.invoice_id);
         } catch (error) {
           console.error(`Error processing user ${user.id}:`, error);
         }
@@ -464,12 +467,13 @@ export async function setUserPlan(planDetail: Omit<setPlanInput, 'id'>): Promise
  * @param planDetail - The plan details including user_id and plan_code.
  * @returns {Promise<boolean>} - A promise that resolves to true if the plan is set successfully, otherwise false.
  */
-export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promise<string> {
+export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promise<CreateInvoiceResponse> {
   const client = await pool.connect();
   try {
     const { user_id, plan_code } = planDetail;
     const subscriptionPlan = await getSubsPlanByCode(plan_code);
     const userPlanPrice = await getUserPlanPrice(user_id);
+    const userDetails = await getUserDetails(user_id);
 
     if (!subscriptionPlan) {
       throw new Error("Paket Aplikasi Tidak ditemukan.");
@@ -487,17 +491,51 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
     // Generate the invoice ID with prefix CBG- and current timestamp in milliseconds
     const invoiceId = `CBG-${Date.now()}`;
 
+    let amount = userPlanPrice?.price || 0;
+    let redeemedPoints = 0;
+    if (userDetails && userDetails.referral_points > 0) {
+      const planPrice = userPlanPrice?.price || 0;
+      redeemedPoints = Math.min(userDetails.referral_points, planPrice);
+      amount = planPrice - redeemedPoints;
+    }
+    let status = amount === 0 ? "Diterima" : "Menunggu Pembayaran";
+
     // Insert new invoice
     const insertSubscriptionQuery = `
       INSERT INTO app_invoices (user_id, plan_id, amount, status, due_date, invoice_id)
       VALUES ($1, $2, $3, $4, $5, $6)
     `;
-    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, userPlanPrice?.price, "Menunggu Pembayaran", rows[0]?.end_date, invoiceId]);
+    await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, amount, status, rows[0]?.end_date || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), invoiceId]);
 
-    return invoiceId;
+    if (redeemedPoints > 0) {
+      const query = `
+        UPDATE users 
+        SET 
+          referral_points = referral_points - $1,
+          referral_points_redeemed = referral_points_redeemed + $1
+        WHERE id = $2
+      `;
+      await client.query(query, [redeemedPoints, user_id]);
+
+      if (status === "Diterima") {
+        // Update the subscription end date
+        const newEndDate = rows[0]?.end_date ? new Date(rows[0].end_date) : new Date();
+        newEndDate.setDate(newEndDate.getDate() + subscriptionPlan.duration);
+
+        const updateSubscriptionQuery = `
+          UPDATE app_subscriptions 
+          SET end_date = $3
+          WHERE plan_id = $1 AND user_id = $2 
+          RETURNING *
+        `;
+        await client.query(updateSubscriptionQuery, [subscriptionPlan.id, user_id, newEndDate]);
+      }
+    }
+
+    return { invoice_id: invoiceId, status};
   } catch (error) {
     console.error("Error setting user plan:", error);
-    return "";
+    return { invoice_id: '', status: 'error'};
   } finally {
     client.release();
   }
@@ -649,7 +687,7 @@ export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResp
     `;
     const result = await client.query(query, [userId]);
 
-    return { invoice: result?.rows[0]?.invoice_id, token: result?.rows[0]?.token}
+    return { invoice: result?.rows[0]?.invoice_id, token: result?.rows[0]?.token }
   } catch (error) {
     console.error('Error verifying invoice:', error);
     return null;
@@ -676,7 +714,7 @@ async function verifyJwt(token: string): Promise<any | null> {
  * @param email - The user's email address.
  * @param endDate - The new end date of the subscription.
  */
-const sendInvoiceApproved = async (email: string, endDate: string): Promise<void> => {
+export const sendInvoiceApproved = async (email: string, endDate: string): Promise<void> => {
   const mailjet = Mailjet.apiConnect(
     process.env.MAILJET_API_KEY as string,
     process.env.MAILJET_API_SECRET as string,
@@ -926,7 +964,7 @@ const sendEmailNotification = async (
 
   const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
   const formattedEndDate = new Intl.DateTimeFormat("id-ID", options).format(new Date(endDate));
-  
+
   const verificationUrl = `https://${process.env.APP_URL}/subscription-payment/${invoiceId}?token=${encodeURIComponent(token)}`;
   const isGratis = planCode === 'gratis';
   const emailSubject = isGratis
