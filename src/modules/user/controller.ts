@@ -273,7 +273,8 @@ export const uploadTransactionFile = async (
   note: string,
   invoice_id: string,
   filePath: string,
-  fileUrl: string
+  fileUrl: string,
+  referral_points?: number
 ) => {
   const client = await pool.connect();
   try {
@@ -292,6 +293,18 @@ export const uploadTransactionFile = async (
     // If no rows were updated in the invoice, handle it
     if (updateInvoice.rowCount === 0) {
       throw new Error(`Invoice with ID ${invoice_id} not found.`);
+    }
+
+    if (referral_points) {
+      await client.query(`UPDATE app_invoices SET referral_points_redeemed = $2 WHERE invoice_id = $1`, [invoice_id, referral_points]);
+      const query = `
+        UPDATE users 
+        SET 
+          referral_points = referral_points - $2,
+          referral_points_redeemed = referral_points_redeemed + $2
+        WHERE id = $1
+      `;
+      await client.query(query, [userId, referral_points]);
     }
 
     const userDetailQuery = `
@@ -497,7 +510,7 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
 
     let amount = userPlanPrice?.price || 0;
     let redeemedPoints = 0;
-    if (userDetails && userDetails.referral_points > 0) {
+    if (userDetails && userDetails.referral_points > 0 && planDetail.withReferralPoint) {
       const planPrice = userPlanPrice?.price || 0;
       redeemedPoints = Math.min(userDetails.referral_points, planPrice);
       amount = planPrice - redeemedPoints;
@@ -512,7 +525,7 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
     await client.query(insertSubscriptionQuery, [user_id, subscriptionPlan.id, amount, status, rows[0]?.end_date || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), invoiceId]);
     
     let newEndDate;
-    if (redeemedPoints > 0) {
+    if (redeemedPoints > 0 && planDetail.withReferralPoint) {
       const query = `
         UPDATE users 
         SET 
@@ -659,7 +672,7 @@ export async function verifyInvoiceValid(token: string): Promise<verifyInvoiceRe
       LEFT JOIN app_invoices ON users.id = app_invoices.user_id
       LEFT JOIN app_plans ON app_plans.id = app_invoices.plan_id
       WHERE email = $1
-      ORDER BY app_invoices.created_at ASC
+      ORDER BY app_invoices.created_at DESC
       limit 1 
     `;
     const result = await client.query(userDetail, [decoded.email]);

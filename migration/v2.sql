@@ -85,3 +85,5 @@ BEGIN
     END LOOP;
 END;
 $$;
+
+ALTER TABLE app_invoices ADD COLUMN "referral_points_redeemed" NUMERIC DEFAULT 0;

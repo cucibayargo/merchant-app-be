@@ -344,6 +344,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Rincian pengguna berhasil diperbarui', user: updatedUser });
   } catch (error) {
+    console.log(error)
     const err = error as Error;
     res.status(500).json({ message: 'Terjadi kesalahan server.' });
   }
@@ -504,8 +505,8 @@ router.post(
 
       const { originalname, buffer, mimetype } = req.file;
       const fileName = `${Date.now()}_${originalname}`;
-      const { note } = req.body;
-
+      const { note, referral_points} = req.body;
+      
       const { error: uploadError } = await supabase.storage
         .from("app_transactions")
         .upload(`invoice/${fileName}`, buffer, {
@@ -521,12 +522,17 @@ router.post(
         .from("app_transactions")
         .getPublicUrl(`invoice/${fileName}`);
 
+      let latestRefPoints = referral_points;
+      if (Number(referral_points) > invoiceDetail.amount) {
+        latestRefPoints = invoiceDetail.amount;
+      }
       await uploadTransactionFile(
         invoiceDetail.user_id,
         note,
         invoiceDetail.invoice_id,
         `invoice/${fileName}`,
-        publicUrlData.publicUrl
+        publicUrlData.publicUrl,
+        latestRefPoints
       );
 
       // Respond with success message

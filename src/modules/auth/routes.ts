@@ -566,7 +566,8 @@ router.post("/signup", async (req, res) => {
 
       const invoiceResponse = await createInvoice({
         user_id: newUser.id,
-        plan_code: subscriptionPlan.code
+        plan_code: subscriptionPlan.code,
+        withReferralPoint: true
       });
       if (invoiceResponse.status == "Diterima") {
         sendInvoiceApproved(email, new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString())

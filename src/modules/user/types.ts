@@ -15,6 +15,7 @@ export interface InvoiceDetails {
     user_id: string;
     plan_code: string;
     token?: string;
+    withReferralPoint?: boolean
   }
   
 
