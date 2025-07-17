@@ -128,6 +128,9 @@ export async function updateUserDetails(
       phone_number: result.rows[0].phone_number,
       logo: result.rows[0].logo,
       address: result.rows[0].address,
+      referral_points: result.rows[0].referral_points,
+      referral_code: result.rows[0].referral_code,
+      referral_points_redeemed: result.rows[0].referral_points_redeemed,
     };
     return result.rows[0] ? userDatail : null;
   } finally {

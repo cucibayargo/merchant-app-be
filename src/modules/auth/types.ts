@@ -31,6 +31,9 @@ export interface UserDetail {
   logo?: string;
   address?: string;
   id: string; // UUID v4
+  referral_points?: number
+  referral_points_redeemed?: number
+  referral_code?: string
 }
 
 export interface LoginInput {
