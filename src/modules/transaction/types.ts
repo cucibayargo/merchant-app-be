@@ -52,7 +52,7 @@ export const transactionSchema = Joi.object({
   customer: Joi.string().uuid().required(),
   duration: Joi.string().uuid().required(),
   note: Joi.string().allow(''),
-  status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil").required(),
+  status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil", "Dibatalkan").required(),
   items: Joi.array()
     .items(
       Joi.object({
