@@ -8,6 +8,7 @@ import {
   updateTransaction,
 } from "./controller";
 import { AuthenticatedRequest } from "../../middlewares";
+import { formatJoiError } from "../../utils";
 
 const router = express.Router();
 
@@ -376,9 +377,8 @@ router.get("/", async (req: AuthenticatedRequest, res: Response) => {
 router.post("/", async (req: AuthenticatedRequest, res) => {
   const { error } = transactionSchema.validate(req.body);
   if (error) {
-    return res
-      .status(400)
-      .json({ status: "error", message: error.details[0].message });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   try {

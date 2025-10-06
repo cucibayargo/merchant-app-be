@@ -29,6 +29,7 @@ import crypto from "crypto";
 import disposableDomains from "disposable-email-domains";
 import Mailjet from "node-mailjet";
 import { valid } from "joi";
+import { formatJoiError } from "../../utils";
 
 const router = express.Router();
 dotenv.config();
@@ -327,9 +328,10 @@ const sendAdminNotification = async (registrationEmail: string) => {
  */
 router.post("/login", async (req, res) => {
   const { error } = LoginSchema.validate(req.body);
-  if (error) {
-    return res.status(400).json({ message: error.details[0].message });
-  }
+   if (error) {
+     const message = formatJoiError(error);
+     return res.status(400).json({ error: message });
+   }
 
   const { email, password } = req.body;
 
@@ -387,7 +389,7 @@ router.post("/login", async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 2 days
     });
 
-    res.status(200).json({ message: "Login berhasil." });
+    res.status(200).json({ message: "Login berhasil.", token: token});
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
@@ -496,7 +498,8 @@ router.post("/logout", async (req, res) => {
 router.post("/signup", async (req, res) => {
   const { error } = SignUpSchema.validate(req.body);
   if (error) {
-    return res.status(400).json({ message: error.details[0].message });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { name, email, password, phone_number, subscription_plan, referral_code } =
@@ -713,7 +716,8 @@ router.get("/verify-token", async (req, res) => {
 router.post("/signup/token", async (req, res) => {
   const { error } = SignUpTokenSchema.validate(req.body);
   if (error) {
-    return res.status(400).json({ message: error.details[0].message });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { name, email, phone_number, subscription_plan } = req.body;
@@ -842,8 +846,9 @@ router.post("/signup/token", async (req, res) => {
  */
 router.post("/change-password", async (req, res) => {
   const { error } = ChangePasswordSchema.validate(req.body);
-  if (error) {
-    return res.status(400).json({ message: error.details[0].message });
+   if (error) {
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { email, currentPassword, newPassword } = req.body;

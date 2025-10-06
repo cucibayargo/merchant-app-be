@@ -3,6 +3,7 @@ import { emailSupportSchema, SheetData } from "./types";
 import { sendToSheet } from "./controller";
 import { AuthenticatedRequest } from "../../middlewares";
 import { getUserDetails } from "../user/controller";
+import { formatJoiError } from "../../utils";
 
 const router = express.Router();
 
@@ -70,16 +71,9 @@ const router = express.Router();
 
 router.post("/", async (req: AuthenticatedRequest, res: Response) => {
     const { error, value } = emailSupportSchema.validate(req.body, { abortEarly: false });
-
     if (error) {
-        return res.status(400).json({
-            errors: error.details.map(err => ({
-            type: 'field',
-            msg: err.message,
-            path: err.path[0],
-            location: 'body'
-            }))
-        });
+      const message = formatJoiError(error);
+      return res.status(400).json({ error: message });
     }
 
     const userDetail = await getUserDetails(req.userId);

@@ -2,6 +2,7 @@ import express from 'express';
 import { Duration, durationSchema, DurationType } from './types';
 import { getDurations, getDurationById, addDuration, updateDuration, deleteDuration, getAllDurations } from './controller';
 import { AuthenticatedRequest } from '../../middlewares';
+import { formatJoiError } from '../../utils';
 
 const router = express.Router();
 
@@ -227,14 +228,8 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
 
   const { error, value } = durationSchema.validate(req.body, { abortEarly: false });
   if (error) {
-    return res.status(400).json({
-      errors: error.details.map(err => ({
-        type: 'field',
-        msg: err.message,
-        path: err.path[0],
-        location: 'body'
-      }))
-    });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { id, name, duration, type } = req.body;
@@ -294,14 +289,8 @@ router.put('/:id', async (req, res) => {
 
   const { error, value } = durationSchema.validate(req.body, { abortEarly: false });
   if (error) {
-    return res.status(400).json({
-      errors: error.details.map(err => ({
-        type: 'field',
-        msg: err.message,
-        path: err.path[0],
-        location: 'body'
-      }))
-    });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { id, name, duration, type } = req.body;

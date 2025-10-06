@@ -2,6 +2,7 @@ import express from "express";
 import { noteSchema } from "./types";
 import { addNote, GetNote, updateNote } from "./controller";
 import { AuthenticatedRequest } from "../../middlewares";
+import { formatJoiError } from "../../utils";
 
 const router = express.Router();
 
@@ -115,16 +116,9 @@ router.put("/", async (req: AuthenticatedRequest, res) => {
   }
 
   const { error, value } = noteSchema.validate(req.body, { abortEarly: false });
-
   if (error) {
-    return res.status(400).json({
-      errors: error.details.map((err) => ({
-        type: "field",
-        msg: err.message,
-        path: err.path[0],
-        location: "body",
-      })),
-    });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { notes } = req.body;

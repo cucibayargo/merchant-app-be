@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import { addCustomer, GetCustomers, updateCustomer, getCustomerById, deleteCustomer } from "./controller";
 import { customerSchema } from "./types";
 import { AuthenticatedRequest } from "../../middlewares";
+import { formatJoiError } from "../../utils";
 
 const router = express.Router();
 
@@ -199,16 +200,9 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
   }
 
   const { error, value } = customerSchema.validate(req.body, { abortEarly: false });
-
   if (error) {
-    return res.status(400).json({
-      errors: error.details.map(err => ({
-        type: 'field',
-        msg: err.message,
-        path: err.path[0],
-        location: 'body'
-      }))
-    });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { name, phone_number, email, address, gender } = req.body;
@@ -299,16 +293,9 @@ router.get("/:id", async (req: Request, res: Response) => {
  */
 router.put("/:id", (req: Request, res: Response) => {
   const { error, value } = customerSchema.validate(req.body, { abortEarly: false });
-
   if (error) {
-    return res.status(400).json({
-      errors: error.details.map(err => ({
-        type: 'field',
-        msg: err.message,
-        path: err.path[0],
-        location: 'body'
-      }))
-    });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   const { id } = req.params;

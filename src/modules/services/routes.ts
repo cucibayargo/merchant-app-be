@@ -2,6 +2,7 @@ import express from 'express';
 import { serviceSchema } from './types';
 import { addService, deleteService, getAllServices, getServiceById, getServices, updateService } from './controller';
 import { AuthenticatedRequest } from '../../middlewares';
+import { formatJoiError } from '../../utils';
 
 const router = express.Router();
 
@@ -296,9 +297,9 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
  */
 router.post('/', async (req: AuthenticatedRequest, res) => {
   const { error } = serviceSchema.validate(req.body);
-
   if (error) {
-    return res.status(400).json({ message: error.details[0].message });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   try {
@@ -346,9 +347,9 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
  */
 router.put('/:id', async (req, res) => {
   const { error } = serviceSchema.validate(req.body);
-
   if (error) {
-    return res.status(400).json({ message: error.details[0].message });
+    const message = formatJoiError(error);
+    return res.status(400).json({ error: message });
   }
 
   try {
