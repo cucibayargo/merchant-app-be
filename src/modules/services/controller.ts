@@ -18,31 +18,47 @@ export async function getAllServices(
   const client = await pool.connect();
 
   try {
-    // Query to fetch service details, including optional pricing for a given duration.
-    const query = `
+    let query = `
       SELECT 
         service.id, 
-        service.name, 
-        service_duration.price
+        service.name,
+        service.unit, 
+        service_duration.price,
+        duration.name AS duration_name,
+        duration.id AS duration_id
       FROM service
       LEFT JOIN service_duration 
         ON service.id = service_duration.service
-      WHERE 
-        ($1::text IS NULL OR service.name ILIKE '%' || $1 || '%') AND
-        service.merchant_id = $2 AND
-        service_duration.duration::text = $3
-      ORDER BY service.created_at DESC
+      LEFT JOIN duration
+        ON service_duration.duration = duration.id
+      WHERE service.merchant_id = $1
     `;
 
-    const params = [filter, merchantId, durationId];
-    const result = await client.query(query, params);
+    const params: any[] = [merchantId];
+    let paramIndex = 2;
 
+    if (filter) {
+      query += ` AND service.name ILIKE '%' || $${paramIndex} || '%'`;
+      params.push(filter);
+      paramIndex++;
+    }
+
+    if (durationId) {
+      query += ` AND service_duration.duration::text = $${paramIndex}`;
+      params.push(durationId);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY service.created_at DESC`;
+
+    const result = await client.query(query, params);
     return result.rows;
+
   } catch (error) {
     console.error("Error fetching services:", error);
-    throw error; // Re-throw error for handling by the caller.
+    throw error;
   } finally {
-    client.release(); // Ensure the database client is released.
+    client.release();
   }
 }
 
