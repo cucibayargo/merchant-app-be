@@ -94,7 +94,6 @@ export async function getTransactions(
         p.invoice_id AS invoice,
         t.status,
         t.created_at,
-        t.estimated_date,
         t.note,
         t.ready_to_pick_up_at,
         t.completed_at
@@ -144,9 +143,8 @@ export async function addTransaction(
 ): Promise<any | null> {
   const client = await pool.connect();
   try {
-    const { customer, duration, status, items, note } = transaction;
+    const { customer, status, items, note } = transaction;
     const customerDetail = await getCustomerById(customer);
-    const durationDetail = await getDurationById(duration);
 
     const query = `
       INSERT INTO transaction (
@@ -155,30 +153,12 @@ export async function addTransaction(
         customer_phone_number, 
         customer_email, 
         customer_address, 
-        duration_id, 
-        duration_name,
-        duration_length,
-        duration_length_type,
         status, 
         merchant_id,
-        estimated_date,
         note
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;
     `;
-
-    let currentDate = new Date(); // Current date and time
-    let estimatedDate;
-
-    if (durationDetail?.type === "Jam") {
-      estimatedDate = new Date(
-        currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000
-      );
-    } else if (durationDetail?.type === "Hari") {
-      estimatedDate = new Date(
-        currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000
-      );
-    }
 
     const values = [
       customerDetail?.id,
@@ -186,13 +166,8 @@ export async function addTransaction(
       customerDetail?.phone_number,
       customerDetail?.email,
       customerDetail?.address,
-      durationDetail?.id,
-      durationDetail?.name,
-      durationDetail?.duration,
-      durationDetail?.type,
       status,
       merchant_id,
-      estimatedDate,
       note,
     ];
     const result = await client.query(query, values);
@@ -201,17 +176,42 @@ export async function addTransaction(
     // Insert service items
     const transactionQueries: TransactionQuery[] = [];
 
+    const currentDate = new Date(); 
     for (const item of items || []) {
       const serviceDetail = await getServiceDurationDetail(
         item.service,
-        duration
+        item.duration
       );
+
+      const durationDetail = await getDurationById(item.duration);
+      let estimatedDate;
+      if (durationDetail?.type === "Jam") {
+        estimatedDate = new Date(
+          currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000
+        );
+      } else if (durationDetail?.type === "Hari") {
+        estimatedDate = new Date(
+          currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000
+        );
+      }
 
       transactionQueries.push({
         text: `
-          INSERT INTO transaction_item (transaction_id, service_id, service_name, service_unit, price, qty)
-          VALUES ($1, $2, $3, $4, $5, $6);
-        `,
+          INSERT INTO transaction_item (
+            transaction_id,
+            service_id,
+            service_name,
+            service_unit,
+            price,
+            qty,
+            duration_id,
+            duration_name,
+            duration_length,
+            duration_length_type,
+            estimated_date
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+    `,
         values: [
           newTransactionId,
           serviceDetail.id,
@@ -219,6 +219,11 @@ export async function addTransaction(
           serviceDetail.unit,
           serviceDetail.price,
           item.qty,
+          durationDetail?.id,
+          durationDetail?.name,
+          durationDetail?.duration,
+          durationDetail?.type,
+          estimatedDate,
         ],
       });
     }
@@ -345,10 +350,8 @@ export async function getTransactionById(
         t.customer_phone_number AS customer_phone_number,
         t.ready_to_pick_up_at,
         t.completed_at,
-        t.estimated_date,
         t.created_at,
         t.note,
-        t.duration_name,
         t.status AS transaction_status,
         p.invoice_id AS invoice,
         SUM(ti.price * ti.qty) AS total,
@@ -360,7 +363,10 @@ export async function getTransactionById(
             'service_name', ti.service_name,
             'service_unit', ti.service_unit,
             'price', ti.price,
-            'quantity', ti.qty
+            'quantity', ti.qty,
+            'duration_id', ti.duration_id,
+            'duration_name', ti.duration_name,
+            'estimated_date', ti.estimated_date
           )
         ) AS services
       FROM transaction t

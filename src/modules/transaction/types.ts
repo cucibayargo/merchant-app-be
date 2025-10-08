@@ -3,12 +3,12 @@ interface TransactionItemDetail {
   service: string;
   service_name: string;
   qty: number;
+  duration: string;
 }
 
 export interface Transaction {
   id: string;
   customer: string;
-  duration: string;
   customer_name: string;
   duration_name: string;
   status: "Diproses" | "Selesai" | "Siap Diambil";
@@ -50,13 +50,13 @@ export interface TransactionDetails {
 
 export const transactionSchema = Joi.object({
   customer: Joi.string().uuid().required(),
-  duration: Joi.string().uuid().required(),
   note: Joi.string().allow(''),
   status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil", "Dibatalkan").required(),
   items: Joi.array()
     .items(
       Joi.object({
         service: Joi.string().uuid().required(),
+        duration: Joi.string().uuid().required(),
         qty: Joi.number().required(),
       })
     )
