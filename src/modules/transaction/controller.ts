@@ -96,7 +96,8 @@ export async function getTransactions(
         t.created_at,
         t.note,
         t.ready_to_pick_up_at,
-        t.completed_at
+        t.completed_at,
+        NOW() as estimated_date
       FROM transaction t
       LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
       LEFT JOIN payment p ON t.id = p.transaction_id
