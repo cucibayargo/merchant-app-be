@@ -29,7 +29,7 @@ export async function getTransactions(
 
     switch (status) {
       case "Diproses":
-        dateColumn = "t.estimated_date";
+        dateColumn = "ti.estimated_date";
         sortType = "ASC";
         break;
       case "Siap Diambil":
@@ -98,8 +98,10 @@ export async function getTransactions(
         t.ready_to_pick_up_at,
         t.completed_at
       FROM transaction t
+      LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
       LEFT JOIN payment p ON t.id = p.transaction_id
       WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
+      GROUP BY t.id, p.id, ti.id
       ORDER BY ${dateColumn} ${sortType}
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
     `;
@@ -445,7 +447,6 @@ export async function getInvoiceById(
               'entry_date', TO_CHAR(t.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'ready_to_pickup_date', TO_CHAR(t.ready_to_pick_up_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'completed_date', TO_CHAR(t.completed_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-              'estimated_date', TO_CHAR(t.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
               'duration', t.duration_name,
               'note', t.note,
               'services', json_agg(
@@ -454,7 +455,8 @@ export async function getInvoiceById(
                       'unit', ti.service_unit,
                       'price', ti.price,
                       'quantity', ti.qty,
-                      'total_price', ti.qty * ti.price
+                      'total_price', ti.qty * ti.price,
+                      'estimated_date', TO_CHAR(ti.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   )
               ),
               'total_price', SUM(ti.price * ti.qty),
