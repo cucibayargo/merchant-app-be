@@ -97,12 +97,12 @@ export async function getTransactions(
         t.note,
         t.ready_to_pick_up_at,
         t.completed_at,
-        NOW() as estimated_date
+        MAX(ti.estimated_date) as estimated_date
       FROM transaction t
       LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
       LEFT JOIN payment p ON t.id = p.transaction_id
       WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
-      GROUP BY t.id, p.id, ti.id
+      GROUP BY t.id, p.id
       ORDER BY ${dateColumn} ${sortType}
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
     `;
