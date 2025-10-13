@@ -29,7 +29,7 @@ export async function getTransactions(
 
     switch (status) {
       case "Diproses":
-        dateColumn = "ti.estimated_date";
+        dateColumn = "MAX(ti.estimated_date)";
         sortType = "ASC";
         break;
       case "Siap Diambil":
