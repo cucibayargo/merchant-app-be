@@ -360,6 +360,7 @@ export async function getTransactionById(
         SUM(ti.price * ti.qty) AS total,
         p.status AS payment_status,
         p.id AS payment_id,
+        MAX(ti.estimated_date) AS estimated_date,
         json_agg(
           json_build_object(
             'service_id', ti.service_id,

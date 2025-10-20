@@ -25,7 +25,8 @@ export async function getAllServices(
         service.unit, 
         service_duration.price,
         duration.name AS duration_name,
-        duration.id AS duration_id
+        duration.id AS duration_id,
+        substring(md5(random()::text || clock_timestamp()::text) for 8) AS unique_id
       FROM service
       LEFT JOIN service_duration 
         ON service.id = service_duration.service
