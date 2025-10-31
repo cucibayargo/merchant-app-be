@@ -11,3 +11,13 @@ DROP COLUMN IF EXISTS duration_name,
 DROP COLUMN IF EXISTS duration_length,
 DROP COLUMN IF EXISTS duration_length_type,
 DROP COLUMN IF EXISTS estimated_date;
+
+CREATE TABLE printed_devices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,                   -- relasi ke tabel users (foreign key optional)
+    device_name VARCHAR(255) NOT NULL,       -- nama asli device
+    alias_name VARCHAR(255),                 -- nama yang diinput oleh user
+    device_id VARCHAR(255) UNIQUE NOT NULL,  -- bisa berupa MAC address printer
+    is_active BOOLEAN DEFAULT FALSE,         -- hanya 1 device yang boleh true
+    last_connected_at TIMESTAMP              -- waktu terakhir device terkoneksi
+);
