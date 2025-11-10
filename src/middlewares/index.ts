@@ -40,7 +40,7 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     return next();
   }
   
-  const token = req.cookies.auth_token || req.headers['authorization'];
+  const token = req.cookies.auth_token || req.headers['authorization'] || req.query.authorization;
   const crToken = req.headers['cron-job-token'];
   const crPrivateToken = process.env.crToken;
 
