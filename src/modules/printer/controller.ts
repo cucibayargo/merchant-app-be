@@ -66,11 +66,7 @@ export async function addPrintedDevice(device: Omit<PrintedDevice, "id" | "last_
   } catch (error: any) {
     // Tangani error PostgreSQL
     if (error.code === "23505") {
-      if (error.constraint === "printed_devices_device_id_key") {
-        throw new Error("Perangkat dengan ID tersebut sudah terdaftar.");
-      } else {
-        throw new Error("Data yang Anda masukkan sudah ada.");
-      }
+      throw new Error("Data yang Anda masukkan sudah ada.");
     }
 
     // Error lain
