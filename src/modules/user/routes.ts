@@ -492,12 +492,12 @@ router.post(
   upload.single("file"),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const token = req.headers["invoice-token"] as string;
-      const invoiceDetail = await verifyInvoiceValid(token);
+      // const token = req.headers["invoice-token"] as string;
+      // const invoiceDetail = await verifyInvoiceValid(token);
       // Validate the token
-      if (!token || !invoiceDetail) {
-        return res.status(403).json({ message: "Forbidden: Invalid token" });
-      }
+      // if (!token || !invoiceDetail) {
+      //   return res.status(403).json({ message: "Forbidden: Invalid token" });
+      // }
 
       if (!req.file) {
         return res.status(400).json({ message: "Tidak ada file yang diunggah" });
