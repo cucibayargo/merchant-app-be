@@ -37,6 +37,9 @@ export interface verifyInvoiceResponse {
 export interface getInvoiceResponse {
   invoice: string
   token: string
+  user_id: string
+  invoice_id: string
+  amount: number
 }
 
 export interface CreateInvoiceResponse {

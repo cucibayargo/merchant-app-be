@@ -492,12 +492,12 @@ router.post(
   upload.single("file"),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // const token = req.headers["invoice-token"] as string;
-      // const invoiceDetail = await verifyInvoiceValid(token);
-      // Validate the token
-      // if (!token || !invoiceDetail) {
-      //   return res.status(403).json({ message: "Forbidden: Invalid token" });
-      // }
+      const { note, referral_points, user_id} = req.body;
+
+      const invoiceDetail = await getInvoiceByUserId(user_id);
+      if (!invoiceDetail || !invoiceDetail.invoice_id) {
+        return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });
+      }
 
       if (!req.file) {
         return res.status(400).json({ message: "Tidak ada file yang diunggah" });
@@ -505,7 +505,6 @@ router.post(
 
       const { originalname, buffer, mimetype } = req.file;
       const fileName = `${Date.now()}_${originalname}`;
-      const { note, referral_points} = req.body;
       
       const { error: uploadError } = await supabase.storage
         .from("app_transactions")
@@ -536,7 +535,7 @@ router.post(
       );
 
       // Respond with success message
-      res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan" });
+      res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan", file: publicUrlData.publicUrl });
     } catch (err) {
       console.error(err); // Log the error for debugging
       res.status(500).json({ message: "Terjadi kesalahan server." });

@@ -700,7 +700,7 @@ export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResp
   const client = await pool.connect();
   try {
     const query = `
-      SELECT invoice_id, token
+      SELECT invoice_id, token,  user_id, app_invoices.status, amount 
       FROM app_invoices 
       WHERE user_id = $1
       ORDER BY created_at DESC 
@@ -708,7 +708,7 @@ export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResp
     `;
     const result = await client.query(query, [userId]);
 
-    return { invoice: result?.rows[0]?.invoice_id, token: result?.rows[0]?.token }
+    return { ...result?.rows[0] }
   } catch (error) {
     console.error('Error verifying invoice:', error);
     return null;
