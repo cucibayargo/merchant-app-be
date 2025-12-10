@@ -495,9 +495,9 @@ router.post(
       const { note, referral_points, user_id} = req.body;
 
       const invoiceDetail = await getInvoiceByUserId(user_id);
-      if (!invoiceDetail || !invoiceDetail.invoice_id) {
-        return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });
-      }
+      // if (!invoiceDetail || !invoiceDetail.invoice_id) {
+      //   return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });
+      // }
 
       if (!req.file) {
         return res.status(400).json({ message: "Tidak ada file yang diunggah" });
@@ -506,6 +506,13 @@ router.post(
       const { originalname, buffer, mimetype } = req.file;
       const fileName = `${Date.now()}_${originalname}`;
       
+      const { data: publicUrlData } = supabase.storage
+        .from("app_transactions")
+        .getPublicUrl(`invoice/${fileName}`);
+
+       if (!invoiceDetail || !invoiceDetail.invoice_id) {
+        return res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan", file: publicUrlData.publicUrl });
+      }
       const { error: uploadError } = await supabase.storage
         .from("app_transactions")
         .upload(`invoice/${fileName}`, buffer, {
@@ -516,10 +523,6 @@ router.post(
         console.error("Gagal mengunggah file ke Supabase Storage:", uploadError);
         return res.status(500).json({ message: "Gagal mengunggah file" });
       }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("app_transactions")
-        .getPublicUrl(`invoice/${fileName}`);
 
       let latestRefPoints = referral_points;
       if (Number(referral_points) > invoiceDetail.amount) {
