@@ -539,7 +539,6 @@ router.get("/:invoiceId", async (req: Request, res: Response) => {
  *         description: Gagal membuat layanan
  */
 router.get("/invoice/:invoiceId", async (req: Request, res: Response) => {
-  console.log("receipt view");
   try {
     const invoiceId = req.params.invoiceId;
     const transaction = await getInvoiceById(invoiceId);
