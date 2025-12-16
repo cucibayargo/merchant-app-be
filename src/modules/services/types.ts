@@ -25,26 +25,34 @@ export interface ServiceDurationDetail {
 export const serviceSchema = Joi.object({
   name: Joi.string().required().messages({
     'string.empty': 'Nama wajib diisi',
+    'any.required': 'Nama wajib diisi',
   }),
+
   unit: Joi.string().required().messages({
     'string.empty': 'Satuan wajib diisi',
+    'any.required': 'Satuan wajib diisi',
   }),
+
   durations: Joi.array()
     .items(
       Joi.object({
         duration: Joi.string().required().messages({
           'string.empty': 'Durasi wajib diisi',
-        }), // Expecting duration_id for input
+          'any.required': 'Durasi wajib diisi',
+        }),
         price: Joi.number().integer().min(0).required().messages({
           'number.base': 'Harga harus berupa angka',
           'number.integer': 'Harga harus berupa bilangan bulat',
           'number.min': 'Harga tidak boleh kurang dari 0',
-          'number.empty': 'Harga wajib diisi',
-        }), // Price for the duration
+          'any.required': 'Harga wajib diisi',
+        }),
       })
     )
-    .required().messages({
+    .min(1)
+    .required()
+    .messages({
       'array.base': 'Durasi harus berupa array',
-      'array.empty': 'Durasi wajib diisi',
+      'array.min': 'Durasi wajib diisi minimal 1',
+      'any.required': 'Durasi wajib diisi',
     }),
 });

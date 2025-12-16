@@ -106,8 +106,8 @@ routerV1.use("/report", reportRoutes);
 app.use("/api/", routerV1);
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running in ${environment} mode on port ${PORT}`);
-});
+// app.listen(PORT, () => {
+//   console.log(`Server running in ${environment} mode on port ${PORT}`);
+// });
 
 export default app;

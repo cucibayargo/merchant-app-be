@@ -13,7 +13,7 @@ export async function getAllPrintedDevices(user_id: string): Promise<PrintedDevi
       SELECT *
       FROM printed_devices
       WHERE user_id = $1
-      ORDER BY last_connected_at DESC NULLS LAST;
+      ORDER BY is_active DESC NULLS LAST;
     `;
     const result = await client.query(query, [user_id]);
     return result.rows;
