@@ -626,6 +626,7 @@ router.post("/signup", async (req, res) => {
           ? "Silakan masuk untuk mulai menggunakan layanan kami."
           : "Silakan periksa email Anda untuk langkah selanjutnya."
       }`,
+      user_id: newUser.id
     });    
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });

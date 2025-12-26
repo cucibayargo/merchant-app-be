@@ -535,7 +535,7 @@ router.post(
       );
 
       // Respond with success message
-      res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan", file: publicUrlData.publicUrl });
+      res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan", file: publicUrlData.publicUrl, invoice_number: invoiceDetail.invoice_id });
     } catch (err) {
       console.error(err); // Log the error for debugging
       res.status(500).json({ message: "Terjadi kesalahan server." });
