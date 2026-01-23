@@ -20,7 +20,7 @@ import authMiddleware from "./middlewares";
 
 const app = express();
 const environment = process.env.NODE_ENV || "development";
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Validate environment variables
 if (!process.env.SESSION_SECRET || !process.env.API_URL) {
@@ -106,8 +106,8 @@ routerV1.use("/report", reportRoutes);
 app.use("/api/", routerV1);
 
 // Start server
-// app.listen(PORT, () => {
-//   console.log(`Server running in ${environment} mode on port ${PORT}`);
-// });
+app.listen(PORT, () => {
+  console.log(`Server running in ${environment} mode on port ${PORT}`);
+});
 
 export default app;

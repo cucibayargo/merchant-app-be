@@ -1,6 +1,7 @@
 node_modules
 dist
 .env.local
+.env.prod
 .env
 # Local Netlify folder
 .netlify
