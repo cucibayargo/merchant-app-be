@@ -57,10 +57,10 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Middleware for debugging
-app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log("Request Body:", req.body);
-  next();
-});
+// app.use((req: Request, res: Response, next: NextFunction) => {
+//   console.log("Request Body:", req.body);
+//   next();
+// });
 
 // Swagger configuration
 // const swaggerServerUrl = environment === 'production'
