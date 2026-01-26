@@ -330,7 +330,7 @@ router.post("/login", async (req, res) => {
   const { error } = LoginSchema.validate(req.body);
    if (error) {
      const message = formatJoiError(error);
-     return res.status(400).json({ error: message });
+     return res.status(400).json({ message: message });
    }
 
   const { email, password } = req.body;
@@ -499,7 +499,7 @@ router.post("/signup", async (req, res) => {
   const { error } = SignUpSchema.validate(req.body);
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { name, email, password, phone_number, subscription_plan, referral_code } =
@@ -718,7 +718,7 @@ router.post("/signup/token", async (req, res) => {
   const { error } = SignUpTokenSchema.validate(req.body);
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { name, email, phone_number, subscription_plan } = req.body;
@@ -849,7 +849,7 @@ router.post("/change-password", async (req, res) => {
   const { error } = ChangePasswordSchema.validate(req.body);
    if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { email, currentPassword, newPassword } = req.body;

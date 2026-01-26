@@ -47,7 +47,7 @@ router.get('/download', async (req: AuthenticatedRequest, res) => {
         const { start_date, end_date } = req.query;
 
         if (!start_date || !end_date) {
-            return res.status(400).json({ error: "Tanggal mulai dan tanggal akhir wajib diisi." });
+            return res.status(400).json({ message: "Tanggal mulai dan tanggal akhir wajib diisi." });
         }
 
         // Parse dates and validate range
@@ -56,11 +56,11 @@ router.get('/download', async (req: AuthenticatedRequest, res) => {
         const dayDifference = differenceInDays(endDate, startDate);
 
         if (dayDifference < 0) {
-            return res.status(400).json({ error: "Tanggal akhir harus setelah tanggal mulai." });
+            return res.status(400).json({ message: "Tanggal akhir harus setelah tanggal mulai." });
         }
         
         if (dayDifference > 31) {
-            return res.status(400).json({ error: "Rentang tanggal tidak boleh lebih dari 31 hari." });
+            return res.status(400).json({ message: "Rentang tanggal tidak boleh lebih dari 31 hari." });
         }
 
         // Generate Excel report buffer
@@ -74,7 +74,7 @@ router.get('/download', async (req: AuthenticatedRequest, res) => {
         res.send(file);
     } catch (error) {
         console.error("Kesalahan saat membuat laporan:", error);
-        res.status(500).json({ error: "Terjadi kesalahan pada server." });
+        res.status(500).json({ message: "Terjadi kesalahan pada server." });
     }
 });
 

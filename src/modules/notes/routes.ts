@@ -118,7 +118,7 @@ router.put("/", async (req: AuthenticatedRequest, res) => {
   const { error, value } = noteSchema.validate(req.body, { abortEarly: false });
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { notes } = req.body;

@@ -73,7 +73,7 @@ router.post("/", async (req: AuthenticatedRequest, res: Response) => {
     const { error, value } = emailSupportSchema.validate(req.body, { abortEarly: false });
     if (error) {
       const message = formatJoiError(error);
-      return res.status(400).json({ error: message });
+      return res.status(400).json({ message: message });
     }
 
     const userDetail = await getUserDetails(req.userId);

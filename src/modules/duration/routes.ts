@@ -229,7 +229,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
   const { error, value } = durationSchema.validate(req.body, { abortEarly: false });
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { id, name, duration, type } = req.body;
@@ -290,7 +290,7 @@ router.put('/:id', async (req, res) => {
   const { error, value } = durationSchema.validate(req.body, { abortEarly: false });
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { id, name, duration, type } = req.body;

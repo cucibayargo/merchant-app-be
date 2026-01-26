@@ -139,7 +139,7 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req: AuthenticatedRequest, res) => {
   const { error, value } = printedDeviceSchema.validate(req.body, { abortEarly: false });
   if (error) {
-    return res.status(400).json({ error: formatJoiError(error) });
+    return res.status(400).json({ message: formatJoiError(error) });
   }
 
   try {
@@ -185,7 +185,7 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
 router.put("/:id", async (req: AuthenticatedRequest, res) => {
   const { error } = printedDeviceSchema.validate(req.body, { abortEarly: false });
   if (error) {
-    return res.status(400).json({ error: formatJoiError(error) });
+    return res.status(400).json({ message: formatJoiError(error) });
   }
 
   try {

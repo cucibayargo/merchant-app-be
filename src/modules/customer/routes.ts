@@ -202,7 +202,7 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
   const { error, value } = customerSchema.validate(req.body, { abortEarly: false });
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { name, phone_number, email, address, gender } = req.body;
@@ -295,7 +295,7 @@ router.put("/:id", (req: Request, res: Response) => {
   const { error, value } = customerSchema.validate(req.body, { abortEarly: false });
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   const { id } = req.params;

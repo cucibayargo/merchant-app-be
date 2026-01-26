@@ -378,7 +378,7 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
   const { error } = transactionSchema.validate(req.body);
   if (error) {
     const message = formatJoiError(error);
-    return res.status(400).json({ error: message });
+    return res.status(400).json({ message: message });
   }
 
   try {
