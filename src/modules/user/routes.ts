@@ -962,7 +962,7 @@ router.post(
 
     try {
       await saveOfflineUser(offlineUser);
-      res.status(404).json({ message: "Menyimpan user offline berhasil" });
+      res.status(200).json({ message: "Menyimpan user offline berhasil" });
     } catch (error) {
       console.error("Save Offline:", error);
       res.status(500).json({ message: "Gagal menyimpan user offline" });

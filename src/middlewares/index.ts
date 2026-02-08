@@ -17,12 +17,12 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     '/user/upload-subscriptions-invoice',
     '/user/invoice/:invoiceId',
     '/user/trigger-supabase-cloud',
-    '/user/save-offline-user'
   ];
   
   const cronJobRoutes = [
     '/user/delete-temp-files',
     '/user/check-subscriptions',
+    '/user/save-offline-user'
   ];
   
   if (
