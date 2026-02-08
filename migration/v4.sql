@@ -16,12 +16,7 @@ CREATE TABLE offline_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     email TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
     phone_number TEXT,
     device_id TEXT NOT NULL,
     device_model TEXT,
-    logo TEXT,
-    address TEXT,
-    synced SMALLINT NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
