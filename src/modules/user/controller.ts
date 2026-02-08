@@ -1194,27 +1194,19 @@ export async function saveOfflineUser(
       INSERT INTO offline_users (
         name,
         email,
-        password_hash,
         phone_number,
         device_id,
-        device_model,
-        logo,
-        synced,
-        created_at
+        device_model
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5)
     `;
 
     const values = [
       offlineUser.name,
       offlineUser.email,
-      offlineUser.password_hash,
       offlineUser.phone_number,
       offlineUser.device_id,
-      offlineUser.device_model,
-      offlineUser.logo,
-      1, // synced = true (since this is server-side)
-      offlineUser.created_at ?? new Date().toISOString(),
+      offlineUser.device_model
     ];
 
     const result = await client.query(query, values);

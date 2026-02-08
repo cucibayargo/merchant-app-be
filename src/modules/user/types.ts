@@ -51,13 +51,8 @@ export interface CreateInvoiceResponse {
 export type OfflineUser = {
   id: string;
   name: string;
-  address: string;
   email: string;
-  password_hash: string;
   phone_number: string;
-  created_at: string;
   device_id: string;
   device_model: string;
-  synced: number;
-  logo: string;
 };
