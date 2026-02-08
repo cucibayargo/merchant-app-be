@@ -10,6 +10,7 @@ import {
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Mailjet from "node-mailjet";
+import crypto from "crypto";
 
 /**
  * Retrieve a user by their email.
@@ -231,6 +232,55 @@ export async function changeUserPassword(
   }
 }
 
+function generateCode(): string {
+  return crypto.randomInt(100000, 999999).toString(); 
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const userRes = await client.query(
+      "SELECT id FROM users WHERE email = $1 AND is_deleted = FALSE",
+      [email]
+    );
+
+    // Always respond success to avoid email enumeration
+    if (userRes.rows.length === 0) {
+      await client.query("COMMIT");
+      return;
+    }
+
+    const userId = userRes.rows[0].id;
+
+    // Remove old unused codes
+    await client.query(
+      `DELETE FROM password_resets 
+       WHERE user_id = $1 AND used_at IS NULL`,
+      [userId]
+    );
+
+    const code = generateCode();
+
+    const expiresAtQuery = `
+      INSERT INTO password_resets (user_id, reset_code, expires_at)
+      VALUES ($1, $2, NOW() + INTERVAL '10 minutes')
+    `;
+
+    await client.query(expiresAtQuery, [userId, code]);
+
+    await client.query("COMMIT");
+    sendResetPasswordCodeEmail(email, code);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function addUserSignUpToken(
   payload: Omit<SignUpTokenInput, "id">
 ): Promise<void> {
@@ -445,3 +495,109 @@ export async function initServiceAndDuration(
     client.release();
   }
 }
+
+export const sendResetPasswordCodeEmail = async (
+  email: string,
+  code: string
+): Promise<void> => {
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY as string,
+    process.env.MAILJET_API_SECRET as string,
+    { options: { timeout: 20000 } }
+  );
+
+  const expiryMinutes = 10;
+
+  const emailSubject = `Kode Reset Password Anda`;
+
+  const emailBody = `
+  <html>
+    <body style="font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 0;">
+      <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; padding: 40px 20px;">
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              
+              <tr>
+                <td style="text-align:center;">
+                  <img src="https://zqmjnaaammivfblxwbnl.supabase.co/storage/v1/object/public/logos/2-cropped.png" alt="Cucibayargo" style="width:140px; margin-bottom: 20px;" />
+                </td>
+              </tr>
+
+              <tr>
+                <td>
+                  <h2 style="color:#333; margin-bottom: 10px;">Permintaan Reset Password</h2>
+                  <p style="font-size:15px; color:#555;">
+                    Kami menerima permintaan untuk mereset password akun Anda.
+                  </p>
+                  <p style="font-size:15px; color:#555;">
+                    Gunakan kode verifikasi di bawah ini:
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="text-align:center; padding: 20px 0;">
+                  <div style="
+                    display:inline-block;
+                    font-size:28px;
+                    letter-spacing:6px;
+                    font-weight:bold;
+                    color:#2c3e50;
+                    background:#f1f3f5;
+                    padding:14px 24px;
+                    border-radius:8px;">
+                    ${code}
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td>
+                  <p style="font-size:14px; color:#666;">
+                    ⏳ Kode ini berlaku selama <strong>${expiryMinutes} menit</strong>.
+                  </p>
+                  <p style="font-size:14px; color:#666;">
+                    Jika Anda tidak meminta reset password, abaikan email ini. Password Anda tetap aman.
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="border-top:1px solid #eee; padding-top:15px; text-align:center; font-size:12px; color:#999;">
+                  © ${new Date().getFullYear()} Cucibayargo. Sistem keamanan otomatis.
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+
+  const emailData = {
+    Messages: [
+      {
+        From: {
+          Email: "no-reply@cucibayargo.com",
+          Name: "Cucibayargo Security",
+        },
+        To: [{ Email: email }],
+        Subject: emailSubject,
+        HTMLPart: emailBody,
+      },
+    ],
+  };
+
+  try {
+    const response = await mailjet
+      .post("send", { version: "v3.1" })
+      .request(emailData);
+
+    console.log(`Reset password code sent to ${email}`, response.body);
+  } catch (error) {
+    console.error(`Failed sending reset code to ${email}:`, error);
+  }
+};

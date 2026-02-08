@@ -3,7 +3,7 @@ import pool from "../../database/postgres";
 import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
-import { CreateInvoiceResponse, getInvoiceResponse, InvoiceDetails, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
+import { CreateInvoiceResponse, getInvoiceResponse, InvoiceDetails, OfflineUser, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
 import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getUserPlanPrice } from "../auth/controller";
 import jwt from 'jsonwebtoken';
 
@@ -1179,6 +1179,48 @@ export async function deleteUser(id: string): Promise<boolean> {
   try {
     const res = await client.query("UPDATE users SET is_deleted = true WHERE id = $1 RETURNING *", [id]);
     return res.rows.length > 0;
+  } finally {
+    client.release();
+  }
+}
+
+export async function saveOfflineUser(
+  offlineUser: OfflineUser
+): Promise<boolean> {
+  const client = await pool.connect();
+
+  try {
+    const query = `
+      INSERT INTO offline_users (
+        name,
+        email,
+        password_hash,
+        phone_number,
+        device_id,
+        device_model,
+        logo,
+        synced,
+        created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `;
+
+    const values = [
+      offlineUser.name,
+      offlineUser.email,
+      offlineUser.password_hash,
+      offlineUser.phone_number,
+      offlineUser.device_id,
+      offlineUser.device_model,
+      offlineUser.logo,
+      1, // synced = true (since this is server-side)
+      offlineUser.created_at ?? new Date().toISOString(),
+    ];
+
+    const result = await client.query(query, values);
+
+    // If row inserted → success
+    return result.rowCount === 1;
   } finally {
     client.release();
   }

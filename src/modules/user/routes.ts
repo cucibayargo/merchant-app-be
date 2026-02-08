@@ -8,6 +8,7 @@ import {
   getInvoiceDetails,
   getInvoices,
   getUserDetails,
+  saveOfflineUser,
   setUserPlan,
   TriggerSupabaseCloud,
   updateInvoice,
@@ -953,4 +954,19 @@ router.get("/delete/:id", async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+
+router.post(
+  "/save-offline-user",
+   async (req: AuthenticatedRequest, res: Response) => {
+    const offlineUser = req.body;
+
+    try {
+      await saveOfflineUser(offlineUser);
+      res.status(404).json({ message: "Menyimpan user offline berhasil" });
+    } catch (error) {
+      console.error("Save Offline:", error);
+      res.status(500).json({ message: "Gagal menyimpan user offline" });
+    }
+  }
+);
 export default router;

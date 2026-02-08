@@ -3,6 +3,7 @@ import {
   ChangePasswordSchema,
   CustomJwtPayload,
   LoginSchema,
+  requestResetPasswordSchema,
   SignUpSchema,
   SignUpTokenSchema,
 } from "./types";
@@ -17,6 +18,7 @@ import {
   insertReferral,
   isReferralCodeValid,
   notifyUserToPaySubscription,
+  requestPasswordReset,
   updateUserSignupStatus,
   validateToken,
   verifySignupToken,
@@ -857,6 +859,74 @@ router.post("/change-password", async (req, res) => {
   try {
     await changeUserPassword(email, currentPassword, newPassword);
     res.status(200).json({ message: "Password berhasil diperbarui." });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Changes the user's password
+ *     description: Allows a user to change their password
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: User's email address
+ *             required:
+ *               - email
+ *     responses:
+ *       '200':
+ *         description: Password successfully changed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Password updated successfully."
+ *       '400':
+ *         description: Bad request, invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Current password is incorrect."
+ *       '401':
+ *         description: Unauthorized, invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Current password is incorrect."
+ */
+router.post("/request-reset-password", async (req, res) => {
+  const { error } = requestResetPasswordSchema.validate(req.body);
+   if (error) {
+    const message = formatJoiError(error);
+    return res.status(400).json({ message: message });
+  }
+
+  const { email } = req.body;
+  try {
+    await requestPasswordReset(email);
+    res.status(200).json({ message: "Silakan periksa email Anda untuk kode reset password." });
   } catch (err: any) {
     res.status(400).json({ message: err.message });
   }

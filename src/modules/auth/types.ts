@@ -146,6 +146,13 @@ export const ChangePasswordSchema = Joi.object({
   }),
 });
 
+export const requestResetPasswordSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.empty': 'Email harus diisi.',
+    'any.required': 'Email harus diisi.'
+  })
+});
+
 export interface CustomJwtPayload extends JwtPayload {
   id: string;
 }
