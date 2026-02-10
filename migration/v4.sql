@@ -18,5 +18,5 @@ CREATE TABLE offline_users (
     email TEXT NOT NULL,
     phone_number TEXT,
     device_id TEXT NOT NULL,
-    device_model TEXT,
+    device_model TEXT
 );
