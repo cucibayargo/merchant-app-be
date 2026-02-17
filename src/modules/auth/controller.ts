@@ -250,7 +250,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
     // Always respond success to avoid email enumeration
     if (userRes.rows.length === 0) {
       await client.query("COMMIT");
-      return;
+      throw new Error("Email yang Anda masukkan tidak sesuai.");
     }
 
     const userId = userRes.rows[0].id;
