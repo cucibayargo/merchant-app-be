@@ -153,6 +153,26 @@ export const requestResetPasswordSchema = Joi.object({
   })
 });
 
+export const verifyResetPasswordSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.empty': 'Email harus diisi.',
+    'any.required': 'Email harus diisi.'
+  }),
+  code: Joi.string().required().messages({
+    'string.code': 'Code harus diisi.',
+  })
+});
+
+export const resetPasswordSchema = Joi.object({
+  resetToken: Joi.string().required().messages({
+    'string.code': 'Token harus diisi.',
+  }),
+  newPassword: Joi.string().required().messages({
+    'string.empty': 'Password Baru harus diisi.',
+    'any.required': 'Password Baru harus diisi.'
+  }),
+});
+
 export interface CustomJwtPayload extends JwtPayload {
   id: string;
 }

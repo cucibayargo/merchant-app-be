@@ -4,8 +4,10 @@ import {
   CustomJwtPayload,
   LoginSchema,
   requestResetPasswordSchema,
+  resetPasswordSchema,
   SignUpSchema,
   SignUpTokenSchema,
+  verifyResetPasswordSchema,
 } from "./types";
 import {
   addUser,
@@ -19,19 +21,18 @@ import {
   isReferralCodeValid,
   notifyUserToPaySubscription,
   requestPasswordReset,
-  updateUserSignupStatus,
-  validateToken,
+  updateUserPassword,
+  verifyPasswordResetCodeAndConsume,
   verifySignupToken,
 } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { createInvoice, getUserDetails, sendInvoiceApproved, updateUserDetails } from "../user/controller";
 import * as dotenv from "dotenv";
-import crypto from "crypto";
 import disposableDomains from "disposable-email-domains";
 import Mailjet from "node-mailjet";
-import { valid } from "joi";
 import { formatJoiError } from "../../utils";
+import rateLimit from "express-rate-limit";
 
 const router = express.Router();
 dotenv.config();
@@ -916,7 +917,14 @@ router.post("/change-password", async (req, res) => {
  *                   type: string
  *                   example: "Current password is incorrect."
  */
-router.post("/request-reset-password", async (req, res) => {
+const resetLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 menit
+  max: 3, // max 3 request per IP
+  message: {
+    message: "Terlalu banyak permintaan. Coba lagi nanti."
+  }
+});
+router.post("/password-reset/email", resetLimiter, async (req, res) => {
   const { error } = requestResetPasswordSchema.validate(req.body);
    if (error) {
     const message = formatJoiError(error);
@@ -931,6 +939,80 @@ router.post("/request-reset-password", async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+
+const RESET_TOKEN_SECRET = process.env.JWT_SECRET as string;
+function generateResetToken(userId: string) {
+  return jwt.sign(
+    { userId, type: "password_reset" },
+    RESET_TOKEN_SECRET,
+    { expiresIn: "10m" }
+  );
+}
+router.post("/password-reset/verify", async (req, res) => {
+  const { error } = verifyResetPasswordSchema.validate(req.body);
+
+  if (error) {
+    const message = formatJoiError(error);
+    return res.status(400).json({ message });
+  }
+
+  const { email, code } = req.body;
+
+  try {
+    const userId = await verifyPasswordResetCodeAndConsume(email, code);
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "Kode tidak valid atau sudah kedaluwarsa."
+      });
+    }
+
+    const resetToken = generateResetToken(userId);
+
+    return res.status(200).json({
+      resetToken
+    });
+
+  } catch (err: any) {
+    return res.status(500).json({
+      message: "Terjadi kesalahan."
+    });
+  }
+});
+
+
+router.post("/password-reset/confirm", async (req, res) => {
+  const { error } = resetPasswordSchema.validate(req.body);
+
+  if (error) {
+    const message = formatJoiError(error);
+    return res.status(400).json({ message });
+  }
+
+  const { resetToken, newPassword } = req.body;
+
+  try {
+    const payload: any = jwt.verify(resetToken, RESET_TOKEN_SECRET);
+
+    if (payload.type !== "password_reset") {
+      return res.status(400).json({ message: "Token tidak valid." });
+    }
+
+    await updateUserPassword(payload.userId, newPassword);
+
+    return res.status(200).json({
+      message: "Password berhasil diperbarui."
+    });
+
+  } catch (err: any) {
+    console.log(err);
+    
+    return res.status(400).json({
+      message: "Token tidak valid atau sudah kedaluwarsa."
+    });
+  }
+});
+
 
 /**
  * @swagger

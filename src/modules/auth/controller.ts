@@ -255,6 +255,29 @@ export async function requestPasswordReset(email: string): Promise<void> {
 
     const userId = userRes.rows[0].id;
 
+    // Check cooldown 1 minute
+    const cooldownCheck = await client.query(
+      `
+      SELECT created_at
+      FROM password_resets
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    if (cooldownCheck.rows.length > 0) {
+      const lastRequest = new Date(cooldownCheck.rows[0].created_at);
+      const now = new Date();
+      const diffInSeconds = (now.getTime() - lastRequest.getTime()) / 1000;
+
+      if (diffInSeconds < 60) {
+        await client.query("ROLLBACK");
+        throw new Error("Mohon tunggu 1 menit sebelum meminta kode baru.");
+      }
+    }
+
     // Remove old unused codes
     await client.query(
       `DELETE FROM password_resets 
@@ -280,6 +303,79 @@ export async function requestPasswordReset(email: string): Promise<void> {
     client.release();
   }
 }
+
+export async function verifyPasswordResetCodeAndConsume(
+  email: string,
+  code: string
+): Promise<string | null> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const userRes = await client.query(
+      "SELECT id FROM users WHERE email = $1 AND is_deleted = FALSE",
+      [email]
+    );
+
+    if (userRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const userId = userRes.rows[0].id;
+
+    const resetRes = await client.query(
+      `
+      UPDATE password_resets
+      SET used_at = NOW()
+      WHERE id = (
+        SELECT id
+        FROM password_resets
+        WHERE user_id = $1
+          AND reset_code = $2
+          AND used_at IS NULL
+          AND expires_at > NOW()
+        ORDER BY expires_at DESC
+        LIMIT 1
+      )
+      RETURNING id
+      `,
+      [userId, code]
+    );
+
+    if (resetRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    await client.query("COMMIT");
+    return userId;
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateUserPassword(
+  userId: string,
+  newPassword: string
+): Promise<void> {
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  await pool.query(
+    `
+    UPDATE users
+    SET password = $1
+    WHERE id = $2
+    `,
+    [hashedPassword, userId]
+  );
+}
+
 
 export async function addUserSignUpToken(
   payload: Omit<SignUpTokenInput, "id">
