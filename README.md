@@ -19,7 +19,7 @@ Kasir Laundry Pro Services is a robust backend application tailored for laundry 
     - Update Data
     - Get List Data
 - Customer Management
-- Settings
+- Settings 
     - Profile Settings
     - Service Management
 - Receipt Generation
