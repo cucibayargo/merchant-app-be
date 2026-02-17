@@ -767,7 +767,7 @@ export const sendInvoiceApproved = async (email: string, endDate: string): Promi
                     <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                       <tr>
                         <td style="text-align: center;">
-                          <img src="https://zqmjnaaammivfblxwbnl.supabase.co/storage/v1/object/public/logos/2-cropped.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                          <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/public/logos/logo.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                         </td>
                       </tr>
                       <tr>
@@ -837,7 +837,7 @@ const sendInvoiceCancelled = async (email: string): Promise<void> => {
                     <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                       <tr>
                         <td style="text-align: center;">
-                          <img src="https://zqmjnaaammivfblxwbnl.supabase.co/storage/v1/object/public/logos/2-cropped.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                          <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/public/logos/logo.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                         </td>
                       </tr>
                       <tr>
@@ -930,7 +930,7 @@ const sendPayemntNotification = async (
                     <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                       <tr>
                         <td style="text-align: center;">
-                          <img src="https://zqmjnaaammivfblxwbnl.supabase.co/storage/v1/object/public/logos/2-cropped.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                          <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/public/logos/logo.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                         </td>
                       </tr>
                       <tr>
@@ -1001,7 +1001,7 @@ const sendEmailNotification = async (
                 <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                   <tr>
                     <td style="text-align: center;">
-                      <img src="https://zqmjnaaammivfblxwbnl.supabase.co/storage/v1/object/public/logos/2-cropped.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/public/logos/logo.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                     </td>
                   </tr>
                   <tr>
@@ -1033,7 +1033,7 @@ const sendEmailNotification = async (
                 <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                   <tr>
                     <td style="text-align: center;">
-                      <img src="https://zqmjnaaammivfblxwbnl.supabase.co/storage/v1/object/public/logos/2-cropped.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/public/logos/logo.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                     </td>
                   </tr>
                   <tr>
@@ -1114,7 +1114,7 @@ const sendEmailNotificationExpiredAccount = async (
                 <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
                   <tr>
                     <td style="text-align: center;">
-                      <img src="https://zqmjnaaammivfblxwbnl.supabase.co/storage/v1/object/public/logos/2-cropped.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
+                      <img src="https://sbuysfjktbupqjyoujht.supabase.co/storage/v1/object/public/logos/logo.png" alt="Cucibayargo" style="width: 150px; margin-bottom: 20px;" />
                     </td>
                   </tr>
                   <tr>
