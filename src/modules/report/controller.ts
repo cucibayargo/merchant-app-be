@@ -119,6 +119,7 @@ async function getReportData(start_date: string, end_date: string, merchantId: s
             FROM date_series ds
             LEFT JOIN transaction t ON t.created_at::DATE = ds.date AND t.merchant_id = $3 AND t.status = 'Selesai'
             LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
+            WHERE t.deleted_at IS NULL
             GROUP BY ds.date
             ORDER BY ds.date;   
         `;
