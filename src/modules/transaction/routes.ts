@@ -5,6 +5,7 @@ import {
   getInvoiceById,
   getTransactionById,
   getTransactions,
+  softDeleteTransactionById,
   updateTransaction,
 } from "./controller";
 import { AuthenticatedRequest } from "../../middlewares";
@@ -393,6 +394,65 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
     res
       .status(500)
       .json({ status: "error", message: "Transaksi gagal dibuat" });
+  }
+});
+
+/**
+ * @swagger
+ * /transaction/{id}:
+ *   delete:
+ *     summary: Delete a transaction by ID
+ *     description: Delete an existing transaction record
+ *     tags:
+ *       - Transaction
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Transaksi berhasil dihapus
+ *       404:
+ *         description: Transaction not found
+ *       500:
+ *         description: Server error
+ */
+router.delete("/:id", async (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+
+  try {
+    const deletedTransaction = await softDeleteTransactionById(id);
+    if (!deletedTransaction) {
+      return res.status(404).json({
+        status: "error",
+        message: "Transaksi tidak ditemukan",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Transaksi berhasil dihapus",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: "error",
+      message: "Gagal menghapus transaksi",
+    });
   }
 });
 

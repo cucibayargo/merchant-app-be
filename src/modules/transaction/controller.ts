@@ -47,7 +47,7 @@ export async function getTransactions(
     }
 
     // Build dynamic conditions for each filter
-    let conditions: string[] = [];
+    let conditions: string[] = ["t.deleted_at IS NULL"]; // Exclude soft-deleted transactions
     let values: any[] = [];
 
     // Add status condition
@@ -415,6 +415,38 @@ export async function getTransactionByTransactionId(
     `;
     const { rows } = await client.query(query, [invoiceId]);
     return rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Soft delete a transaction by its ID.
+ * @param {string} transactionId - The ID of the transaction to soft delete.
+ * @returns {Promise<boolean>} - Returns true if soft deleted, false if not found.
+ */
+export async function softDeleteTransactionById(
+  transactionId: string
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    // Cek dulu apakah transaksi ada dan belum dihapus
+    const checkQuery = `SELECT id FROM transaction WHERE id = $1 AND deleted_at IS NULL`;
+    const { rowCount } = await client.query(checkQuery, [transactionId]);
+
+    if (rowCount === 0) {
+      return false; // transaksi tidak ditemukan atau sudah dihapus
+    }
+
+    // Update deleted_at dengan timestamp sekarang
+    const deleteQuery = `
+      UPDATE transaction
+      SET deleted_at = NOW()
+      WHERE id = $1
+    `;
+    await client.query(deleteQuery, [transactionId]);
+
+    return true; // soft delete berhasil
   } finally {
     client.release();
   }

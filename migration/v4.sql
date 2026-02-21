@@ -20,3 +20,6 @@ CREATE TABLE offline_users (
     device_id TEXT NOT NULL,
     device_model TEXT
 );
+
+ALTER TABLE transaction
+ADD COLUMN deleted_at TIMESTAMP NULL;
