@@ -14,6 +14,7 @@ import emailSupport from "./modules/email-support/routes";
 import notesRoutes from "./modules/notes/routes";
 import users from "./modules/user/routes";
 import reportRoutes from "./modules/report/routes";
+import expanseRoutes from "./modules/expanse/routes";
 import passport from "./modules/auth/passportConfig";
 import authMiddleware from "./middlewares";
 // import fs from "fs";
@@ -102,6 +103,7 @@ routerV1.use("/printer", printerRoutes);
 routerV1.use("/email-support", emailSupport);
 routerV1.use("/payment", paymentRoutes);
 routerV1.use("/report", reportRoutes);
+routerV1.use("/expanse", expanseRoutes);
 
 app.use("/api/", routerV1);
 
