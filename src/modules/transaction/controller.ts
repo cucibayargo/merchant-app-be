@@ -19,76 +19,67 @@ export async function getTransactions(
   merchant_id?: string,
   page: number = 1,
   limit: number = 10
-): Promise<{ transactions: TransactionData[]; totalCount: number }> {
+) {
   const client = await pool.connect();
 
   try {
-    // Determine the date column based on the status
-    let dateColumn: string;
-    let sortType: string;
+    let values: any[] = [];
+    let conditions: string[] = ["t.deleted_at IS NULL"];
 
-    switch (status) {
-      case "Diproses":
-        dateColumn = "MAX(ti.estimated_date)";
-        sortType = "ASC";
-        break;
-      case "Siap Diambil":
-        dateColumn = "t.ready_to_pick_up_at";
-        sortType = "DESC";
-        break;
-      case "Selesai":
-        dateColumn = "t.completed_at";
-        sortType = "DESC";
-        break;
-      default:
-        dateColumn = "t.created_at";
-        sortType = "DESC";
-        break;
+    let dateColumn = "t.created_at";
+    let sortType = "DESC";
+
+    if (status === "Diproses") {
+      dateColumn = "agg.estimated_date";
+      sortType = "ASC";
+    } else if (status === "Siap Diambil") {
+      dateColumn = "t.ready_to_pick_up_at";
+    } else if (status === "Selesai") {
+      dateColumn = "t.completed_at";
     }
 
-    // Build dynamic conditions for each filter
-    let conditions: string[] = ["t.deleted_at IS NULL"]; // Exclude soft-deleted transactions
-    let values: any[] = [];
-
-    // Add status condition
     if (status) {
       conditions.push(`t.status = $${values.length + 1}`);
       values.push(status);
     }
 
-    // Add customer filter condition
     if (filter) {
       conditions.push(
-        `(t.customer_name ILIKE '%' || $${
-          values.length + 1
-        } || '%' OR p.invoice_id ILIKE '%' || $${values.length + 1} || '%')`
+        `(t.customer_name ILIKE '%' || $${values.length + 1} || '%' 
+          OR p.invoice_id ILIKE '%' || $${values.length + 1} || '%')`
       );
       values.push(filter);
     }
 
-    // Add date range condition
-    if (date_from && date_to) {
-      conditions.push(
-        `${dateColumn}::date BETWEEN $${values.length + 1}::date AND $${
-          values.length + 2
-        }::date`
-      );
-      values.push(date_from, date_to);
-    }
-
-    // Add merchant_id condition
     if (merchant_id) {
       conditions.push(`t.merchant_id = $${values.length + 1}`);
       values.push(merchant_id);
     }
 
-    // Calculate offset
+    if (date_from && date_to) {
+      conditions.push(
+        `${dateColumn}::date BETWEEN $${values.length + 1}::date 
+         AND $${values.length + 2}::date`
+      );
+      values.push(date_from, date_to);
+    }
+
     const offset = (page - 1) * limit;
 
-    // Construct query for fetching transactions
+    const baseQuery = `
+      FROM "transaction" t
+      LEFT JOIN (
+        SELECT transaction_id, MAX(estimated_date) AS estimated_date
+        FROM transaction_item
+        GROUP BY transaction_id
+      ) agg ON agg.transaction_id = t.id
+      LEFT JOIN payment p ON p.transaction_id = t.id
+      WHERE ${conditions.join(" AND ")}
+    `;
+
     const query = `
       SELECT 
-        t.id AS id,
+        t.id,
         t.customer_name AS customer,
         p.status AS payment_status,
         p.invoice_id AS invoice,
@@ -97,38 +88,30 @@ export async function getTransactions(
         t.note,
         t.ready_to_pick_up_at,
         t.completed_at,
-        MAX(ti.estimated_date) as estimated_date
-      FROM transaction t
-      LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
-      LEFT JOIN payment p ON t.id = p.transaction_id
-      WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
-      GROUP BY t.id, p.id
+        agg.estimated_date
+      ${baseQuery}
       ORDER BY ${dateColumn} ${sortType}
-      LIMIT $${values.length + 1} OFFSET $${values.length + 2}
+      LIMIT $${values.length + 1}
+      OFFSET $${values.length + 2}
     `;
 
-    // Add limit and offset to the query values
     values.push(limit, offset);
 
-    // Execute the query for transactions
     const transactionsResult = await client.query(query, values);
 
-    // Construct query for total count
     const countQuery = `
       SELECT COUNT(*) AS total_count
-      FROM transaction t
-      LEFT JOIN payment p ON t.id = p.transaction_id
-      WHERE ${conditions.length > 0 ? conditions.join(" AND ") : "TRUE"}
+      ${baseQuery}
     `;
 
-    // Execute the query for total count
-    const countResult = await client.query(countQuery, values.slice(0, -2)); // Exclude limit and offset from count query
-
-    const totalCount = parseInt(countResult.rows[0].total_count, 10);
+    const countResult = await client.query(
+      countQuery,
+      values.slice(0, -2)
+    );
 
     return {
       transactions: transactionsResult.rows,
-      totalCount,
+      totalCount: parseInt(countResult.rows[0].total_count, 10),
     };
   } finally {
     client.release();
