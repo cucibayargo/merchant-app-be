@@ -216,47 +216,57 @@ export async function getTransactionsReport(
     end_date: string,
     page: number,
     limit: number
-): Promise<{
-    data: Array<{
+): Promise<Array<{
         id: string;
-        customer_name: string;
+        customer: string;
         invoice: string;
         status: string;
         payment_status: string;
-        date: string;
-    }>;
-}> {
+        created_at: string;
+        note: string;
+        ready_to_pick_up_at: string;
+        completed_at: string;
+        estimated_date: string;
+    }>> {
     const client = await pool.connect();
     try {
         const offset = (page - 1) * limit;
+        const conditions = [
+            "t.merchant_id = $1",
+            "t.deleted_at IS NULL",
+            "t.created_at::date BETWEEN $2::date AND $3::date"
+        ];
+
+        const baseQuery = `
+            FROM "transaction" t
+            LEFT JOIN (
+                SELECT transaction_id, MAX(estimated_date) AS estimated_date
+                FROM transaction_item
+                GROUP BY transaction_id
+            ) agg ON agg.transaction_id = t.id
+            LEFT JOIN payment p ON p.transaction_id = t.id
+            WHERE ${conditions.join(" AND ")}
+        `;
+
         const query = `
-            SELECT
+            SELECT 
                 t.id,
-                t.customer_name,
+                t.customer_name AS customer,
+                p.status AS payment_status,
                 p.invoice_id AS invoice,
                 t.status,
-                p.status AS payment_status,
-                t.created_at AS date
-            FROM transaction t
-            LEFT JOIN payment p ON p.transaction_id = t.id
-            WHERE t.merchant_id = $1
-              AND t.deleted_at IS NULL
-              AND t.created_at::date BETWEEN $2::date AND $3::date
+                t.created_at,
+                t.note,
+                t.ready_to_pick_up_at,
+                t.completed_at,
+                agg.estimated_date
+            ${baseQuery}
             ORDER BY t.created_at DESC
             LIMIT $4 OFFSET $5
         `;
 
         const result = await client.query(query, [merchant_id, start_date, end_date, limit, offset]);
-        return {
-            data: result.rows.map((row) => ({
-                id: row.id,
-                customer_name: row.customer_name,
-                invoice: row.invoice,
-                status: mapTransactionStatus(row.status),
-                payment_status: mapPaymentStatus(row.payment_status),
-                date: row.date,
-            })),
-        };
+        return result.rows;
     } finally {
         client.release();
     }
@@ -271,7 +281,7 @@ export async function getServiceReport(
     services: Array<{
         service_id: string;
         name: string;
-        duration: string;
+        duration: string[];
         total_pcs: number;
         total_orders: number;
         total_revenue: number;
@@ -283,9 +293,7 @@ export async function getServiceReport(
             SELECT
                 ti.service_id,
                 ti.service_name AS name,
-                COALESCE(MAX(ti.duration_length)::text || ' ' || MAX(ti.duration_length_type), '-') AS duration,
-                COALESCE(MAX(ti.duration_length), 0) AS duration_length,
-                COALESCE(MAX(ti.duration_length_type), '') AS duration_type,
+                ARRAY_AGG(DISTINCT ti.duration_id) AS duration,
                 COALESCE(SUM(ti.qty), 0) AS total_pcs,
                 COALESCE(COUNT(DISTINCT t.id), 0) AS total_orders,
                 COALESCE(SUM(ti.qty * ti.price), 0) AS total_revenue
@@ -293,7 +301,6 @@ export async function getServiceReport(
             JOIN transaction t ON t.id = ti.transaction_id
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
-              AND t.status = 'Selesai'
               AND EXTRACT(MONTH FROM t.created_at) = $2
               AND EXTRACT(YEAR FROM t.created_at) = $3
             GROUP BY ti.service_id, ti.service_name
@@ -308,30 +315,17 @@ export async function getServiceReport(
             total_pcs: Number(row.total_pcs),
             total_orders: Number(row.total_orders),
             total_revenue: Number(row.total_revenue),
-            _duration_length: Number(row.duration_length),
-            _duration_type: row.duration_type,
         }));
 
-        const total_duration_days = services.reduce((acc, item) => {
-            if ((item as any)._duration_type === 'Hari') {
-                return acc + Number((item as any)._duration_length || 0);
-            }
-            return acc;
-        }, 0);
+        const allDurations = new Set<string>();
+        services.forEach(s => s.duration.forEach((d: string) => allDurations.add(d)));
 
         return {
             summary: {
                 total_services: services.length,
-                total_duration_days,
+                total_duration_days: allDurations.size,
             },
-            services: services.map((item) => ({
-                service_id: item.service_id,
-                name: item.name,
-                duration: item.duration,
-                total_pcs: item.total_pcs,
-                total_orders: item.total_orders,
-                total_revenue: item.total_revenue,
-            })),
+            services: services,
         };
     } finally {
         client.release();
@@ -365,18 +359,14 @@ export async function getFinanceReport(
 
         const incomeByPaymentMethodQuery = `
             SELECT
-                CASE
-                    WHEN p.status = 'Lunas' THEN 'Paid'
-                    WHEN p.status = 'Belum Dibayar' THEN 'Unpaid'
-                    ELSE COALESCE(p.status, 'Unknown')
-                END AS method,
-                COALESCE(SUM(p.total_amount_due), 0) AS amount
+            COALESCE(SUM(p.total_amount_due), 0) AS amount,
+            COALESCE(SUM(CASE WHEN p.status = 'Lunas' THEN p.total_amount_due ELSE 0 END), 0) AS paid_amount,
+            COALESCE(SUM(CASE WHEN p.status = 'Belum Dibayar' THEN p.total_amount_due ELSE 0 END), 0) AS unpaid_amount
             FROM payment p
             JOIN transaction t ON t.id = p.transaction_id
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
-              AND t.created_at::date BETWEEN $2::date AND $3::date
-            GROUP BY method
+              AND p.created_at::date BETWEEN $2::date AND $3::date
             ORDER BY amount DESC
         `;
 
@@ -401,10 +391,6 @@ export async function getFinanceReport(
             name: row.name,
             amount: Number(row.amount),
         }));
-        const by_payment_method = incomeByPaymentMethodResult.rows.map((row) => ({
-            method: row.method,
-            amount: Number(row.amount),
-        }));
         const by_category = expensesByCategoryResult.rows.map((row) => ({
             category: row.category,
             amount: Number(row.amount),
@@ -415,10 +401,7 @@ export async function getFinanceReport(
                 total: by_service.reduce((sum, item) => sum + item.amount, 0),
                 by_service,
             },
-            income: {
-                total: by_payment_method.reduce((sum, item) => sum + item.amount, 0),
-                by_payment_method,
-            },
+            income: incomeByPaymentMethodResult.rows[0],
             expenses: {
                 total: by_category.reduce((sum, item) => sum + item.amount, 0),
                 by_category,
@@ -456,8 +439,6 @@ export async function getCustomersReport(
                 ) AS female
             FROM customer c
             WHERE c.merchant_id = $1
-              AND EXTRACT(MONTH FROM c.created_at) = $2
-              AND EXTRACT(YEAR FROM c.created_at) = $3
         `;
 
         const topCustomersQuery = `
@@ -472,13 +453,14 @@ export async function getCustomersReport(
               AND t.deleted_at IS NULL
               AND EXTRACT(MONTH FROM t.created_at) = $2
               AND EXTRACT(YEAR FROM t.created_at) = $3
+              AND t.customer_name IS NOT NULL
             GROUP BY t.customer_name, t.customer_phone_number
             ORDER BY total_spent DESC
             LIMIT 5
         `;
 
         const [summaryResult, topCustomersResult] = await Promise.all([
-            client.query(summaryQuery, [merchant_id, month, year]),
+            client.query(summaryQuery, [merchant_id]),
             client.query(topCustomersQuery, [merchant_id, month, year]),
         ]);
 
@@ -502,24 +484,4 @@ export async function getCustomersReport(
     } finally {
         client.release();
     }
-}
-
-function mapTransactionStatus(status: string): string {
-    const mapped: Record<string, string> = {
-        Diproses: 'new',
-        Selesai: 'completed',
-        'Siap Diambil': 'picked_up',
-        Dibatalkan: 'cancelled',
-    };
-
-    return mapped[status] || status;
-}
-
-function mapPaymentStatus(status: string): string {
-    const mapped: Record<string, string> = {
-        Lunas: 'paid',
-        'Belum Dibayar': 'unpaid',
-    };
-
-    return mapped[status] || status;
 }

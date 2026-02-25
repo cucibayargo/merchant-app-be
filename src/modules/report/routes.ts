@@ -96,27 +96,6 @@ router.get('/dashboard', async (req: AuthenticatedRequest, res) => {
     }
 });
 
-router.get('/transactions/summary', async (req: AuthenticatedRequest, res) => {
-    try {
-        const { start_date, end_date } = req.query;
-        if (!start_date || !end_date) {
-            return res.status(400).json({ message: 'start_date dan end_date wajib diisi.' });
-        }
-
-        const startDate = parseISO(start_date as string);
-        const endDate = parseISO(end_date as string);
-        if (!isValid(startDate) || !isValid(endDate)) {
-            return res.status(400).json({ message: 'Format tanggal tidak valid.' });
-        }
-
-        const data = await getTransactionsSummary(req.userId as string, start_date as string, end_date as string);
-        res.status(200).json(data);
-    } catch (error) {
-        console.error('Error fetching transaction summary report:', error);
-        res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
-    }
-});
-
 router.get('/transactions', async (req: AuthenticatedRequest, res) => {
     try {
         const { start_date, end_date, page = '1', limit = '10' } = req.query;
@@ -136,6 +115,7 @@ router.get('/transactions', async (req: AuthenticatedRequest, res) => {
             return res.status(400).json({ message: 'page dan limit harus bilangan bulat positif.' });
         }
 
+        const summary = await getTransactionsSummary(req.userId as string, start_date as string, end_date as string);
         const data = await getTransactionsReport(
             req.userId as string,
             start_date as string,
@@ -143,14 +123,15 @@ router.get('/transactions', async (req: AuthenticatedRequest, res) => {
             pageNumber,
             limitNumber
         );
-        res.status(200).json(data);
+        res.status(200).json({ summary, data });
     } catch (error) {
         console.error('Error fetching transactions report:', error);
         res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
     }
 });
 
-router.get('/service', async (req: AuthenticatedRequest, res) => {
+
+router.get('/services', async (req: AuthenticatedRequest, res) => {
     try {
         const { month, year } = req.query;
         const monthNumber = Number(month);
