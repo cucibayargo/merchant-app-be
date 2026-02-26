@@ -493,52 +493,70 @@ router.post(
   upload.single("file"),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { note, referral_points, user_id} = req.body;
+      const { note, referral_points, user_id } = req.body;
+
+      // Validate required fields
+      if (!user_id) {
+        return res.status(400).json({ message: "User ID diperlukan" });
+      }
 
       const invoiceDetail = await getInvoiceByUserId(user_id);
-      if (!invoiceDetail || !invoiceDetail.invoice_id) {
+      if (!invoiceDetail?.invoice_id) {
         return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });
       }
 
-      if (!req.file) {
+      const refPoints = Number(referral_points) || 0;
+      const hasFile = !!req.file;
+      const exceedsAmount = refPoints > invoiceDetail.amount;
+
+      // Validate: either file or valid referral points required
+      if (!hasFile && exceedsAmount) {
         return res.status(400).json({ message: "Tidak ada file yang diunggah" });
       }
 
-      const { originalname, buffer, mimetype } = req.file;
-      const fileName = `${Date.now()}_${originalname}`;
+      let fileUrl = "";
       
-      const { error: uploadError } = await supabase.storage
-        .from("app_transactions")
-        .upload(`invoice/${fileName}`, buffer, {
-          contentType: mimetype,
-        });
-      
-      if (uploadError) {
-        console.error("Gagal mengunggah file ke Supabase Storage:", uploadError);
-        return res.status(500).json({ message: "Gagal mengunggah file" });
+      // Upload file if provided
+      if (hasFile && req.file) {
+        const { originalname, buffer, mimetype } = req.file;
+        const fileName = `${Date.now()}_${originalname}`;
+        const filePath = `invoice/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("app_transactions")
+          .upload(filePath, buffer, { contentType: mimetype });
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          return res.status(500).json({ message: "Gagal mengunggah file" });
+        }
+
+        const { data } = supabase.storage
+          .from("app_transactions")
+          .getPublicUrl(filePath);
+        
+        fileUrl = data.publicUrl;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from("app_transactions")
-        .getPublicUrl(`invoice/${fileName}`);
+      // Cap referral points at invoice amount
+      const finalRefPoints = Math.min(refPoints, invoiceDetail.amount);
 
-      let latestRefPoints = referral_points;
-      if (Number(referral_points) > invoiceDetail.amount) {
-        latestRefPoints = invoiceDetail.amount;
-      }
       await uploadTransactionFile(
         invoiceDetail.user_id,
         note,
         invoiceDetail.invoice_id,
-        `invoice/${fileName}`,
-        publicUrlData.publicUrl,
-        latestRefPoints
+        fileUrl ? `invoice/${Date.now()}_${req.file?.originalname}` : "",
+        fileUrl,
+        finalRefPoints
       );
 
-      // Respond with success message
-      res.status(200).json({ message: "Bukti pembayaran berhasil dimasukan", file: publicUrlData.publicUrl, invoice_number: invoiceDetail.invoice_id });
+      res.status(200).json({
+        message: "Bukti pembayaran berhasil dimasukan",
+        file: fileUrl,
+        invoice_number: invoiceDetail.invoice_id,
+      });
     } catch (err) {
-      console.error(err); // Log the error for debugging
+      console.error("Upload subscription invoice error:", err);
       res.status(500).json({ message: "Terjadi kesalahan server." });
     }
   }
