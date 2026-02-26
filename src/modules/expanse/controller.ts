@@ -31,7 +31,7 @@ export async function listExpanse(
       SELECT id, total, description, date
       FROM expenses
       WHERE merchant_id = $1
-        AND ($2::text IS NULL OR description ILIKE '%' || $2 || '%')
+        AND ($2::text IS NULL OR description ILIKE '%' || $2 || '%' OR total::text ILIKE '%' || $2 || '%')
       ORDER BY date DESC, id DESC
       LIMIT $3 OFFSET $4
     `;
@@ -40,7 +40,7 @@ export async function listExpanse(
       SELECT COUNT(*) AS total_count
       FROM expenses
       WHERE merchant_id = $1
-        AND ($2::text IS NULL OR description ILIKE '%' || $2 || '%')
+        AND ($2::text IS NULL OR description ILIKE '%' || $2 || '%' OR total::text ILIKE '%' || $2 || '%')
     `;
 
     const [result, countResult] = await Promise.all([

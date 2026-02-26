@@ -19,6 +19,7 @@ export const expanseSchema = Joi.object({
     "number.min": "total tidak boleh negatif.",
     "any.required": "total wajib diisi.",
   }),
+  description: Joi.string(),
   date: Joi.string().required().messages({
     "string.base": "date harus berupa teks tanggal.",
     "string.empty": "date wajib diisi.",
