@@ -41,6 +41,7 @@ export interface getInvoiceResponse {
   invoice_id: string
   amount: number
   plan_id: string
+  plan_code: string
 }
 
 export interface CreateInvoiceResponse {

@@ -503,11 +503,8 @@ router.post(
       }
 
       let invoiceDetail = await getInvoiceByUserId(user_id);
-      if (!invoiceDetail?.invoice_id) {
-        return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });
-      }
 
-      if (plan_id != invoiceDetail.plan_id) {
+      if (plan_id != invoiceDetail?.plan_code || !invoiceDetail) {
         const subscriptionPlan = await getSubsPlanByCode(plan_id);
         if (!subscriptionPlan) {
           return res
@@ -537,7 +534,7 @@ router.post(
 
       const refPoints = Number(referral_points) || 0;
       const hasFile = !!req.file;
-      const exceedsAmount = refPoints > invoiceDetail.amount;
+      const exceedsAmount = refPoints > invoiceDetail?.amount;
 
       // Validate: either file or valid referral points required
       if (!hasFile && exceedsAmount) {

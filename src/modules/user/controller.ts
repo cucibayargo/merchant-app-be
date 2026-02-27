@@ -621,8 +621,6 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
           LIMIT 1
         `;
         const subscriptionResult = await client.query(checkSubscriptionQuery, [subscriptionPlan.id, invoice.user_id]);
-
-        console.log("Sdfds");
         
         if (subscriptionResult.rowCount === 0) {
           throw new Error("User does not have an active subscription for this plan.");
@@ -644,7 +642,7 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
         
         // Update the invoice status
         const updateInvoiceQuery = `
-          UPDATE app_invoices SET status = 'Kedaluarsa' WHERE invoice_id != $1 AND status = 'Menunggu Konfirmasi'
+          UPDATE app_invoices SET status = 'Kedaluarsa' WHERE invoice_id != $1 AND (status = 'Menunggu Konfirmasi' OR status = 'Menunggu Pembayaran')
         `;
         await client.query(updateInvoiceQuery, [invoice_id]);
 
@@ -733,10 +731,11 @@ export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResp
   const client = await pool.connect();
   try {
     const query = `
-      SELECT invoice_id, token,  user_id, app_invoices.status, amount, plan_id
+      SELECT app_invoices.invoice_id, app_invoices.token,  app_invoices.user_id, app_invoices.status, app_invoices.amount, app_invoices.plan_id, app_plans.code as plan_code
       FROM app_invoices 
-      WHERE user_id = $1
-      ORDER BY created_at DESC 
+      LEFT JOIN app_plans ON app_plans.id = app_invoices.plan_id
+      WHERE app_invoices.user_id = $1 AND app_invoices.status = 'Menunggu Pembayaran'
+      ORDER BY app_invoices.created_at DESC 
       LIMIT 1
     `;
     const result = await client.query(query, [userId]);
