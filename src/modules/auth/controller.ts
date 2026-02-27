@@ -31,6 +31,8 @@ export async function getUserByEmail(email: string): Promise<User | null> {
       LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id 
       LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id 
       WHERE users.email = $1 AND users.is_deleted = false
+      ORDER BY app_subscriptions.end_date DESC
+      LIMIT 1
       `,
       [email]
     );
@@ -99,7 +101,7 @@ export async function getUserPlanPrice(
   try {
     const res = await client.query(`
       SELECT user_plan_price as price FROM app_subscriptions 
-      WHERE user_id = $1`, [
+      WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [
       user_id,
     ]);
     return res.rows[0] || null;
@@ -187,12 +189,33 @@ export async function createSubscriptions(
   try {
     const { start_date, end_date, user_id, plan_id, price } = user;
     const query = `
-      INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id, user_plan_price)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *;
+      INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id, user_plan_price, status)
+      VALUES ($1, $2, $3, $4, $5, 'active') RETURNING *;
     `;
     const values = [start_date, end_date, user_id, plan_id, price];
     const result = await client.query(query, values);
     return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Inactivate other active subscriptions for a user.
+ * @param user_id - The ID of the user whose other subscriptions should be inactivated.
+ * @returns {Promise<void>} - A promise that resolves when the operation is complete.
+ */
+export async function inactivateOtherSubscriptions(
+  user_id: string
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const query = `
+      UPDATE app_subscriptions
+      SET status = 'inactive'
+      WHERE user_id = $1 
+    `;
+    await client.query(query, [user_id]);
   } finally {
     client.release();
   }

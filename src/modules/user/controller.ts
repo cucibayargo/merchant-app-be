@@ -4,7 +4,7 @@ import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
 import { CreateInvoiceResponse, getInvoiceResponse, InvoiceDetails, OfflineUser, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
-import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getUserPlanPrice } from "../auth/controller";
+import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getUserPlanPrice, inactivateOtherSubscriptions } from "../auth/controller";
 import jwt from 'jsonwebtoken';
 
 /**
@@ -504,6 +504,7 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
      SELECT 1
      FROM app_subscriptions 
      WHERE plan_id = $1 AND user_id = $2
+     ORDER BY created_at DESC
      LIMIT 1
    `;
     const { rows } = await client.query(checkSubscriptionQuery, [subscriptionPlan.id, user_id]);
@@ -609,15 +610,20 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
           throw new Error("Paket Aplikasi Tidak ditemukan.");
         }
 
+        await inactivateOtherSubscriptions(invoice.user_id);
+
         // Check if the user already has this plan active
         const checkSubscriptionQuery = `
           SELECT * 
           FROM app_subscriptions 
           WHERE plan_id = $1 AND user_id = $2
+          ORDER BY created_at DESC
           LIMIT 1
         `;
         const subscriptionResult = await client.query(checkSubscriptionQuery, [subscriptionPlan.id, invoice.user_id]);
 
+        console.log("Sdfds");
+        
         if (subscriptionResult.rowCount === 0) {
           throw new Error("User does not have an active subscription for this plan.");
         }
@@ -630,17 +636,44 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
 
         const updateSubscriptionQuery = `
           UPDATE app_subscriptions 
-          SET end_date = $3, plan_id = $4
-          WHERE plan_id = $1 AND user_id = $2 
+          SET end_date = $2, plan_id = $3, status = 'active'
+          WHERE id = $1
           RETURNING *
         `;
-        await client.query(updateSubscriptionQuery, [invoice.plan_id, invoice.user_id, newEndDate, subscriptionPlan.id]);
+        await client.query(updateSubscriptionQuery, [subscription.id, newEndDate, subscriptionPlan.id]);
+        
+        // Update the invoice status
+        const updateInvoiceQuery = `
+          UPDATE app_invoices SET status = 'Kedaluarsa' WHERE invoice_id != $1 AND status = 'Menunggu Konfirmasi'
+        `;
+        await client.query(updateInvoiceQuery, [invoice_id]);
 
         // Send email notification for accepted status
         await sendInvoiceApproved(invoice.email, newEndDate.toISOString());
         break;
 
       case "Ditolak":
+        // Retrieve the referral points that were redeemed for this invoice
+        const getReferralPointsQuery = `
+          SELECT referral_points_redeemed FROM app_invoices WHERE invoice_id = $1
+        `;
+        const referralResult = await client.query(getReferralPointsQuery, [invoice_id]);
+        const redeemedPoints = referralResult.rows[0]?.referral_points_redeemed || 0;
+
+        if (redeemedPoints > 0) {
+          // Reset referral points back to user
+          const resetQuery = `
+            UPDATE users 
+            SET 
+              referral_points = referral_points + $1,
+              referral_points_redeemed = referral_points_redeemed - $1
+            WHERE id = $2
+          `;
+          await client.query(resetQuery, [redeemedPoints, invoice.user_id]);
+
+          // Clear the redeemed points from invoice
+          await client.query(`UPDATE app_invoices SET referral_points_redeemed = 0, status = 'Ditolak' WHERE invoice_id = $1`, [invoice_id]);
+        }
         // Send email notification for canceled status
         await sendInvoiceCancelled(invoice.email);
         break;
@@ -700,7 +733,7 @@ export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResp
   const client = await pool.connect();
   try {
     const query = `
-      SELECT invoice_id, token,  user_id, app_invoices.status, amount 
+      SELECT invoice_id, token,  user_id, app_invoices.status, amount, plan_id
       FROM app_invoices 
       WHERE user_id = $1
       ORDER BY created_at DESC 

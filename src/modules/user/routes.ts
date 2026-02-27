@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import {
   checkUserSubscriptions,
+  createInvoice,
   deleteTempFiles,
   deleteUser,
   getInvoiceByUserId,
@@ -18,6 +19,7 @@ import {
 } from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
 import { AuthenticatedRequest } from "../../middlewares";
+import { createSubscriptions, getSubsPlanByCode, getSubsPlanById } from "../auth/controller";
 
 const router = express.Router();
 
@@ -493,16 +495,44 @@ router.post(
   upload.single("file"),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { note, referral_points, user_id } = req.body;
+      const { note, referral_points, user_id, plan_id } = req.body;
 
       // Validate required fields
       if (!user_id) {
         return res.status(400).json({ message: "User ID diperlukan" });
       }
 
-      const invoiceDetail = await getInvoiceByUserId(user_id);
+      let invoiceDetail = await getInvoiceByUserId(user_id);
       if (!invoiceDetail?.invoice_id) {
         return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });
+      }
+
+      if (plan_id != invoiceDetail.plan_id) {
+        const subscriptionPlan = await getSubsPlanByCode(plan_id);
+        if (!subscriptionPlan) {
+          return res
+            .status(400)
+            .json({ message: "Paket Aplikasi Tidak ditemukan." });
+        }
+
+        await createSubscriptions({
+          user_id: user_id,
+          plan_id: subscriptionPlan.id,
+          price: subscriptionPlan.price,
+          start_date: new Date().toISOString(),
+          end_date: new Date().toISOString(),
+        });
+
+        const invoiceResponse = await createInvoice({
+          user_id: user_id,
+          plan_code: subscriptionPlan.code,
+          withReferralPoint: false
+        });
+        
+        invoiceDetail = await getInvoiceByUserId(user_id);
+        if (!invoiceDetail?.invoice_id) {
+          return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });
+        }
       }
 
       const refPoints = Number(referral_points) || 0;
