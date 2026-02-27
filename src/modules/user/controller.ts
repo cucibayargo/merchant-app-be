@@ -48,9 +48,11 @@ export async function getUserDetails(id?: string): Promise<User | null> {
         users.referral_points_redeemed,
         users.referral_code
       FROM users 
-      LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id
+      LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id AND app_subscriptions.status = 'active'
       LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id
-      WHERE users.id = $1`,
+      WHERE users.id = $1
+      ORDER BY app_subscriptions.end_date DESC
+      LIMIT 1`,
       [id]
     );
     return result.rows[0] || null;

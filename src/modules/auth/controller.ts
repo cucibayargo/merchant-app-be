@@ -28,7 +28,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
         app_subscriptions.start_date as subscription_start,
         app_subscriptions.end_date as subscription_end
       FROM users 
-      LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id 
+      LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id AND app_subscriptions.status = 'active'
       LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id 
       WHERE users.email = $1 AND users.is_deleted = false
       ORDER BY app_subscriptions.end_date DESC
