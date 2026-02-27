@@ -58,8 +58,8 @@ export async function getTransactions(
 
     if (date_from && date_to) {
       conditions.push(
-        `${dateColumn}::date BETWEEN $${values.length + 1}::date 
-         AND $${values.length + 2}::date`
+        `${dateColumn}::date BETWEEN $${values.length + 1} 
+         AND $${values.length + 2}`
       );
       values.push(date_from, date_to);
     }
