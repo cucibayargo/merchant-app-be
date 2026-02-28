@@ -339,7 +339,7 @@ export async function getFinanceReport(
 ): Promise<{
     revenue: { total: number; by_service: Array<{ name: string; amount: number }> };
     income: { total: number; by_payment_method: Array<{ method: string; amount: number }> };
-    expenses: { total: number; by_category: Array<{ category: string; amount: number }> };
+    expenses: { total: number; by_category: Array<{ name: string; amount: number }> };
 }> {
     const client = await pool.connect();
     try {
@@ -392,7 +392,7 @@ export async function getFinanceReport(
             amount: Number(row.amount),
         }));
         const by_category = expensesByCategoryResult.rows.map((row) => ({
-            category: row.category,
+            name: row.category,
             amount: Number(row.amount),
         }));
 
