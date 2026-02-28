@@ -26,4 +26,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ccbdev2026/node-api:latest
+          tags: |
+            ccbdev2026/node-api:latest
+            ccbdev2026/node-api:duplicate
