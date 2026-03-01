@@ -353,18 +353,18 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    if (subscriptionEnd.getTime() <= Date.now()) {
-      return res.status(400).json({
-        message:
-          "Langganan Anda telah berakhir. Harap bayar tagihan atau hubungi administrator.",
-      });
-    }
+    // if (subscriptionEnd.getTime() <= Date.now()) {
+    //   return res.status(400).json({
+    //     message:
+    //       "Langganan Anda telah berakhir. Harap bayar tagihan atau hubungi administrator.",
+    //   });
+    // }
 
-    if (user.status === "pending") {
-      return res
-        .status(400)
-        .json({ message: "Tolong lakukan verifikasi email terlebih dahulu" });
-    }
+    // if (user.status === "pending") {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "Tolong lakukan verifikasi email terlebih dahulu" });
+    // }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {

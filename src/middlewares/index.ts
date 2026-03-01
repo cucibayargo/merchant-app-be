@@ -64,9 +64,11 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     req.userId = id;
   
     if (subscription_end && new Date(subscription_end).getTime() <= Date.now()) {
-      return res.status(403).json({
-        message: "Langganan Anda telah kedaluwarsa. Silakan perbarui langganan Anda atau hubungi administrator."
-      });
+      if (req.method !== 'GET') {
+        return res.status(403).json({
+          message: "Langganan Anda telah kedaluwarsa. Silakan perbarui langganan Anda atau hubungi administrator."
+        });
+      }
     }
   
     // Refresh token if it's about to expire (e.g., within 24 hours)
