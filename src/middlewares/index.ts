@@ -62,9 +62,13 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
   try {
     const { id, subscription_end, exp } = jwt.verify(token, secretKey) as { id: string; subscription_end?: string; exp?: number };
     req.userId = id;
+
+    const isExpiredSubscriptionException =
+      (req.method === 'POST' && req.path === '/user/upload-logo') ||
+      (req.method === 'PUT' && /^\/user\/[^/]+$/.test(req.path));
   
     if (subscription_end && new Date(subscription_end).getTime() <= Date.now()) {
-      if (req.method !== 'GET') {
+      if (req.method !== 'GET' && !isExpiredSubscriptionException) {
         return res.status(403).json({
           message: "Langganan Anda telah kedaluwarsa. Silakan perbarui langganan Anda atau hubungi administrator."
         });

@@ -750,6 +750,42 @@ export async function getInvoiceByUserId(userId: string): Promise<getInvoiceResp
 }
 
 /**
+finally {
+  client.release();
+  }
+}
+
+/**
+ * Get the last active subscription for a user.
+ * @param userId - The ID of the user.
+ * @returns A promise that resolves to the last subscription or null if not found.
+ */
+export async function getLastUserSubscription(userId: string): Promise<any | null> {
+  const client = await pool.connect();
+  try {
+    const query = `
+      SELECT 
+        s.id,
+        s.user_id,
+        s.plan_id,
+        s.start_date,
+        s.end_date,
+        s.status
+      FROM app_subscriptions s
+      WHERE s.user_id = $1 AND s.status = 'active'
+      ORDER BY s.end_date DESC
+      LIMIT 1
+    `;
+    const result = await client.query(query, [userId]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('Error retrieving last user subscription:', error);
+    return null;
+  } finally {
+    client.release();
+  }
+}
+/**
  * Verifies the JWT token and checks if it's expired.
  * @param token - The JWT token.
  * @returns {Promise<any | null>} - The decoded token if valid, otherwise null.
