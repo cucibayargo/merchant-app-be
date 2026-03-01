@@ -187,12 +187,12 @@ export async function createSubscriptions(
 ): Promise<User> {
   const client = await pool.connect();
   try {
-    const { start_date, end_date, user_id, plan_id, price } = user;
+    const { start_date, end_date, user_id, plan_id, price, status } = user;
     const query = `
       INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id, user_plan_price, status)
-      VALUES ($1, $2, $3, $4, $5, 'active') RETURNING *;
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
     `;
-    const values = [start_date, end_date, user_id, plan_id, price];
+    const values = [start_date, end_date, user_id, plan_id, price, (status || 'active')];
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {

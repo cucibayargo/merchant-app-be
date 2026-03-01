@@ -513,13 +513,13 @@ router.post(
             .json({ message: "Paket Aplikasi Tidak ditemukan." });
         }
 
-        const lastSubscription = await getLastUserSubscription(user_id);
         await createSubscriptions({
           user_id: user_id,
           plan_id: subscriptionPlan.id,
           price: subscriptionPlan.price,
-          start_date: lastSubscription?.end_date || new Date().toISOString(),
-          end_date: lastSubscription?.end_date || new Date().toISOString(),
+          start_date: new Date().toISOString(),
+          end_date: new Date().toISOString(),
+          status: "pending"
         });
 
         const invoiceResponse = await createInvoice({

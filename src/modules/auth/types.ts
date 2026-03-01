@@ -201,6 +201,7 @@ export interface SubscriptionInput {
   user_id: string
   price: number
   plan_id: string
+  status?: string
 }
 
 export interface ReferralInput {
