@@ -1,11 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
+import { get } from 'http';
 import jwt from 'jsonwebtoken';
+import { getCustomerById } from '../modules/customer/controller';
+import { getUserDetails } from '../modules/user/controller';
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
 }
 
-const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const skipAuthRoutes = [
     '/auth',
     '/docs',
@@ -66,8 +69,8 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     const isExpiredSubscriptionException =
       (req.method === 'POST' && req.path === '/user/upload-logo') ||
       (req.method === 'PUT' && /^\/user\/[^/]+$/.test(req.path));
-  
-    if (subscription_end && new Date(subscription_end).getTime() <= Date.now()) {
+    const userDetail = await getUserDetails(id)
+    if (userDetail?.subscription_end && new Date(userDetail?.subscription_end).getTime() <= Date.now()) {
       if (req.method !== 'GET' && !isExpiredSubscriptionException) {
         return res.status(403).json({
           message: "Langganan Anda telah kedaluwarsa. Silakan perbarui langganan Anda atau hubungi administrator."
