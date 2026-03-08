@@ -8,65 +8,8 @@ import { formatJoiError } from "../../utils";
 const router = express.Router();
 
 
-/**
- * @swagger
- * tags:
- *   name: Email Support
- *   description: Email Support APIs
- */
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     EmailRequestBody:
- *       type: object
- *       required:
- *           - title
- *           - message
- *       properties:
- *         title:
- *           type: string
- *           description: Email title
- *           example: "Need some help"
- *         message:
- *           type: string
- *           description: Email message body
- *           example: "Aplikasi ini sangat sangat bagus"
- *     EmailResponse:
- *       type: object
- *       properties:
- *         status:
- *           type: string
- *           example: "success"
- *         message:
- *           type: string
- *           example: "Email support submitted successfully."
- */
 
-/**
- * @swagger
- * /email-support:
- *   post:
- *     summary: Send an Email
- *     description: Send a new email support
- *     tags: [Email Support]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/EmailRequestBody'
- *     responses:
- *       201:
- *         description: Email sended successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/EmailResponse'
- *       400:
- *         description: Bad request, invalid input
- */
 
 
 router.post("/", async (req: AuthenticatedRequest, res: Response) => {

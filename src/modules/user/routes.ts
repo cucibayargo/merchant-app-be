@@ -30,140 +30,8 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
 });
 
-/**
- * @swagger
- * tags:
- *   name: User
- *   description: User management APIs
- */
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     User:
- *       type: object
- *       required:
- *         - name
- *         - email
- *       properties:
- *         name:
- *           type: string
- *           description: Name of the user
- *           example: "John Doe"
- *         email:
- *           type: string
- *           description: Email address of the user
- *           example: "john.doe@example.com"
- *         phone_number:
- *           type: string
- *           nullable: true
- *           description: Phone number of the user (nullable)
- *           example: "+12345678901"
- *         address:
- *           type: string
- *           nullable: true
- *           description: Address of the user (nullable)
- *           example: "123 Main St, Springfield"
- *         logo:
- *           type: string
- *           nullable: true
- *           description: URL of the user's logo (nullable)
- *           example: "https://example.com/logo.png"
- *     UserRequestBody:
- *       type: object
- *       required:
- *         - name
- *         - email
- *       properties:
- *         name:
- *           type: string
- *           description: Name of the user
- *           example: "John Doe"
- *         email:
- *           type: string
- *           description: Email address of the user
- *           example: "john.doe@example.com"
- *         phone_number:
- *           type: string
- *           nullable: true
- *           description: Phone number of the user (nullable)
- *           example: "+12345678901"
- *         address:
- *           type: string
- *           nullable: true
- *           description: Address of the user (nullable)
- *           example: "123 Main St, Springfield"
- *     Invoice:
- *       type: object
- *       required:
- *         - invoice_id
- *         - user_id
- *         - status
- *         - plan_id
- *       properties:
- *         invoice_id:
- *           type: string
- *           description: ID faktur yang akan diperbarui
- *           example: "INV123456"
- *         user_id:
- *           type: string
- *           description: ID pengguna yang terkait dengan faktur
- *           example: "USR7890"
- *         status:
- *           type: string
- *           description: Status dari faktur
- *           example: "Dibayar"
- *         plan_id:
- *           type: string
- *           description: ID rencana langganan yang terkait dengan faktur
- *           example: "PLAN001"
- *         created_at:
- *           type: string
- *           format: date-time
- *           description: Tanggal dan waktu faktur dibuat
- *           example: "2024-08-10T10:15:30Z"
- *         updated_at:
- *           type: string
- *           format: date-time
- *           description: Tanggal dan waktu faktur terakhir diperbarui
- *           example: "2024-08-12T12:30:45Z"
- */
 
-/**
- * @swagger
- * /user/upload-logo:
- *   post:
- *     summary: Uploads a temporary logo file
- *     description: Uploads a logo file to Supabase Storage and returns the file path.
- *     tags: [User]
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: The logo file to upload
- *     responses:
- *       '200':
- *         description: File uploaded successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 filePath:
- *                   type: string
- *                   description: The path of the uploaded file in Supabase Storage
- *       '400':
- *         description: Tidak ada file yang diunggah
- *       '500':
- *         description: Gagal mengunggah file
- */
 router.post("/upload-logo", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -197,23 +65,6 @@ router.post("/upload-logo", upload.single("file"), async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /user/details:
- *   get:
- *     summary: Retrieve user details
- *     description: Fetches the details of a user by their ID.
- *     tags: [User]
- *     responses:
- *       '200':
- *         description: User details retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       '404':
- *         description: User tidak ditemukan
- */
 router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.userId;
 
@@ -242,52 +93,6 @@ router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
 });
 
 
-/**
- * @swagger
- * /user/{id}:
- *   put:
- *     summary: Update user details and optionally submit logo
- *     description: Updates user details including optional logo upload. If a logo file path is provided, it will be moved from temporary to final location.
- *     tags: [User]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: The ID of the user to update.
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: Name of the user
- *               email:
- *                 type: string
- *                 description: Email address of the user
- *               phone_number:
- *                 type: string
- *                 description: Phone number of the user
- *               address:
- *                 type: string
- *                 description: Address of the user
- *               logo:
- *                 type: string
- *                 description: Path of the uploaded logo in Supabase Storage
- *     responses:
- *       '200':
- *         description: Rincian pengguna berhasil diperbarui
- *       '400':
- *         description: Missing required fields or invalid input
- *       '404':
- *         description: Pengguna tidak ditemukan
- *       '500':
- *         description: Failed to update user details or process logo
- */
 router.put('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   const { name, email, phone_number, address, logo } = req.body;
@@ -354,37 +159,6 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * @swagger
- * /user/delete-temp-files:
- *   get:
- *     summary: Delete temporary files
- *     description: Deletes all files in the temporary storage folder. Requires a valid secret token in the request header.
- *     tags: [User]
- *     parameters:
- *       - in: header
- *         name: cron-job-token
- *         required: true
- *         description: The secret token required to authorize the request.
- *         schema:
- *           type: string
- *           example: "d5f811"
- *     responses:
- *       '200':
- *         description: Files deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Files already deleted"
- *       '403':
- *         description: Forbidden Invalid token
- *       '500':
- *         description: Error deleting files
- */
 router.get("/delete-temp-files", async (req: AuthenticatedRequest, res: Response) => {
   try {
     await deleteTempFiles();
@@ -395,37 +169,6 @@ router.get("/delete-temp-files", async (req: AuthenticatedRequest, res: Response
   }
 });
 
-/**
- * @swagger
- * /user/check-subscriptions:
- *   get:
- *     summary: Check user subscriptions
- *     description: Checks user subscriptions and sends email notifications for those expiring soon.
- *     tags: [User]
- *     parameters:
- *       - in: header
- *         name: cron-job-token
- *         required: true
- *         description: The secret token required to authorize the request.
- *         schema:
- *           type: string
- *           example: "d5f811"
- *     responses:
- *       '200':
- *         description: Subscriptions checked successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Subscriptions checked and notifications sent"
- *       '403':
- *         description: Forbidden Invalid token
- *       '500':
- *         description: Error checking subscriptions
- */
 router.get("/check-subscriptions", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const token = req.headers["cron-job-token"];
@@ -441,55 +184,6 @@ router.get("/check-subscriptions", async (req: AuthenticatedRequest, res: Respon
   }
 });
 
-/**
- * @swagger
- * /user/upload-subscriptions-invoice:
- *   post:
- *     summary: Uploads a subscription invoice file
- *     description: Uploads an invoice file to Supabase Storage and returns the file path.
- *     tags: [User]
- *     parameters:
- *       - in: header
- *         name: invoice-token
- *         required: true
- *         schema:
- *           type: string
- *         description: Token for validating access to upload the subscription invoice.
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: The subscription invoice file to upload
- *               note:
- *                 type: string
- *                 description: Optional note to associate with the invoice
- *               invoice_id:
- *                 type: string
- *                 description: The ID of the invoice associated with the file
- *     responses:
- *       '200':
- *         description: File uploaded successfully and transaction recorded
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   description: Success message confirming the file upload
- *       '400':
- *         description: Bad request - missing file or required fields
- *       '403':
- *         description: Forbidden - invalid token
- *       '500':
- *         description: Failed to upload file or process the transaction
- */
 
 router.post(
   "/upload-subscriptions-invoice",
@@ -591,42 +285,6 @@ router.post(
   }
 );
 
-/**
- * @swagger
- * /user/invoice/{invoiceId}:
- *   get:
- *     summary: Retrieve user invoice details
- *     description: Fetches the invoice details of a user by their invoice ID.
- *     tags: [User]
- *     parameters:
- *       - in: path
- *         name: invoiceId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the invoice to retrieve.
- *       - in: header
- *         name: invoice-token
- *         required: true
- *         schema:
- *           type: string
- *         description: Token for validating access to the invoice.
- *     responses:
- *       '200':
- *         description: User invoice details retrieved successfully.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/UserInvoice'
- *       '400':
- *         description: Invalid or missing invoice ID.
- *       '403':
- *         description: Forbidden Invalid token.
- *       '404':
- *         description: Invoice not found.
- *       '500':
- *         description: Internal server error.
- */
 router.get(
   "/invoice/:invoiceId",
   async (req: AuthenticatedRequest, res: Response) => {
@@ -663,27 +321,6 @@ router.get(
   }
 );
 
-/**
- * @swagger
- * /user/invoices:
- *   get:
- *     summary: Retrieve all user invoices
- *     description: Fetches the details of all invoices for a user.
- *     tags: [User]
- *     responses:
- *       '200':
- *         description: Tagihan berhasil diambil
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Invoice'
- *       '404':
- *         description: Tidak ada tagihan ditemukan
- *       '500':
- *         description: Terjadi kesalahan pada server
- */
 router.get(
   "/invoices",
   async (req: AuthenticatedRequest, res: Response) => {
@@ -705,33 +342,6 @@ router.get(
 );
 
 
-/**
- * @swagger
- * /user/plan:
- *   post:
- *     summary: Set a new plan for the user
- *     description: Assign a new plan to a user based on the provided plan code.
- *     tags: [User]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               plan_code:
- *                 type: string
- *                 description: The code of the plan to be assigned to the user.
- *     responses:
- *       '200':
- *         description: Rencana pengguna berhasil diatur
- *       '400':
- *         description: Input tidak valid atau data tidak lengkap
- *       '404':
- *         description: Rencana tidak ditemukan
- *       '500':
- *         description: Terjadi kesalahan pada server
- */
 router.post(
   "/plan",
   async (req: AuthenticatedRequest, res: Response) => {
@@ -757,44 +367,6 @@ router.post(
   }
 );
 
-/**
- * @swagger
- * /user/invoice-update:
- *   post:
- *     summary: Perbarui faktur untuk pengguna
- *     description: Perbarui faktur untuk pengguna berdasarkan ID faktur yang diberikan.
- *     tags: [User]
- *     parameters:
- *       - in: header
- *         name: cron-job-token
- *         required: true
- *         description: The secret token required to authorize the request.
- *         schema:
- *           type: string
- *           example: "d5f811"
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *                 description: Diterima atau Ditolak
- *               invoice_id:
- *                 type: string
- *                 description: ID faktur yang akan diperbarui.
- *     responses:
- *       '200':
- *         description: Faktur berhasil diperbarui
- *       '400':
- *         description: Input tidak valid atau data tidak lengkap
- *       '404':
- *         description: Faktur tidak ditemukan
- *       '500':
- *         description: Terjadi kesalahan pada server saat memperbarui faktur
- */
 router.post(
   "/invoice-update",
   async (req: AuthenticatedRequest, res: Response) => {
@@ -826,31 +398,6 @@ router.post(
   }
 );
 
-/**
- * @swagger
- * /user/verify-invoice:
- *   post:
- *     summary: Validate Invoice Token
- *     description: Perbarui faktur untuk pengguna berdasarkan ID faktur yang diberikan.
- *     tags: [User]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               token:
- *                 type: string
- *                 description: JWT TOKEN
- *     responses:
- *       '200':
- *         description: Successfully
- *       '400':
- *         description: Error
- *       '500':
- *         description: Server Error
- */
 router.post(
   "/verify-invoice",
   async (req: AuthenticatedRequest, res: Response) => {
@@ -876,27 +423,6 @@ router.post(
   }
 );
 
-/**
- * @swagger
- * /user/get-invoice:
- *   get:
- *     summary: Retrieve invoice ID
- *     description: Fetches the invoice ID of a user by their ID.
- *     tags: [User]
- *     responses:
- *       '200':
- *         description: Invoice ID details retrieved successfully
- *         content:
- *           application/json:
- *           schema:
- *             type: object
- *             properties:
- *               token:
- *                 type: string
- *                 description: Invoice ID
- *       '404':
- *         description: Invoice tidak ditemukan
- */
 router.get("/get-invoice", async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.userId as string;
 
@@ -913,27 +439,6 @@ router.get("/get-invoice", async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-/**
- * @swagger
- * /user/trigger-supabase-cloud:
- *   get:
- *     summary: Connect into supabase cloud
- *     description: Connect into supabase cloud and trigger the function
- *     tags: [User]
- *     parameters:
- *       - in: header
- *         name: cron-job-token
- *         required: true
- *         description: The secret token required to authorize the request.
- *         schema:
- *           type: string
- *           example: "d5f811"
- *     responses:
- *       '200':
- *         description: Connnected into supabase cloud
- *       '400':
- *         description: Failed to connect into database
- */
 router.get("/trigger-supabase-cloud", async (req: AuthenticatedRequest, res: Response) => {
     const token = req.headers["cron-job-token"];
     if (token !== process.env.crToken) {
@@ -955,35 +460,6 @@ router.get("/trigger-supabase-cloud", async (req: AuthenticatedRequest, res: Res
   }
 );
 
-/**
- * @swagger
- * /user/delete/{id}:
- *   delete:
- *     summary: Delete a user from Supabase Cloud
- *     description: Deletes a user by ID from Supabase Cloud and returns the result
- *     tags: [User]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: ID of the user to delete
- *         schema:
- *           type: string
- *       - in: header
- *         name: cron-job-token
- *         required: true
- *         description: The secret token required to authorize the request
- *         schema:
- *           type: string
- *           example: "d5f811"
- *     responses:
- *       '200':
- *         description: Successfully deleted user from Supabase Cloud
- *       '404':
- *         description: User not found or deletion failed
- *       '500':
- *         description: Server error while attempting to delete the user
- */
 router.get("/delete/:id", async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
 

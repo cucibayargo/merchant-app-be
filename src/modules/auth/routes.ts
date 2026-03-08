@@ -236,99 +236,8 @@ const sendAdminNotification = async (registrationEmail: string) => {
   }
 };
 
-/**
- * @swagger
- * tags:
- *   name: Auth
- *   description: Authentication APIs
- */
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     User:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           description: User's unique identifier
- *         name:
- *           type: string
- *           description: User's name
- *         email:
- *           type: string
- *           description: User's email address
- *         oauth:
- *           type: boolean
- *           description: Whether the user is authenticated via OAuth
- *         token:
- *           type: string
- *           description: Authentication token for the user
- *         phone_number:
- *           type: string
- *           description: User's phone number
- *         logo:
- *           type: string
- *           description: URL to the user's logo or profile picture
- *         address:
- *           type: string
- *           description: User's address
- *         created_at:
- *           type: string
- *           format: date-time
- *           description: Timestamp of when the user was created
- *         updated_at:
- *           type: string
- *           format: date-time
- *           description: Timestamp of when the user was last updated
- */
 
-/**
- * @swagger
- * /auth/login:
- *   post:
- *     summary: Logs in a user
- *     description: Logs in a user with credentials
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 description: User's email address
- *               password:
- *                 type: string
- *                 description: User's password
- *             required:
- *               - email
- *               - password
- *     responses:
- *       '200':
- *         description: Successful login
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Login berhasil."
- *       '401':
- *         description: Unauthorized, invalid credentials
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Email tidak ditemukan"
- */
 router.post("/login", async (req, res) => {
   const { error } = LoginSchema.validate(req.body);
    if (error) {
@@ -398,35 +307,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /auth/logout:
- *   post:
- *     summary: Logs out a user
- *     description: Logs out a user and invalidates their session or token
- *     tags: [Auth]
- *     responses:
- *       '200':
- *         description: Successful logout
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Logout berhasil."
- *       '500':
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Terjadi kesalahan pada server."
- */
 router.post("/logout", async (req, res) => {
   try {
     // Clear the authentication cookie
@@ -442,62 +322,6 @@ router.post("/logout", async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /auth/signup:
- *   post:
- *     summary: Signs up a new user
- *     description: Creates a new user account
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 description: User's email address
- *               phone_number:
- *                 type: string
- *                 description: User's phone number
- *               name:
- *                 type: string
- *                 description: User's name
- *               token:
- *                 type: string
- *                 description: Unique Signup Token
- *               password:
- *                 type: string
- *                 description: User's password
- *             required:
- *               - email
- *               - phone_number
- *               - name
- *               - password
- *     responses:
- *       '201':
- *         description: User successfully created
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Signup berhasil."
- *       '400':
- *         description: Bad request, invalid input
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Email sudah digunakan."
- */
 router.post("/signup", async (req, res) => {
   const { error } = SignUpSchema.validate(req.body);
   if (error) {
@@ -651,72 +475,6 @@ router.get("/verify-token", async (req, res) => {
   });  
 })
 
-/**
- * @swagger
- * /auth/signup/token:
- *   post:
- *     summary: Generate a signup link and send to the user's email
- *     description: Validates the user's input and checks if the email is already in use. If valid, creates a signup link and sends it to the user's email.
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - phone_number
- *             properties:
- *               name:
- *                 type: string
- *                 description: The user's full name
- *                 example: John Doe
- *               subscription_plan:
- *                 type: string
- *                 description: The subscription plan code picking by user
- *                 example: paket1
- *               email:
- *                 type: string
- *                 description: The user's email address
- *                 example: johndoe@example.com
- *               phone_number:
- *                 type: string
- *                 description: The user's phone number
- *                 example: +1234567890
- *     responses:
- *       201:
- *         description: Signup link has been created and sent to the user's email
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Link pendaftaran telah dibuat. Silahkan cek email anda untuk melanjutkan.
- *       400:
- *         description: Invalid input or email already in use
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Email sudah digunakan.
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Terjadi kesalahan pada server.
- */
 router.post("/signup/token", async (req, res) => {
   const { error } = SignUpTokenSchema.validate(req.body);
   if (error) {
@@ -789,65 +547,6 @@ router.post("/signup/token", async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /auth/change-password:
- *   post:
- *     summary: Changes the user's password
- *     description: Allows a user to change their password
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 description: User's email address
- *               currentPassword:
- *                 type: string
- *                 description: User's current password
- *               newPassword:
- *                 type: string
- *                 description: User's new password
- *             required:
- *               - email
- *               - currentPassword
- *               - newPassword
- *     responses:
- *       '200':
- *         description: Password successfully changed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Password updated successfully."
- *       '400':
- *         description: Bad request, invalid input
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Current password is incorrect."
- *       '401':
- *         description: Unauthorized, invalid credentials
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Current password is incorrect."
- */
 router.post("/change-password", async (req, res) => {
   const { error } = ChangePasswordSchema.validate(req.body);
    if (error) {
@@ -866,57 +565,6 @@ router.post("/change-password", async (req, res) => {
 });
 
 
-/**
- * @swagger
- * /auth/reset-password:
- *   post:
- *     summary: Changes the user's password
- *     description: Allows a user to change their password
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 description: User's email address
- *             required:
- *               - email
- *     responses:
- *       '200':
- *         description: Password successfully changed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Password updated successfully."
- *       '400':
- *         description: Bad request, invalid input
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Current password is incorrect."
- *       '401':
- *         description: Unauthorized, invalid credentials
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Current password is incorrect."
- */
 const resetLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 menit
   max: 3, // max 3 request per IP
@@ -1014,32 +662,8 @@ router.post("/password-reset/confirm", async (req, res) => {
 });
 
 
-/**
- * @swagger
- * /auth/google:
- *   get:
- *     summary: Initiates Google OAuth authentication
- *     description: Redirects to Google for authentication
- *     tags: [Auth]
- *     responses:
- *       '302':
- *         description: Redirects to Google for authentication
- */
 // router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
-/**
- * @swagger
- * /auth/google/callback:
- *   get:
- *     summary: Handles Google OAuth callback
- *     description: Handles the callback from Google after authentication
- *     tags: [Auth]
- *     responses:
- *       '302':
- *         description: Redirects to the frontend application with an authentication token
- *       '500':
- *         description: Terjadi kesalahan server
- */
 // router.get("/google/callback", passport.authenticate("google", { session: false }), (req, res) => {
 //   if (req.user) {
 //     const user = req.user as any;
@@ -1053,28 +677,6 @@ router.post("/password-reset/confirm", async (req, res) => {
 //   }
 // });
 
-/**
- * @swagger
- * /auth/verify-email:
- *   get:
- *     summary: Verify user email
- *     tags: [Auth]
- *     description: Validates the email verification token and updates the user's status to 'verified'.
- *     parameters:
- *       - in: query
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *         description: The email verification token
- *     responses:
- *       200:
- *         description: Email verified successfully.
- *       400:
- *         description: Invalid or expired verification link.
- *       500:
- *         description: Terjadi kesalahan server.
- */
 router.get("/verify-email", async (req, res) => {
   const { token } = req.query;
 

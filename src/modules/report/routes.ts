@@ -12,44 +12,7 @@ import { AuthenticatedRequest } from '../../middlewares';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
 const router = express.Router();
 
-/**
- * @swagger
- * tags:
- *   name: Reports
- *   description: Report Download and Generation
- */
 
-/**
- * @swagger
- * /report/download:
- *   get:
- *     summary: Retrieve a report of all transactions.
- *     tags: [Reports]
- *     parameters:
- *       - in: query
- *         name: start_date
- *         schema:
- *           type: string
- *         required: true
- *         description: The start date for the report (YYYY-MM-DD).
- *       - in: query
- *         name: end_date
- *         schema:
- *           type: string
- *         required: true
- *         description: The end date for the report (YYYY-MM-DD).
- *     responses:
- *       200:
- *         description: Report of all transactions.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *       400:
- *         description: Invalid request parameters.
- *       500:
- *         description: Internal server error.
- */
 router.get('/download', async (req: AuthenticatedRequest, res) => {
     try {
         const { start_date, end_date } = req.query;
