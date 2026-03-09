@@ -7,16 +7,16 @@ const router = express.Router();
 
 router.put('/:invoiceId', async (req: Request, res: Response) => {
   const { invoiceId } = req.params;
-  const { payment_received, change_given } = req.body;
+  const { payment_received, change_given, payment_method } = req.body;
 
-  if (!payment_received || change_given < 0) {
+  if (!payment_received || change_given < 0 || !payment_method) {
     return res.status(400).json({
       message: 'Input tidak valid, payment_received dan change_given diperlukan.'
     });
   }
 
   try {
-    const updatedPayment = await updatePayment(invoiceId, { payment_received, change_given });
+    const updatedPayment = await updatePayment(invoiceId, { payment_received, change_given, payment_method });
     res.json({
       status: 'sukses',
       message: 'Pembayaran berhasil diperbarui.',

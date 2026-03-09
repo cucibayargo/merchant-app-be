@@ -8,3 +8,6 @@ CREATE TABLE expenses (
 );
 
 CREATE INDEX idx_expenses_merchant_date ON expenses (merchant_id, date);
+
+ALTER TABLE payment
+ADD COLUMN payment_method VARCHAR(50);

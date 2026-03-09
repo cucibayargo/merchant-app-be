@@ -44,6 +44,7 @@ export interface TransactionDetails {
   total: number;
   payment_id: number;
   payment_status: string;
+  payment_method: string;
   invoice: string;
   services: ServiceDetail[];
 }

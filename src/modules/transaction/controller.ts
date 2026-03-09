@@ -342,6 +342,7 @@ export async function getTransactionById(
         p.invoice_id AS invoice,
         SUM(ti.price * ti.qty) AS total,
         p.status AS payment_status,
+        p.payment_method,
         p.id AS payment_id,
         MAX(ti.estimated_date) AS estimated_date,
         json_agg(

@@ -27,6 +27,7 @@ export interface PaymentDetails {
   paymentId: string;
   invoice: string;
   total: number;
+  payment_method: string;
   paymentStatus: string;
   services: Service[];
 }

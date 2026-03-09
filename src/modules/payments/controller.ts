@@ -44,19 +44,20 @@ export async function addPayment(
  * @param paymentParams - The updated payment data (status and change given).
  * @returns {Promise<Payment>} - A promise that resolves to the updated payment.
  */
-export async function updatePayment(invoiceId: string, paymentParams: { change_given: number, payment_received: number }): Promise<{customer : Customer, invoice: string}> {
+export async function updatePayment(invoiceId: string, paymentParams: { change_given: number, payment_received: number, payment_method: string }): Promise<{customer : Customer, invoice: string}> {
     const client = await pool.connect();
     try {
-      const { change_given, payment_received} = paymentParams;
+      const { change_given, payment_received, payment_method} = paymentParams;
       const query = `
         UPDATE payment
         SET status = 'Lunas',
             payment_received = $1,
-            change_given = $2
-        WHERE invoice_id = $3
+            change_given = $2,
+            payment_method = $3
+        WHERE invoice_id = $4
         RETURNING *;
       `;
-      const values = [payment_received, change_given, invoiceId];
+      const values = [payment_received, change_given, payment_method, invoiceId];
       const result = await client.query(query, values);
 
       const customer = await getCustomerByPatmentId(result.rows[0].transaction_id);
@@ -80,6 +81,7 @@ export async function getPaymentByInvoiceId(invoiceId: string): Promise<PaymentD
                 p.invoice_id AS invoice,
                 SUM(ti.price * ti.qty) AS total,
                 p.status AS payment_status,
+                p.payment_method,
                 json_agg(
                     json_build_object(
                         'service_id', ti.service_id,
