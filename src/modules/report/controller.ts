@@ -114,7 +114,15 @@ async function getReportData(start_date: string, end_date: string, merchantId: s
             SELECT 
                 TO_CHAR(ds.date, 'DD-MM-YYYY') AS date,
                 COALESCE(COUNT(ti.id), 0) AS total_transactions,
-                COALESCE(SUM(ti.qty * ti.price), 0) AS total_revenue
+                COALESCE(SUM(ti.qty * ti.price), 0) - COALESCE(
+                    (SELECT SUM(COALESCE(t2.discount_amount, 0))
+                     FROM transaction t2
+                     WHERE t2.created_at::DATE = ds.date
+                       AND t2.merchant_id = $3
+                       AND t2.status = 'Selesai'
+                       AND t2.deleted_at IS NULL
+                    ), 0
+                ) AS total_revenue
                 ${serviceColumns ? `, ${serviceColumns}` : ""}
             FROM date_series ds
             LEFT JOIN transaction t ON t.created_at::DATE = ds.date AND t.merchant_id = $3 AND t.status = 'Selesai'
@@ -160,7 +168,14 @@ export async function getDashboardSummary(merchant_id: string): Promise<{ today_
     try {
         const query = `
             SELECT
-                COALESCE(SUM(ti.price * ti.qty), 0) AS today_revenue,
+                COALESCE(SUM(ti.price * ti.qty), 0) - COALESCE(
+                    (SELECT SUM(COALESCE(t2.discount_amount, 0))
+                     FROM transaction t2
+                     WHERE t2.merchant_id = $1
+                       AND t2.deleted_at IS NULL
+                       AND t2.created_at::date = CURRENT_DATE
+                    ), 0
+                ) AS today_revenue,
                 COALESCE(COUNT(DISTINCT t.id), 0) AS total_transactions
             FROM transaction t
             LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
@@ -446,9 +461,9 @@ export async function getCustomersReport(
                 t.customer_name AS name,
                 t.customer_phone_number AS phone,
                 COUNT(DISTINCT t.id) AS total_transactions,
-                COALESCE(SUM(ti.qty * ti.price), 0) AS total_spent
+                COALESCE(SUM(p.total_amount_due), 0) AS total_spent
             FROM transaction t
-            LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
+            LEFT JOIN payment p ON p.transaction_id = t.id
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
               AND EXTRACT(MONTH FROM t.created_at) = $2

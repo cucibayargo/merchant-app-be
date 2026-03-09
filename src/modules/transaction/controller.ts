@@ -10,6 +10,7 @@ import { addPayment } from "../payments/controller";
 import { getCustomerById } from "../customer/controller";
 import { getDurationById } from "../duration/controller";
 import { getServiceDurationDetail } from "../services/controller";
+import { calculateDiscountAmount, getDiscountByIdOnly } from "../discount/controller";
 
 export async function getTransactions(
   status: string | null = null,
@@ -129,7 +130,7 @@ export async function addTransaction(
 ): Promise<any | null> {
   const client = await pool.connect();
   try {
-    const { customer, status, items, note } = transaction;
+    const { customer, status, items, note, discount_id } = transaction;
     const customerDetail = await getCustomerById(customer);
 
     const query = `
@@ -219,6 +220,22 @@ export async function addTransaction(
     }
 
     const totalPrice = await getInvoiceTotalPrice(newTransactionId);
+    const subtotal = totalPrice?.total || 0;
+
+    // Apply discount if provided
+    let discountAmount = 0;
+    if (discount_id) {
+      const discountRecord = await getDiscountByIdOnly(discount_id);
+      if (discountRecord && discountRecord.is_active) {
+        discountAmount = calculateDiscountAmount(subtotal, discountRecord);
+        await client.query(
+          `UPDATE transaction SET discount_id = $1, discount_amount = $2 WHERE id = $3`,
+          [discount_id, discountAmount, newTransactionId]
+        );
+      }
+    }
+
+    const totalAfterDiscount = subtotal - discountAmount;
 
     // Generate Invoice ID
     const invoiceId = await generateInvoiceId(newTransactionId, merchant_id);
@@ -228,7 +245,7 @@ export async function addTransaction(
       {
         status: "Belum Dibayar",
         invoice_id: invoiceId,
-        total_amount_due: totalPrice?.total || 0,
+        total_amount_due: totalAfterDiscount,
         transaction_id: newTransactionId,
       },
       merchant_id
@@ -340,7 +357,13 @@ export async function getTransactionById(
         t.note,
         t.status AS transaction_status,
         p.invoice_id AS invoice,
-        SUM(ti.price * ti.qty) AS total,
+        SUM(ti.price * ti.qty) AS subtotal,
+        t.discount_id,
+        d.name AS discount_name,
+        d.type AS discount_type,
+        d.value AS discount_value,
+        t.discount_amount,
+        SUM(ti.price * ti.qty) - COALESCE(t.discount_amount, 0) AS total,
         p.status AS payment_status,
         p.payment_method,
         p.id AS payment_id,
@@ -360,8 +383,9 @@ export async function getTransactionById(
       FROM transaction t
       LEFT JOIN payment p ON t.id = p.transaction_id
       LEFT JOIN transaction_item ti ON t.id = ti.transaction_id
+      LEFT JOIN discounts d ON t.discount_id = d.id
       WHERE p.invoice_id = $1
-      GROUP BY t.id, p.id
+      GROUP BY t.id, p.id, d.id
     `;
 
     const result = await client.query(query, [invoiceId]);
@@ -478,7 +502,12 @@ export async function getInvoiceById(
                       'estimated_date', TO_CHAR(ti.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                   )
               ),
-              'total_price', SUM(ti.price * ti.qty),
+              'subtotal', SUM(ti.price * ti.qty),
+              'discount_name', d.name,
+              'discount_type', d.type,
+              'discount_value', d.value,
+              'discount_amount', COALESCE(t.discount_amount, 0),
+              'total_price', SUM(ti.price * ti.qty) - COALESCE(t.discount_amount, 0),
               'payment_received', p.payment_received,
               'change_given', p.change_given
           ) as transaction
@@ -487,8 +516,9 @@ export async function getInvoiceById(
       LEFT JOIN transaction_item ti ON t.id = ti.transaction_id
       LEFT JOIN users u ON u.id = t.merchant_id
       LEFT JOIN note n ON n.merchant_id = u.id
+      LEFT JOIN discounts d ON t.discount_id = d.id
       WHERE p.invoice_id = $1
-      GROUP BY t.id, u.id, n.id, p.id
+      GROUP BY t.id, u.id, n.id, p.id, d.id
     `;
 
     const result = await client.query(query, [invoiceId]);

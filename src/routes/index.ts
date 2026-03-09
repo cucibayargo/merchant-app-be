@@ -16,6 +16,7 @@ import notesRoutes from "../modules/notes/routes";
 import userRoutes from "../modules/user/routes";
 import reportRoutes from "../modules/report/routes";
 import expanseRoutes from "../modules/expanse/routes";
+import discountRoutes from "../modules/discount/routes";
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use("/email-support", emailSupportRoutes);
 router.use("/payment", paymentRoutes);
 router.use("/report", reportRoutes);
 router.use("/expanse", expanseRoutes);
+router.use("/discounts", discountRoutes);
 
 export default router;

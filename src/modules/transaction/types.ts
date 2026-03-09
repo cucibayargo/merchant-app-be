@@ -15,6 +15,7 @@ export interface Transaction {
   items?: TransactionItemDetail[];
   total?: number;
   note?: string;
+  discount_id?: string;
 }
 export interface TransactionData {
   id: string;
@@ -41,6 +42,12 @@ export interface TransactionDetails {
   customer_name: string;
   customer_phone_number: string;
   duration_name: string;
+  subtotal: number;
+  discount_id: string | null;
+  discount_name: string | null;
+  discount_type: string | null;
+  discount_value: number | null;
+  discount_amount: number;
   total: number;
   payment_id: number;
   payment_status: string;
@@ -53,6 +60,7 @@ export const transactionSchema = Joi.object({
   customer: Joi.string().uuid().required(),
   note: Joi.string().allow(''),
   status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil", "Dibatalkan").required(),
+  discount_id: Joi.string().uuid().allow(null, '').optional(),
   items: Joi.array()
     .items(
       Joi.object({
@@ -95,6 +103,11 @@ interface InvoiceTransaction {
   completed_date: string | null;
   duration: string;
   services: InvoiceService[];
+  subtotal: number;
+  discount_name: string | null;
+  discount_type: string | null;
+  discount_value: number | null;
+  discount_amount: number;
   total_price: number;
   payment_received: number;
   change_given: number;
