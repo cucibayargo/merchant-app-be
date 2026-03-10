@@ -12,7 +12,7 @@ export async function listDiscounts(
     const offset = (page - 1) * limit;
 
     const query = `
-      SELECT id, merchant_id, name, type, value, description, is_active, created_at, updated_at
+      SELECT id, merchant_id, name, type, value::double precision AS value, COALESCE(description, '') AS description, is_active, created_at, updated_at
       FROM discounts
       WHERE merchant_id = $1
         AND ($2::text IS NULL OR name ILIKE '%' || $2 || '%')
@@ -47,7 +47,7 @@ export async function getDiscountById(
   const client = await pool.connect();
   try {
     const { rows } = await client.query(
-      `SELECT id, merchant_id, name, type, value, description, is_active, created_at, updated_at
+      `SELECT id, merchant_id, name, type, value::double precision AS value, COALESCE(description, '') AS description, is_active, created_at, updated_at
        FROM discounts WHERE id = $1 AND merchant_id = $2`,
       [id, merchant_id]
     );
@@ -61,7 +61,7 @@ export async function getDiscountByIdOnly(id: string): Promise<Discount | null> 
   const client = await pool.connect();
   try {
     const { rows } = await client.query(
-      `SELECT id, merchant_id, name, type, value, description, is_active, created_at, updated_at
+      `SELECT id, merchant_id, name, type, value::double precision AS value, COALESCE(description, '') AS description, is_active, created_at, updated_at
        FROM discounts WHERE id = $1`,
       [id]
     );
@@ -80,7 +80,7 @@ export async function createDiscount(
     const { rows } = await client.query(
       `INSERT INTO discounts (merchant_id, name, type, value, description, is_active)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, merchant_id, name, type, value, description, is_active, created_at, updated_at`,
+       RETURNING id, merchant_id, name, type, value::double precision AS value, description, is_active, created_at, updated_at`,
       [
         merchant_id,
         payload.name,
@@ -121,7 +121,7 @@ export async function updateDiscount(
     const { rows } = await client.query(
       `UPDATE discounts SET ${fields.join(", ")}
        WHERE id = $${idx++} AND merchant_id = $${idx++}
-       RETURNING id, merchant_id, name, type, value, description, is_active, created_at, updated_at`,
+       RETURNING id, merchant_id, name, type, value::double precision AS value, description, is_active, created_at, updated_at`,
       values
     );
     return rows[0] || null;

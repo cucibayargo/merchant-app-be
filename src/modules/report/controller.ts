@@ -237,6 +237,7 @@ export async function getTransactionsReport(
         invoice: string;
         status: string;
         payment_status: string;
+    payment_method: string;
         created_at: string;
         note: string;
         ready_to_pick_up_at: string;
@@ -268,6 +269,7 @@ export async function getTransactionsReport(
                 t.id,
                 t.customer_name AS customer,
                 p.status AS payment_status,
+                COALESCE(p.payment_method, '') AS payment_method,
                 p.invoice_id AS invoice,
                 t.status,
                 t.created_at,
@@ -353,7 +355,12 @@ export async function getFinanceReport(
     end_date: string
 ): Promise<{
     revenue: { total: number; by_service: Array<{ name: string; amount: number }> };
-    income: { total: number; by_payment_method: Array<{ method: string; amount: number }> };
+    income: {
+        total: number;
+        cash: number;
+        non_cash: number;
+        by_payment_method: Array<{ method: string; amount: number }>;
+    };
     expenses: { total: number; by_category: Array<{ name: string; amount: number }> };
 }> {
     const client = await pool.connect();
@@ -374,14 +381,14 @@ export async function getFinanceReport(
 
         const incomeByPaymentMethodQuery = `
             SELECT
-            COALESCE(SUM(p.total_amount_due), 0) AS amount,
-            COALESCE(SUM(CASE WHEN p.status = 'Lunas' THEN p.total_amount_due ELSE 0 END), 0) AS paid_amount,
-            COALESCE(SUM(CASE WHEN p.status = 'Belum Dibayar' THEN p.total_amount_due ELSE 0 END), 0) AS unpaid_amount
+                                                COALESCE(NULLIF(TRIM(LOWER(p.payment_method)), ''), 'tunai') AS method,
+                        COALESCE(SUM(p.total_amount_due), 0) AS amount
             FROM payment p
             JOIN transaction t ON t.id = p.transaction_id
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
               AND p.created_at::date BETWEEN $2::date AND $3::date
+                                                GROUP BY COALESCE(NULLIF(TRIM(LOWER(p.payment_method)), ''), 'tunai')
             ORDER BY amount DESC
         `;
 
@@ -410,13 +417,28 @@ export async function getFinanceReport(
             name: row.category,
             amount: Number(row.amount),
         }));
+        const by_payment_method = incomeByPaymentMethodResult.rows.map((row) => ({
+            method: row.method,
+            amount: Number(row.amount),
+        }));
+        const cash = by_payment_method
+            .filter((item) => item.method === 'cash' || item.method === 'tunai')
+            .reduce((sum, item) => sum + item.amount, 0);
+        const non_cash = by_payment_method
+            .filter((item) => item.method !== 'cash' && item.method !== 'tunai')
+            .reduce((sum, item) => sum + item.amount, 0);
 
         return {
             revenue: {
                 total: by_service.reduce((sum, item) => sum + item.amount, 0),
                 by_service,
             },
-            income: incomeByPaymentMethodResult.rows[0],
+            income: {
+                total: by_payment_method.reduce((sum, item) => sum + item.amount, 0),
+                cash,
+                non_cash,
+                by_payment_method,
+            },
             expenses: {
                 total: by_category.reduce((sum, item) => sum + item.amount, 0),
                 by_category,
