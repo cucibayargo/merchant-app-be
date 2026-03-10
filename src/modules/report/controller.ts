@@ -269,7 +269,7 @@ export async function getTransactionsReport(
                 t.id,
                 t.customer_name AS customer,
                 p.status AS payment_status,
-                COALESCE(p.payment_method, '') AS payment_method,
+                COALESCE(NULLIF(TRIM(p.payment_method), ''), 'Tunai') AS payment_method,
                 p.invoice_id AS invoice,
                 t.status,
                 t.created_at,
@@ -357,8 +357,8 @@ export async function getFinanceReport(
     revenue: { total: number; by_service: Array<{ name: string; amount: number }> };
     income: {
         total: number;
-        cash: number;
-        non_cash: number;
+        tunai: number;
+        non_tunai: number;
         by_payment_method: Array<{ method: string; amount: number }>;
     };
     expenses: { total: number; by_category: Array<{ name: string; amount: number }> };
@@ -381,14 +381,17 @@ export async function getFinanceReport(
 
         const incomeByPaymentMethodQuery = `
             SELECT
-                                                COALESCE(NULLIF(TRIM(LOWER(p.payment_method)), ''), 'tunai') AS method,
-                        COALESCE(SUM(p.total_amount_due), 0) AS amount
+                CASE
+                    WHEN COALESCE(NULLIF(TRIM(LOWER(p.payment_method)), ''), 'tunai') IN ('tunai', 'cash') THEN 'Tunai'
+                    ELSE 'Non Tunai'
+                END AS method,
+                COALESCE(SUM(p.total_amount_due), 0) AS amount
             FROM payment p
             JOIN transaction t ON t.id = p.transaction_id
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
               AND p.created_at::date BETWEEN $2::date AND $3::date
-                                                GROUP BY COALESCE(NULLIF(TRIM(LOWER(p.payment_method)), ''), 'tunai')
+            GROUP BY 1
             ORDER BY amount DESC
         `;
 
@@ -421,11 +424,11 @@ export async function getFinanceReport(
             method: row.method,
             amount: Number(row.amount),
         }));
-        const cash = by_payment_method
-            .filter((item) => item.method === 'cash' || item.method === 'tunai')
+        const tunai = by_payment_method
+            .filter((item) => item.method === 'Tunai')
             .reduce((sum, item) => sum + item.amount, 0);
-        const non_cash = by_payment_method
-            .filter((item) => item.method !== 'cash' && item.method !== 'tunai')
+        const non_tunai = by_payment_method
+            .filter((item) => item.method === 'Non Tunai')
             .reduce((sum, item) => sum + item.amount, 0);
 
         return {
@@ -435,8 +438,8 @@ export async function getFinanceReport(
             },
             income: {
                 total: by_payment_method.reduce((sum, item) => sum + item.amount, 0),
-                cash,
-                non_cash,
+                tunai,
+                non_tunai,
                 by_payment_method,
             },
             expenses: {
