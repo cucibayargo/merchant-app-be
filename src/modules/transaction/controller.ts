@@ -557,7 +557,7 @@ async function generateInvoiceId(
 
   try {
     const prefix = "INV";
-    const specialUserId = "9d659c1f-c68f-4f69-9e21-fbcf37432bab";
+    const specialUserId = ["9d659c1f-c68f-4f69-9e21-fbcf37432bab", "a6765f71-360a-48c1-9d79-7481067cfe19", "60ac5377-6e91-4f67-a6ef-5edd4ef0d688"];
 
     // Create a new Date object and convert it to Jakarta time
     const now = new Date();
@@ -590,7 +590,7 @@ async function generateInvoiceId(
     const { order, sequence_id: merchantSeqId } = rows[0];
 
     // Check if user is special user
-    if (merchantId === specialUserId) {
+    if (specialUserId.includes(merchantId as string)) {
       const formattedOrder = order.toString().padStart(4, "0");
       return `${prefix}-${merchantSeqId}.${formattedOrder}`;
     }
