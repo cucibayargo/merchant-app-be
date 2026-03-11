@@ -393,7 +393,12 @@ export async function getTransactionById(
       return null; // No transaction found
     }
 
-    return result.rows[0];
+    const row = result.rows[0];
+    return {
+      ...row,
+      discount_amount: row.discount_amount ? Number(row.discount_amount) : 0,
+      discount_value: row.discount_value ? Number(row.discount_value) : 0,
+    };
   } finally {
     client.release();
   }
@@ -552,6 +557,7 @@ async function generateInvoiceId(
 
   try {
     const prefix = "INV";
+    const specialUserId = "9d659c1f-c68f-4f69-9e21-fbcf37432bab";
 
     // Create a new Date object and convert it to Jakarta time
     const now = new Date();
@@ -582,6 +588,12 @@ async function generateInvoiceId(
     }
 
     const { order, sequence_id: merchantSeqId } = rows[0];
+
+    // Check if user is special user
+    if (merchantId === specialUserId) {
+      const formattedOrder = order.toString().padStart(4, "0");
+      return `${prefix}-${merchantSeqId}.${formattedOrder}`;
+    }
 
     return `${prefix}-${order}${formattedDate}${merchantSeqId}`;
   } catch (error) {
