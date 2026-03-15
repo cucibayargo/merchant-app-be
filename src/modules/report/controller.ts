@@ -373,7 +373,6 @@ export async function getFinanceReport(
             JOIN transaction t ON t.id = ti.transaction_id
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
-              AND t.status = 'Selesai'
               AND t.created_at::date BETWEEN $2::date AND $3::date
             GROUP BY ti.service_name
             ORDER BY amount DESC
@@ -390,6 +389,7 @@ export async function getFinanceReport(
             JOIN transaction t ON t.id = p.transaction_id
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
+              AND p.status = 'Lunas'
               AND p.created_at::date BETWEEN $2::date AND $3::date
             GROUP BY 1
             ORDER BY amount DESC
