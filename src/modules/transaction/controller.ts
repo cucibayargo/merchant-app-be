@@ -18,6 +18,7 @@ export async function getTransactions(
   date_from: string | null = null,
   date_to: string | null = null,
   merchant_id?: string,
+  outlet_id?: string | null,
   page: number = 1,
   limit: number = 10
 ) {
@@ -55,6 +56,11 @@ export async function getTransactions(
     if (merchant_id) {
       conditions.push(`t.merchant_id = $${values.length + 1}`);
       values.push(merchant_id);
+    }
+
+    if (outlet_id) {
+      conditions.push(`t.outlet_id = $${values.length + 1}`);
+      values.push(outlet_id);
     }
 
     if (date_from && date_to) {
@@ -126,11 +132,13 @@ export async function getTransactions(
  */
 export async function addTransaction(
   transaction: Omit<Transaction, "id">,
-  merchant_id?: string
+  merchant_id?: string,
+  resolved_outlet_id?: string | null
 ): Promise<any | null> {
   const client = await pool.connect();
   try {
-    const { customer, status, items, note, discount_id } = transaction;
+    const { customer, status, items, note, discount_id, outlet_id } = transaction;
+    const finalOutletId = resolved_outlet_id || outlet_id || null;
     const customerDetail = await getCustomerById(customer);
 
     const query = `
@@ -142,9 +150,10 @@ export async function addTransaction(
         customer_address, 
         status, 
         merchant_id,
+        outlet_id,
         note
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id;
     `;
 
     const values = [
@@ -155,6 +164,7 @@ export async function addTransaction(
       customerDetail?.address,
       status,
       merchant_id,
+      finalOutletId,
       note,
     ];
     const result = await client.query(query, values);
@@ -238,7 +248,7 @@ export async function addTransaction(
     const totalAfterDiscount = subtotal - discountAmount;
 
     // Generate Invoice ID
-    const invoiceId = await generateInvoiceId(newTransactionId, merchant_id);
+    const invoiceId = await generateInvoiceId(newTransactionId);
 
     // Create Payment
     await addPayment(
@@ -248,7 +258,7 @@ export async function addTransaction(
         total_amount_due: totalAfterDiscount,
         transaction_id: newTransactionId,
       },
-      merchant_id
+      finalOutletId
     );
 
     const transactionDetail = await getTransactionById(invoiceId);
@@ -550,52 +560,27 @@ export async function getInvoiceById(
  * @throws Will throw an error if the transaction ID does not exist or if the query fails.
  */
 async function generateInvoiceId(
-  transactionId: string,
-  merchantId?: string
+  transactionId: string
 ): Promise<string> {
   const client = await pool.connect();
 
   try {
-    const prefix = "INV";
-    const specialUserId = ["9d659c1f-c68f-4f69-9e21-fbcf37432bab", "a6765f71-360a-48c1-9d79-7481067cfe19", "60ac5377-6e91-4f67-a6ef-5edd4ef0d688"];
-
-    // Create a new Date object and convert it to Jakarta time
-    const now = new Date();
-    const jakartaTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
-    );
-    const formattedDate = `${jakartaTime
-      .getDate()
-      .toString()
-      .padStart(2, "0")}${(jakartaTime.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}${jakartaTime.getFullYear()}`;
-
-    // Query to fetch order and merchant sequence_id in one go
     const query = `
-      SELECT t."order", u.sequence_id 
+      SELECT t."order", o.sequence_id, o.code
       FROM transaction t
-      JOIN users u ON u.id = $2
+      LEFT JOIN outlets o ON o.id = t.outlet_id
       WHERE t.id = $1
     `;
 
-    const { rows } = await client.query(query, [transactionId, merchantId]);
+    const { rows } = await client.query(query, [transactionId]);
 
     if (rows.length === 0) {
-      throw new Error(
-        `Transaction with ID ${transactionId} or Merchant with ID ${merchantId} not found.`
-      );
+      throw new Error(`Transaction with ID ${transactionId} not found.`);
     }
 
-    const { order, sequence_id: merchantSeqId } = rows[0];
-
-    // Check if user is special user
-    if (specialUserId.includes(merchantId as string)) {
-      const formattedOrder = order.toString().padStart(4, "0");
-      return `${prefix}-${merchantSeqId}.${formattedOrder}`;
-    }
-
-    return `${prefix}-${order}${formattedDate}${merchantSeqId}`;
+    const { order, sequence_id, code } = rows[0];
+    const outletIdSegment = code || sequence_id || "0";
+    return `INV-${outletIdSegment}.${order}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);
     throw error;

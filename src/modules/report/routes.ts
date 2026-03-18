@@ -8,14 +8,15 @@ import {
     getTransactionsReport,
     getTransactionsSummary,
 } from './controller';
-import { AuthenticatedRequest } from '../../middlewares';
+import { AuthenticatedRequest, requirePermission, resolveOutletId } from '../../middlewares';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
 const router = express.Router();
 
 
-router.get('/download', async (req: AuthenticatedRequest, res) => {
+router.get('/download', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
     try {
         const { start_date, end_date } = req.query;
+        const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
 
         if (!start_date || !end_date) {
             return res.status(400).json({ message: "Tanggal mulai dan tanggal akhir wajib diisi." });
@@ -35,7 +36,7 @@ router.get('/download', async (req: AuthenticatedRequest, res) => {
         }
 
         // Generate Excel report buffer
-        const { filename, file } = await generateReport(start_date as string, end_date as string, req.userId as string);
+        const { filename, file } = await generateReport(start_date as string, end_date as string, req.userId as string, outletId);
 
         // Set response headers for downloading the file
         res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
@@ -49,9 +50,10 @@ router.get('/download', async (req: AuthenticatedRequest, res) => {
     }
 });
 
-router.get('/dashboard', async (req: AuthenticatedRequest, res) => {
+router.get('/dashboard', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
     try {
-        const data = await getDashboardSummary(req.userId as string);
+        const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+        const data = await getDashboardSummary(req.userId as string, outletId);
         res.status(200).json(data);
     } catch (error) {
         console.error('Error fetching dashboard report:', error);
@@ -59,9 +61,10 @@ router.get('/dashboard', async (req: AuthenticatedRequest, res) => {
     }
 });
 
-router.get('/transactions', async (req: AuthenticatedRequest, res) => {
+router.get('/transactions', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
     try {
         const { start_date, end_date, page = '1', limit = '10' } = req.query;
+        const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
         if (!start_date || !end_date) {
             return res.status(400).json({ message: 'start_date dan end_date wajib diisi.' });
         }
@@ -78,13 +81,14 @@ router.get('/transactions', async (req: AuthenticatedRequest, res) => {
             return res.status(400).json({ message: 'page dan limit harus bilangan bulat positif.' });
         }
 
-        const summary = await getTransactionsSummary(req.userId as string, start_date as string, end_date as string);
+        const summary = await getTransactionsSummary(req.userId as string, start_date as string, end_date as string, outletId);
         const data = await getTransactionsReport(
             req.userId as string,
             start_date as string,
             end_date as string,
             pageNumber,
-            limitNumber
+            limitNumber,
+            outletId
         );
         res.status(200).json({ summary, data });
     } catch (error) {
@@ -94,9 +98,10 @@ router.get('/transactions', async (req: AuthenticatedRequest, res) => {
 });
 
 
-router.get('/services', async (req: AuthenticatedRequest, res) => {
+router.get('/services', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
     try {
         const { month, year } = req.query;
+        const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
         const monthNumber = Number(month);
         const yearNumber = Number(year);
 
@@ -107,7 +112,7 @@ router.get('/services', async (req: AuthenticatedRequest, res) => {
             return res.status(400).json({ message: 'year tidak valid.' });
         }
 
-        const data = await getServiceReport(req.userId as string, monthNumber, yearNumber);
+        const data = await getServiceReport(req.userId as string, monthNumber, yearNumber, outletId);
         res.status(200).json(data);
     } catch (error) {
         console.error('Error fetching service report:', error);
@@ -115,9 +120,10 @@ router.get('/services', async (req: AuthenticatedRequest, res) => {
     }
 });
 
-router.get('/finance', async (req: AuthenticatedRequest, res) => {
+router.get('/finance', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
     try {
         const { start_date, end_date } = req.query;
+        const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
         if (!start_date || !end_date) {
             return res.status(400).json({ message: 'start_date dan end_date wajib diisi.' });
         }
@@ -128,7 +134,7 @@ router.get('/finance', async (req: AuthenticatedRequest, res) => {
             return res.status(400).json({ message: 'Format tanggal tidak valid.' });
         }
 
-        const data = await getFinanceReport(req.userId as string, start_date as string, end_date as string);
+        const data = await getFinanceReport(req.userId as string, start_date as string, end_date as string, outletId);
         res.status(200).json(data);
     } catch (error) {
         console.error('Error fetching finance report:', error);
@@ -136,9 +142,10 @@ router.get('/finance', async (req: AuthenticatedRequest, res) => {
     }
 });
 
-router.get('/customers', async (req: AuthenticatedRequest, res) => {
+router.get('/customers', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
     try {
         const { month, year } = req.query;
+        const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
         const monthNumber = Number(month);
         const yearNumber = Number(year);
 
@@ -149,7 +156,7 @@ router.get('/customers', async (req: AuthenticatedRequest, res) => {
             return res.status(400).json({ message: 'year tidak valid.' });
         }
 
-        const data = await getCustomersReport(req.userId as string, monthNumber, yearNumber);
+        const data = await getCustomersReport(req.userId as string, monthNumber, yearNumber, outletId);
         res.status(200).json(data);
     } catch (error) {
         console.error('Error fetching customers report:', error);

@@ -1,14 +1,14 @@
 import express from 'express';
 import { Duration, durationSchema, DurationType } from './types';
 import { getDurations, getDurationById, addDuration, updateDuration, deleteDuration, getAllDurations } from './controller';
-import { AuthenticatedRequest } from '../../middlewares';
+import { AuthenticatedRequest, requirePermission } from '../../middlewares';
 import { formatJoiError } from '../../utils';
 
 const router = express.Router();
 
 
 
-router.get('/', async (req: AuthenticatedRequest, res) => {
+router.get('/', requirePermission('duration.read'), async (req: AuthenticatedRequest, res) => {
   // Extract query parameters from the request
   const filter = req.query.filter as string | null;
   const hasService = req.query.hasService == "true" ? true : false;
@@ -39,7 +39,7 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get('/all', async (req: AuthenticatedRequest, res) => {
+router.get('/all', requirePermission('duration.read'), async (req: AuthenticatedRequest, res) => {
   const hasService = req.query.hasService === "true"; // Simplified condition for boolean check
 
   try {
@@ -53,7 +53,7 @@ router.get('/all', async (req: AuthenticatedRequest, res) => {
 });
 
 
-router.post('/', async (req: AuthenticatedRequest, res) => {
+router.post('/', requirePermission('duration.create'), async (req: AuthenticatedRequest, res) => {
   if (!req.body || typeof req.body !== 'object') {
     return res.status(400).json({
       errors: [{
@@ -82,7 +82,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requirePermission('duration.update'), async (req, res) => {
   if (!req.body || typeof req.body !== 'object') {
     return res.status(400).json({
       errors: [{
@@ -116,7 +116,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('duration.delete'), async (req, res) => {
   const durationId = req.params.id;
   try {
     await deleteDuration(durationId);
@@ -137,7 +137,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', requirePermission('duration.read'), async (req, res) => {
   const durationId = req.params.id;
 
   try {

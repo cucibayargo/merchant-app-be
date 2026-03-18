@@ -1,6 +1,7 @@
 import Joi from "joi";
 
 export interface ExpansePayload {
+  outlet_id?: string;
   total: number;
   description: string;
   date: string;

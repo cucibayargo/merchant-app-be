@@ -1,13 +1,13 @@
 import express from "express";
 import { isValid, parseISO } from "date-fns";
-import { AuthenticatedRequest } from "../../middlewares";
+import { AuthenticatedRequest, requirePermission, resolveOutletId } from "../../middlewares";
 import { formatJoiError } from "../../utils";
 import { createExpanse, deleteExpanse, getExpanseById, listExpanse, updateExpanse } from "./controller";
 import { expanseSchema } from "./types";
 
 const router = express.Router();
 
-router.post("/", async (req: AuthenticatedRequest, res) => {
+router.post("/", requirePermission("expanse.create"), async (req: AuthenticatedRequest, res) => {
   try {
     const { error, value } = expanseSchema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -19,7 +19,8 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: "date harus format tanggal yang valid." });
     }
 
-    await createExpanse(value, req.userId as string);
+    const outletId = resolveOutletId(req, value.outlet_id);
+    await createExpanse(value, req.userId as string, outletId);
     res.status(201).json({
       status: 'success',
       message: 'Pengeluaran berhasil dibuat'
@@ -30,8 +31,9 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
+router.get("/", requirePermission("expanse.read"), async (req: AuthenticatedRequest, res) => {
   const filter = req.query.filter as string | null;
+  const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
   const page = parseInt(req.query.page as string || "1", 10);
   const limit = parseInt(req.query.limit as string || "10", 10);
 
@@ -40,7 +42,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    const { expanses, totalCount } = await listExpanse(req.userId as string, page, limit, filter);
+    const { expanses, totalCount } = await listExpanse(req.userId as string, page, limit, filter, outletId);
     const isFirstPage = page === 1;
     const isLastPage = page * limit >= totalCount;
 
@@ -56,14 +58,15 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get("/:id", async (req: AuthenticatedRequest, res) => {
+router.get("/:id", requirePermission("expanse.read"), async (req: AuthenticatedRequest, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "id tidak valid." });
     }
 
-    const expanse = await getExpanseById(id, req.userId as string);
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    const expanse = await getExpanseById(id, req.userId as string, outletId);
     if (!expanse) {
       return res.status(404).json({ message: "Data pengeluaran tidak ditemukan." });
     }
@@ -75,14 +78,15 @@ router.get("/:id", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.delete("/:id", async (req: AuthenticatedRequest, res) => {
+router.delete("/:id", requirePermission("expanse.delete"), async (req: AuthenticatedRequest, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "id tidak valid." });
     }
 
-    const deleted = await deleteExpanse(id, req.userId as string);
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    const deleted = await deleteExpanse(id, req.userId as string, outletId);
     if (!deleted) {
       return res.status(404).json({ message: "Data pengeluaran tidak ditemukan." });
     }
@@ -94,7 +98,7 @@ router.delete("/:id", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.put("/:id", async (req: AuthenticatedRequest, res) => {
+router.put("/:id", requirePermission("expanse.update"), async (req: AuthenticatedRequest, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -111,7 +115,8 @@ router.put("/:id", async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: "date harus format tanggal yang valid." });
     }
 
-    const updated = await updateExpanse(id, value, req.userId as string);
+    const outletId = resolveOutletId(req, value.outlet_id || (req.query.outlet_id as string | undefined));
+    const updated = await updateExpanse(id, value, req.userId as string, outletId);
     if (!updated) {
       return res.status(404).json({ message: "Data pengeluaran tidak ditemukan." });
     }

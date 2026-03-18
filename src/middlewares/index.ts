@@ -1,11 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
-import { get } from 'http';
 import jwt from 'jsonwebtoken';
-import { getCustomerById } from '../modules/customer/controller';
 import { getUserDetails } from '../modules/user/controller';
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
+  merchantId?: string;
+  employeeId?: string;
+  outletId?: string;
+  userRole?: 'owner' | 'employee';
+  permissions?: string[];
+}
+
+interface OwnerTokenPayload {
+  id: string;
+  subscription_end?: string;
+  exp?: number;
+  role?: 'owner';
+}
+
+interface EmployeeTokenPayload {
+  id: string;
+  role: 'employee';
+  employee_id: string;
+  outlet_id?: string;
+  permissions?: string[];
+  exp?: number;
 }
 
 const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -63,8 +82,23 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
   const secretKey = process.env.JWT_SECRET || 'secret_key';
 
   try {
-    const { id, subscription_end, exp } = jwt.verify(token, secretKey) as { id: string; subscription_end?: string; exp?: number };
+    const decoded = jwt.verify(token, secretKey) as OwnerTokenPayload | EmployeeTokenPayload;
+
+    if (decoded.role === 'employee') {
+      req.userId = decoded.id;
+      req.merchantId = decoded.id;
+      req.employeeId = decoded.employee_id;
+      req.outletId = decoded.outlet_id;
+      req.userRole = 'employee';
+      req.permissions = decoded.permissions || [];
+      return next();
+    }
+
+    const { id, subscription_end, exp } = decoded as OwnerTokenPayload;
     req.userId = id;
+    req.merchantId = id;
+    req.userRole = 'owner';
+    req.permissions = ['*'];
 
     const isExpiredSubscriptionException =
       (req.method === 'POST' && req.path === '/user/upload-logo') ||
@@ -90,5 +124,45 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
   }
   
 };
+
+export function requirePermission(permissionCode: string) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (req.userRole !== 'employee') {
+      return next();
+    }
+
+    const permissions = req.permissions || [];
+    if (permissions.includes(permissionCode)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      message: 'Akses ditolak. Anda tidak memiliki izin untuk aksi ini.',
+      permission: permissionCode,
+    });
+  };
+}
+
+export function requireOwner(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (req.userRole === 'owner') {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: 'Akses ditolak. Fitur ini hanya untuk pemilik usaha.',
+  });
+}
+
+export function resolveOutletId(req: AuthenticatedRequest, preferredOutletId?: string): string | null {
+  if (preferredOutletId) {
+    return preferredOutletId;
+  }
+
+  if (req.userRole === 'employee') {
+    return req.outletId || null;
+  }
+
+  return req.outletId || null;
+}
 
 export default authMiddleware;

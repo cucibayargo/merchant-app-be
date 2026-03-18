@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import { addCustomer, GetCustomers, updateCustomer, getCustomerById, deleteCustomer } from "./controller";
 import { customerSchema } from "./types";
-import { AuthenticatedRequest } from "../../middlewares";
+import { AuthenticatedRequest, requirePermission, resolveOutletId } from "../../middlewares";
 import { formatJoiError } from "../../utils";
 
 const router = express.Router();
@@ -10,8 +10,9 @@ const router = express.Router();
 
 
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
+router.get("/", requirePermission("customer.read"), async (req: AuthenticatedRequest, res) => {
   const filter = req.query.filter as string | null;
+  const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
   const page = parseInt(req.query.page as string || "1", 10);
   const limit = parseInt(req.query.limit as string || "10", 10);
 
@@ -20,7 +21,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    const { customers, totalCount } = await GetCustomers(filter, req.userId ?? "empty", page, limit);
+    const { customers, totalCount } = await GetCustomers(filter, req.userId ?? "empty", outletId, page, limit);
     const isFirstPage = page === 1;
     const isLastPage = page * limit >= totalCount;
 
@@ -36,7 +37,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.post("/", (req: AuthenticatedRequest, res: Response) => {
+router.post("/", requirePermission("customer.create"), (req: AuthenticatedRequest, res: Response) => {
   if (!req.body || typeof req.body !== 'object') {
     return res.status(400).json({
       errors: [{
@@ -54,7 +55,9 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
 
   const { name, phone_number, email, address, gender } = req.body;
 
-  addCustomer({ name, phone_number, email, address, gender }, req.userId ?? "")
+  const outletId = resolveOutletId(req, req.body?.outlet_id);
+
+  addCustomer({ name, phone_number, email, address, gender }, req.userId ?? "", outletId)
     .then(() =>
       res.status(201).json({
         status: "success",
@@ -67,7 +70,7 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
     });
 });
 
-router.get("/:id", async (req: Request, res: Response) => {
+router.get("/:id", requirePermission("customer.read"), async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const customer = await getCustomerById(id);
@@ -82,7 +85,7 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 });
 
-router.put("/:id", (req: Request, res: Response) => {
+router.put("/:id", requirePermission("customer.update"), (req: Request, res: Response) => {
   const { error, value } = customerSchema.validate(req.body, { abortEarly: false });
   if (error) {
     const message = formatJoiError(error);
@@ -105,7 +108,7 @@ router.put("/:id", (req: Request, res: Response) => {
     });
 });
 
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete("/:id", requirePermission("customer.delete"), async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const result = await deleteCustomer(id);

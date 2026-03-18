@@ -1,14 +1,14 @@
 import express from 'express';
 import { serviceSchema } from './types';
 import { addService, deleteService, getAllServices, getServiceById, getServices, updateService } from './controller';
-import { AuthenticatedRequest } from '../../middlewares';
+import { AuthenticatedRequest, requirePermission } from '../../middlewares';
 import { formatJoiError } from '../../utils';
 
 const router = express.Router();
 
 
 
-router.get('/all', async (req: AuthenticatedRequest, res) => {
+router.get('/all', requirePermission('service.read'), async (req: AuthenticatedRequest, res) => {
   const durationId = req.query.duration as string | null;
   const filter = req.query.filter as string | null;
 
@@ -21,7 +21,7 @@ router.get('/all', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get('/', async (req: AuthenticatedRequest, res) => {
+router.get('/', requirePermission('service.read'), async (req: AuthenticatedRequest, res) => {
   // Extract query parameters from the request
   const filter = req.query.filter as string | null;
   const page = parseInt(req.query.page as string || "1", 10);
@@ -48,7 +48,7 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.post('/', async (req: AuthenticatedRequest, res) => {
+router.post('/', requirePermission('service.create'), async (req: AuthenticatedRequest, res) => {
   const { error } = serviceSchema.validate(req.body);
   if (error) {
     const message = formatJoiError(error);
@@ -67,7 +67,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requirePermission('service.update'), async (req, res) => {
   const { error } = serviceSchema.validate(req.body);
   if (error) {
     const message = formatJoiError(error);
@@ -85,7 +85,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('service.delete'), async (req, res) => {
   try {
     await deleteService(req.params.id);
     res.status(200).json({
@@ -97,7 +97,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', requirePermission('service.read'), async (req, res) => {
   const serciveId = req.params.id;
 
   try {

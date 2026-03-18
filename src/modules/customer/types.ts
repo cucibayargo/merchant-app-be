@@ -2,6 +2,7 @@ import Joi from 'joi';
 
 export interface Customer {
   id: string;
+  outlet_id?: string;
   name: string;
   phone_number?: string;
   email?: string;
@@ -11,6 +12,7 @@ export interface Customer {
 
 // Define the Joi schema
 export const customerSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
   name: Joi.string().required().messages({
     'string.empty': 'Nama wajib diisi',
   }),

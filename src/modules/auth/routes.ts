@@ -33,6 +33,12 @@ import disposableDomains from "disposable-email-domains";
 import Mailjet from "node-mailjet";
 import { formatJoiError } from "../../utils";
 import rateLimit from "express-rate-limit";
+import {
+  authenticateEmployee,
+  getEmployeePermissions,
+  touchEmployeeLastLogin,
+} from "../employee/controller";
+import { employeeLoginSchema } from "../employee/types";
 
 const router = express.Router();
 dotenv.config();
@@ -304,6 +310,58 @@ router.post("/login", async (req, res) => {
     res.status(200).json({ message: "Login berhasil.", token: token});
   } catch (err: any) {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
+  }
+});
+
+router.post("/employee/login", async (req, res) => {
+  const { error } = employeeLoginSchema.validate(req.body);
+  if (error) {
+    const message = formatJoiError(error);
+    return res.status(400).json({ message });
+  }
+
+  try {
+    const { email, password } = req.body;
+    const employee = await authenticateEmployee(email);
+    if (!employee) {
+      return res.status(400).json({ message: "Email karyawan tidak ditemukan." });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, employee.password);
+    if (!isValidPassword) {
+      return res.status(400).json({ message: "Password tidak sesuai." });
+    }
+
+    const permissions = await getEmployeePermissions(employee.id, employee.merchant_id);
+    const token = jwt.sign(
+      {
+        id: employee.merchant_id,
+        role: "employee",
+        employee_id: employee.id,
+        outlet_id: employee.outlet_id,
+        permissions,
+      },
+      process.env.JWT_SECRET || "secret_key",
+      { expiresIn: "7d" }
+    );
+
+    await touchEmployeeLastLogin(employee.id);
+
+    return res.status(200).json({
+      message: "Login karyawan berhasil.",
+      token,
+      employee: {
+        id: employee.id,
+        merchant_id: employee.merchant_id,
+        outlet_id: employee.outlet_id,
+        name: employee.name,
+        email: employee.email,
+        permissions,
+      },
+    });
+  } catch (error) {
+    const err = error as Error;
+    return res.status(500).json({ message: err.message });
   }
 });
 

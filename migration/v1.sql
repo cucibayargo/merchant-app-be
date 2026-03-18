@@ -163,13 +163,13 @@ CREATE TABLE users_signup (
     PRIMARY KEY (id)
 );
 
-ALTER TABLE transaction ADD COLUMN order integer;
+ALTER TABLE transaction ADD COLUMN "order" integer;
 -- Create the function that will handle the logic
 CREATE OR REPLACE FUNCTION set_order_for_transaction()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Calculate the count of transactions for the same merchant_id
-  NEW.order := (
+    NEW."order" := (
     SELECT COUNT(*) + 1
     FROM transaction
     WHERE merchant_id = NEW.merchant_id

@@ -8,14 +8,17 @@ import {
   softDeleteTransactionById,
   updateTransaction,
 } from "./controller";
-import { AuthenticatedRequest } from "../../middlewares";
+import { AuthenticatedRequest, requirePermission, resolveOutletId } from "../../middlewares";
 import { formatJoiError } from "../../utils";
 
 const router = express.Router();
 
 
 
-router.get("/", async (req: AuthenticatedRequest, res: Response) => {
+router.get("/", requirePermission("transaction.read"), async (req: AuthenticatedRequest, res: Response) => {
+    const requestedOutletId = (req.query.outlet_id as string) || undefined;
+    const outletId = resolveOutletId(req, requestedOutletId);
+
   try {
     const {
       status,
@@ -47,6 +50,7 @@ router.get("/", async (req: AuthenticatedRequest, res: Response) => {
       (date_from as string) || null,
       (date_to as string) || null,
       req.userId,
+      outletId,
       pageNumber,
       limitNumber
     );
@@ -65,7 +69,7 @@ router.get("/", async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-router.post("/", async (req: AuthenticatedRequest, res) => {
+router.post("/", requirePermission("transaction.create"), async (req: AuthenticatedRequest, res) => {
   const { error } = transactionSchema.validate(req.body);
   if (error) {
     const message = formatJoiError(error);
@@ -73,7 +77,8 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    const newTransaction = await addTransaction(req.body, req.userId);
+    const outletId = resolveOutletId(req, req.body?.outlet_id);
+    const newTransaction = await addTransaction(req.body, req.userId, outletId);
     res.status(201).json({
       status: "success",
       message: "Transaksi berhasil dibuat",
@@ -87,7 +92,7 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.delete("/:id", async (req: AuthenticatedRequest, res) => {
+router.delete("/:id", requirePermission("transaction.delete"), async (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
 
   try {
@@ -112,7 +117,7 @@ router.delete("/:id", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.put("/:invoiceId", async (req, res) => {
+router.put("/:invoiceId", requirePermission("transaction.update"), async (req, res) => {
   if (!req.body || typeof req.body.status !== "string") {
     return res
       .status(400)
@@ -145,7 +150,7 @@ router.put("/:invoiceId", async (req, res) => {
   }
 });
 
-router.get("/:invoiceId", async (req: Request, res: Response) => {
+router.get("/:invoiceId", requirePermission("transaction.read"), async (req: Request, res: Response) => {
   try {
     const invoiceId = req.params.invoiceId;
     const transaction = await getTransactionById(invoiceId);
@@ -162,7 +167,7 @@ router.get("/:invoiceId", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/invoice/:invoiceId", async (req: Request, res: Response) => {
+router.get("/invoice/:invoiceId", requirePermission("transaction.read"), async (req: Request, res: Response) => {
   try {
     const invoiceId = req.params.invoiceId;
     const transaction = await getInvoiceById(invoiceId);

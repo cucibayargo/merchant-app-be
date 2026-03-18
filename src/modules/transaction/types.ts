@@ -8,6 +8,7 @@ interface TransactionItemDetail {
 
 export interface Transaction {
   id: string;
+  outlet_id?: string;
   customer: string;
   customer_name: string;
   duration_name: string;
@@ -57,6 +58,7 @@ export interface TransactionDetails {
 }
 
 export const transactionSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
   customer: Joi.string().uuid().required(),
   note: Joi.string().allow(''),
   status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil", "Dibatalkan").required(),

@@ -6,7 +6,12 @@ import { getUserDetails } from '../user/controller';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-export async function generateReport(start_date: string, end_date: string, merchant_id: string): Promise<{filename: string, file: Buffer}> {
+export async function generateReport(
+    start_date: string,
+    end_date: string,
+    merchant_id: string,
+    outlet_id?: string | null
+): Promise<{filename: string, file: Buffer}> {
     const workbook = new Workbook();
     const worksheet = workbook.addWorksheet('Report', {
         properties: { tabColor: { argb: '1E90FF' } }
@@ -14,7 +19,7 @@ export async function generateReport(start_date: string, end_date: string, merch
     worksheet.views = [{ showGridLines: false }];
 
     const merchantDetail = await getUserDetails(merchant_id);
-    const serviceList = await getServiceList(start_date, end_date, merchant_id);
+    const serviceList = await getServiceList(start_date, end_date, merchant_id, outlet_id);
 
   // Add logo
   if (merchantDetail?.logo) {
@@ -59,7 +64,7 @@ export async function generateReport(start_date: string, end_date: string, merch
     worksheet.getColumn(serviceList.length + 3).width = 20;
 
     // Fetch report data
-    const reportData = await getReportData(start_date, end_date, merchant_id);
+    const reportData = await getReportData(start_date, end_date, merchant_id, outlet_id);
     let totalRevenue = 0, totalTransactions = 0, totalDays = 0;
     const serviceTotals: number[] = new Array(serviceList.length).fill(0);
 
@@ -95,11 +100,16 @@ export async function generateReport(start_date: string, end_date: string, merch
     return { filename: `${merchantDetail?.name?.replace(/\s+/g, '').toLowerCase() || 'report'}_${formattedStartDate}:${formattedEndDate}`, file: Buffer.from(buffer) };
 }
 
-async function getReportData(start_date: string, end_date: string, merchantId: string): Promise<ReportData[]> {
+async function getReportData(
+    start_date: string,
+    end_date: string,
+    merchantId: string,
+    outletId?: string | null
+): Promise<ReportData[]> {
     const client = await pool.connect();
     try {
         // Get the list of unique services dynamically
-        const services = await getServiceList(start_date, end_date, merchantId);
+        const services = await getServiceList(start_date, end_date, merchantId, outletId);
 
         // Generate dynamic CASE WHEN statements for each service
         const serviceColumns = services.map(service => `
@@ -119,20 +129,21 @@ async function getReportData(start_date: string, end_date: string, merchantId: s
                      FROM transaction t2
                      WHERE t2.created_at::DATE = ds.date
                        AND t2.merchant_id = $3
+                       AND ($4::uuid IS NULL OR t2.outlet_id = $4)
                        AND t2.status = 'Selesai'
                        AND t2.deleted_at IS NULL
                     ), 0
                 ) AS total_revenue
                 ${serviceColumns ? `, ${serviceColumns}` : ""}
             FROM date_series ds
-            LEFT JOIN transaction t ON t.created_at::DATE = ds.date AND t.merchant_id = $3 AND t.status = 'Selesai'
+            LEFT JOIN transaction t ON t.created_at::DATE = ds.date AND t.merchant_id = $3 AND ($4::uuid IS NULL OR t.outlet_id = $4) AND t.status = 'Selesai'
             LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
             WHERE t.deleted_at IS NULL
             GROUP BY ds.date
             ORDER BY ds.date;   
         `;
         
-        const result = await client.query(query, [start_date, end_date, merchantId]);
+        const result = await client.query(query, [start_date, end_date, merchantId, outletId || null]);
         return result.rows;
     } catch (error) {
         console.error("Error fetching report data:", error);
@@ -142,7 +153,12 @@ async function getReportData(start_date: string, end_date: string, merchantId: s
     }
 }
 
-async function getServiceList(start_date: string, end_date: string, merchant_id: string): Promise<ServiceData[]> {
+async function getServiceList(
+    start_date: string,
+    end_date: string,
+    merchant_id: string,
+    outlet_id?: string | null
+): Promise<ServiceData[]> {
     const client = await pool.connect();
     try {
         const query = `
@@ -151,9 +167,10 @@ async function getServiceList(start_date: string, end_date: string, merchant_id:
             LEFT JOIN transaction t ON ti.transaction_id = t.id
             WHERE ti.created_at BETWEEN $1 AND $2
             AND t.status = 'Selesai' AND t.merchant_id = $3
+            AND ($4::uuid IS NULL OR t.outlet_id = $4)
             ORDER BY ti.service_name;
         `;
-        const result = await client.query(query, [start_date, end_date, merchant_id]);
+        const result = await client.query(query, [start_date, end_date, merchant_id, outlet_id || null]);
         return result.rows;
     } catch (error) {
         console.error("Error fetching service list:", error);
@@ -163,7 +180,10 @@ async function getServiceList(start_date: string, end_date: string, merchant_id:
     }
 }
 
-export async function getDashboardSummary(merchant_id: string): Promise<{ today_revenue: number; total_transactions: number }> {
+export async function getDashboardSummary(
+    merchant_id: string,
+    outlet_id?: string | null
+): Promise<{ today_revenue: number; total_transactions: number }> {
     const client = await pool.connect();
     try {
         const query = `
@@ -171,7 +191,8 @@ export async function getDashboardSummary(merchant_id: string): Promise<{ today_
                 COALESCE(SUM(ti.price * ti.qty), 0) - COALESCE(
                     (SELECT SUM(COALESCE(t2.discount_amount, 0))
                      FROM transaction t2
-                     WHERE t2.merchant_id = $1
+                                         WHERE t2.merchant_id = $1
+                                             AND ($2::uuid IS NULL OR t2.outlet_id = $2)
                        AND t2.deleted_at IS NULL
                        AND t2.created_at::date = CURRENT_DATE
                     ), 0
@@ -180,11 +201,12 @@ export async function getDashboardSummary(merchant_id: string): Promise<{ today_
             FROM transaction t
             LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
             WHERE t.merchant_id = $1
+                            AND ($2::uuid IS NULL OR t.outlet_id = $2)
               AND t.deleted_at IS NULL
               AND t.created_at::date = CURRENT_DATE
         `;
 
-        const result = await client.query(query, [merchant_id]);
+                const result = await client.query(query, [merchant_id, outlet_id || null]);
         return {
             today_revenue: Number(result.rows?.[0]?.today_revenue || 0),
             total_transactions: Number(result.rows?.[0]?.total_transactions || 0),
@@ -197,7 +219,8 @@ export async function getDashboardSummary(merchant_id: string): Promise<{ today_
 export async function getTransactionsSummary(
     merchant_id: string,
     start_date: string,
-    end_date: string
+    end_date: string,
+    outlet_id?: string | null
 ): Promise<{ new: number; completed: number; picked_up: number; cancelled: number }> {
     const client = await pool.connect();
     try {
@@ -209,11 +232,12 @@ export async function getTransactionsSummary(
                 COUNT(*) FILTER (WHERE t.status = 'Dibatalkan') AS cancelled
             FROM transaction t
             WHERE t.merchant_id = $1
+              AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
               AND t.created_at::date BETWEEN $2::date AND $3::date
         `;
 
-        const result = await client.query(query, [merchant_id, start_date, end_date]);
+          const result = await client.query(query, [merchant_id, start_date, end_date, outlet_id || null]);
         return {
             new: Number(result.rows?.[0]?.new || 0),
             completed: Number(result.rows?.[0]?.completed || 0),
@@ -230,7 +254,8 @@ export async function getTransactionsReport(
     start_date: string,
     end_date: string,
     page: number,
-    limit: number
+    limit: number,
+    outlet_id?: string | null
 ): Promise<Array<{
         id: string;
         customer: string;
@@ -249,6 +274,7 @@ export async function getTransactionsReport(
         const offset = (page - 1) * limit;
         const conditions = [
             "t.merchant_id = $1",
+            "($6::uuid IS NULL OR t.outlet_id = $6)",
             "t.deleted_at IS NULL",
             "t.created_at::date BETWEEN $2::date AND $3::date"
         ];
@@ -282,7 +308,7 @@ export async function getTransactionsReport(
             LIMIT $4 OFFSET $5
         `;
 
-        const result = await client.query(query, [merchant_id, start_date, end_date, limit, offset]);
+        const result = await client.query(query, [merchant_id, start_date, end_date, limit, offset, outlet_id || null]);
         return result.rows;
     } finally {
         client.release();
@@ -292,7 +318,8 @@ export async function getTransactionsReport(
 export async function getServiceReport(
     merchant_id: string,
     month: number,
-    year: number
+    year: number,
+    outlet_id?: string | null
 ): Promise<{
     summary: { total_services: number; total_duration_days: number };
     services: Array<{
@@ -317,6 +344,7 @@ export async function getServiceReport(
             FROM transaction_item ti
             JOIN transaction t ON t.id = ti.transaction_id
             WHERE t.merchant_id = $1
+                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
               AND EXTRACT(MONTH FROM t.created_at) = $2
               AND EXTRACT(YEAR FROM t.created_at) = $3
@@ -324,7 +352,7 @@ export async function getServiceReport(
             ORDER BY total_revenue DESC
         `;
 
-        const result = await client.query(query, [merchant_id, month, year]);
+        const result = await client.query(query, [merchant_id, month, year, outlet_id || null]);
         const services = result.rows.map((row) => ({
             service_id: row.service_id,
             name: row.name,
@@ -352,7 +380,8 @@ export async function getServiceReport(
 export async function getFinanceReport(
     merchant_id: string,
     start_date: string,
-    end_date: string
+    end_date: string,
+    outlet_id?: string | null
 ): Promise<{
     revenue: { total: number; by_service: Array<{ name: string; amount: number }> };
     income: {
@@ -372,6 +401,7 @@ export async function getFinanceReport(
             FROM transaction_item ti
             JOIN transaction t ON t.id = ti.transaction_id
             WHERE t.merchant_id = $1
+                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
               AND t.created_at::date BETWEEN $2::date AND $3::date
             GROUP BY ti.service_name
@@ -388,6 +418,7 @@ export async function getFinanceReport(
             FROM payment p
             JOIN transaction t ON t.id = p.transaction_id
             WHERE t.merchant_id = $1
+                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
               AND p.status = 'Lunas'
               AND p.created_at::date BETWEEN $2::date AND $3::date
@@ -401,15 +432,16 @@ export async function getFinanceReport(
                 COALESCE(SUM(e.total), 0) AS amount
             FROM expenses e
             WHERE e.merchant_id = $1
+                            AND ($4::uuid IS NULL OR e.outlet_id = $4)
               AND e.date BETWEEN $2::date AND $3::date
             GROUP BY e.description
             ORDER BY amount DESC
         `;
 
         const [revenueByServiceResult, incomeByPaymentMethodResult, expensesByCategoryResult] = await Promise.all([
-            client.query(revenueByServiceQuery, [merchant_id, start_date, end_date]),
-            client.query(incomeByPaymentMethodQuery, [merchant_id, start_date, end_date]),
-            client.query(expensesByCategoryQuery, [merchant_id, start_date, end_date]),
+            client.query(revenueByServiceQuery, [merchant_id, start_date, end_date, outlet_id || null]),
+            client.query(incomeByPaymentMethodQuery, [merchant_id, start_date, end_date, outlet_id || null]),
+            client.query(expensesByCategoryQuery, [merchant_id, start_date, end_date, outlet_id || null]),
         ]);
 
         const by_service = revenueByServiceResult.rows.map((row) => ({
@@ -455,7 +487,8 @@ export async function getFinanceReport(
 export async function getCustomersReport(
     merchant_id: string,
     month: number,
-    year: number
+    year: number,
+    outlet_id?: string | null
 ): Promise<{
     summary: { total_customers: number; male: number; female: number };
     top_customers: Array<{
@@ -479,6 +512,7 @@ export async function getCustomersReport(
                 ) AS female
             FROM customer c
             WHERE c.merchant_id = $1
+                            AND ($4::uuid IS NULL OR c.outlet_id = $4)
         `;
 
         const topCustomersQuery = `
@@ -490,6 +524,7 @@ export async function getCustomersReport(
             FROM transaction t
             LEFT JOIN payment p ON p.transaction_id = t.id
             WHERE t.merchant_id = $1
+                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
               AND EXTRACT(MONTH FROM t.created_at) = $2
               AND EXTRACT(YEAR FROM t.created_at) = $3
@@ -500,8 +535,8 @@ export async function getCustomersReport(
         `;
 
         const [summaryResult, topCustomersResult] = await Promise.all([
-            client.query(summaryQuery, [merchant_id]),
-            client.query(topCustomersQuery, [merchant_id, month, year]),
+            client.query(summaryQuery, [merchant_id, month, year, outlet_id || null]),
+            client.query(topCustomersQuery, [merchant_id, month, year, outlet_id || null]),
         ]);
 
         const summaryRow = summaryResult.rows?.[0] || {};

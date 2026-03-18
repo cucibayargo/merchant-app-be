@@ -8,6 +8,7 @@ import { Customer } from "./types";
 export async function GetCustomers(
   filter: string | null,
   merchant_id: string,
+  outlet_id: string | null = null,
   page: number = 1,
   limit: number = 10
 ): Promise<{ customers: Customer[]; totalCount: number }> {
@@ -23,10 +24,11 @@ export async function GetCustomers(
           OR ($1::text IS NULL OR customer.phone_number ILIKE '%' || $1 || '%')
           OR ($1::text IS NULL OR customer.email ILIKE '%' || $1 || '%'))
         AND merchant_id = $2
-      ORDER BY created_at DESC
-      LIMIT $3 OFFSET $4
+          AND ($3::uuid IS NULL OR outlet_id = $3)
+        ORDER BY created_at DESC
+        LIMIT $4 OFFSET $5
     `;
-    const customersResult = await client.query(query, [filter, merchant_id, limit, offset]);
+      const customersResult = await client.query(query, [filter, merchant_id, outlet_id, limit, offset]);
 
     // Query for total count
     const countQuery = `
@@ -36,8 +38,9 @@ export async function GetCustomers(
           OR ($1::text IS NULL OR customer.phone_number ILIKE '%' || $1 || '%')
           OR ($1::text IS NULL OR customer.email ILIKE '%' || $1 || '%'))
         AND merchant_id = $2
+          AND ($3::uuid IS NULL OR outlet_id = $3)
     `;
-    const countResult = await client.query(countQuery, [filter, merchant_id]);
+      const countResult = await client.query(countQuery, [filter, merchant_id, outlet_id]);
 
     const totalCount = parseInt(countResult.rows[0].total_count, 10);
 
@@ -71,15 +74,19 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
  * @param customer - The customer data to add. Excludes 'id' as it's auto-generated.
  * @returns {Promise<Customer>} - A promise that resolves to the newly created customer.
  */
-export async function addCustomer(customer: Omit<Customer, 'id'>, merchant_id: string): Promise<Customer> {
+export async function addCustomer(
+  customer: Omit<Customer, 'id'>,
+  merchant_id: string,
+  outlet_id?: string | null
+): Promise<Customer> {
   const client = await pool.connect();
   try {
     const { name, phone_number, email, address, gender } = customer;
     const query = `
-      INSERT INTO customer (name, phone_number, email, address, gender, merchant_id)
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+      INSERT INTO customer (name, phone_number, email, address, gender, merchant_id, outlet_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
     `;
-    const values = [name, phone_number, email || null, address, gender, merchant_id];
+    const values = [name, phone_number, email || null, address, gender, merchant_id, outlet_id || customer.outlet_id || null];
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {

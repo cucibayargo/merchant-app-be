@@ -11,14 +11,14 @@ import { Payment, PaymentDetails, PaymentInput } from "./types";
  */
 export async function addPayment(
     payment: Omit<PaymentInput, "id">,
-    merchant_id?: string
+    outlet_id?: string | null
 ): Promise<PaymentDetails | null> {
     const client = await pool.connect();
     try {
         const { status, invoice_id, transaction_id, total_amount_due } = payment;
 
         const query = `
-          INSERT INTO payment (status, invoice_id, transaction_id, total_amount_due, merchant_id)
+                    INSERT INTO payment (status, invoice_id, transaction_id, total_amount_due, outlet_id)
           VALUES ($1, $2, $3, $4, $5) RETURNING id;
         `;
 
@@ -27,7 +27,7 @@ export async function addPayment(
             invoice_id,
             transaction_id,
             total_amount_due,
-            merchant_id || null,  
+            outlet_id || null,
         ];
 
         await client.query(query, values);

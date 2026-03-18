@@ -17,6 +17,8 @@ import userRoutes from "../modules/user/routes";
 import reportRoutes from "../modules/report/routes";
 import expanseRoutes from "../modules/expanse/routes";
 import discountRoutes from "../modules/discount/routes";
+import outletRoutes from "../modules/outlet/routes";
+import employeeRoutes from "../modules/employee/routes";
 
 const router = Router();
 
@@ -37,5 +39,7 @@ router.use("/payment", paymentRoutes);
 router.use("/report", reportRoutes);
 router.use("/expanse", expanseRoutes);
 router.use("/discounts", discountRoutes);
+router.use("/outlets", outletRoutes);
+router.use("/employees", employeeRoutes);
 
 export default router;
