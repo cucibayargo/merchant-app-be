@@ -18,3 +18,5 @@ ADD COLUMN discount_amount NUMERIC(14,2) NOT NULL DEFAULT 0;
 
 ALTER TABLE payment
 ADD COLUMN payment_method VARCHAR(50);
+ALTER TABLE payment
+ADD COLUMN payment_at DATE;

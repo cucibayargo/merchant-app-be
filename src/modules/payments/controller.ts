@@ -54,6 +54,7 @@ export async function updatePayment(invoiceId: string, paymentParams: { change_g
             payment_received = $1,
             change_given = $2,
             payment_method = $3
+            payment_at = CURRENT_DATE
         WHERE invoice_id = $4
         RETURNING *;
       `;

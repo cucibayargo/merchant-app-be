@@ -390,7 +390,7 @@ export async function getFinanceReport(
             WHERE t.merchant_id = $1
               AND t.deleted_at IS NULL
               AND p.status = 'Lunas'
-              AND p.created_at::date BETWEEN $2::date AND $3::date
+              AND p.payment_at::date BETWEEN $2::date AND $3::date
             GROUP BY 1
             ORDER BY amount DESC
         `;
