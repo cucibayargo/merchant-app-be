@@ -20,6 +20,7 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
     '/user/upload-subscriptions-invoice',
     '/user/invoice/:invoiceId',
     '/user/trigger-supabase-cloud',
+    '/plan'
   ];
   
   const cronJobRoutes = [
