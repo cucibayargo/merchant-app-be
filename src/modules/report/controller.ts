@@ -198,10 +198,16 @@ export async function getTransactionsSummary(
     merchant_id: string,
     start_date: string,
     end_date: string
-): Promise<{ new: number; completed: number; picked_up: number; cancelled: number }> {
+): Promise<{
+    new: number;
+    completed: number;
+    picked_up: number;
+    cancelled: number;
+    qty_by_service_unit: Array<{ service_unit: string; total_qty: number; qty_service_unit: string }>;
+}> {
     const client = await pool.connect();
     try {
-        const query = `
+        const transactionsSummaryQuery = `
             SELECT
                 COUNT(*) FILTER (WHERE t.status = 'Diproses') AS new,
                 COUNT(*) FILTER (WHERE t.status = 'Selesai') AS completed,
@@ -213,12 +219,40 @@ export async function getTransactionsSummary(
               AND t.created_at::date BETWEEN $2::date AND $3::date
         `;
 
-        const result = await client.query(query, [merchant_id, start_date, end_date]);
+        const qtyByServiceUnitQuery = `
+            SELECT
+                COALESCE(NULLIF(TRIM(ti.service_unit), ''), 'Tanpa Satuan') AS service_unit,
+                COALESCE(SUM(COALESCE(ti.qty, 0)), 0) AS total_qty
+            FROM transaction_item ti
+            JOIN transaction t ON t.id = ti.transaction_id
+            WHERE t.merchant_id = $1
+              AND t.deleted_at IS NULL
+              AND t.created_at::date BETWEEN $2::date AND $3::date
+            GROUP BY 1
+            ORDER BY 1
+        `;
+
+        const [summaryResult, qtyByServiceUnitResult] = await Promise.all([
+            client.query(transactionsSummaryQuery, [merchant_id, start_date, end_date]),
+            client.query(qtyByServiceUnitQuery, [merchant_id, start_date, end_date]),
+        ]);
+
+        const qty_by_service_unit = qtyByServiceUnitResult.rows.map((row) => {
+            const totalQty = Number(row.total_qty || 0);
+            const serviceUnit = row.service_unit;
+            return {
+                service_unit: serviceUnit,
+                total_qty: totalQty,
+                qty_service_unit: `${totalQty} ${serviceUnit}`,
+            };
+        });
+
         return {
-            new: Number(result.rows?.[0]?.new || 0),
-            completed: Number(result.rows?.[0]?.completed || 0),
-            picked_up: Number(result.rows?.[0]?.picked_up || 0),
-            cancelled: Number(result.rows?.[0]?.cancelled || 0),
+            new: Number(summaryResult.rows?.[0]?.new || 0),
+            completed: Number(summaryResult.rows?.[0]?.completed || 0),
+            picked_up: Number(summaryResult.rows?.[0]?.picked_up || 0),
+            cancelled: Number(summaryResult.rows?.[0]?.cancelled || 0),
+            qty_by_service_unit,
         };
     } finally {
         client.release();
