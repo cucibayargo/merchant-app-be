@@ -332,9 +332,9 @@ export async function getServiceReport(
     services: Array<{
         service_id: string;
         name: string;
+        service_unit: string;
         duration: string[];
         total_pcs: number;
-        qty_by_service_unit: Array<{ service_unit: string; total_qty: number; qty_service_unit: string }>;
         total_orders: number;
         total_revenue: number;
     }>;
@@ -387,60 +387,23 @@ export async function getServiceReport(
         `;
 
         const result = await client.query(query, [merchant_id, month, year]);
-        const servicesMap = new Map<string, {
-            service_id: string;
-            name: string;
-            duration: Set<string>;
-            total_pcs: number;
-            qty_by_service_unit: Array<{ service_unit: string; total_qty: number; qty_service_unit: string }>;
-            total_orders: number;
-            total_revenue: number;
-        }>();
-
-        result.rows.forEach((row) => {
-            const serviceId = row.service_id;
-            const totalQty = Number(row.total_qty || 0);
-            const serviceUnit = row.service_unit;
-            const rowDurations: string[] = Array.isArray(row.duration) ? row.duration.filter(Boolean) : [];
-
-            if (!servicesMap.has(serviceId)) {
-                servicesMap.set(serviceId, {
-                    service_id: serviceId,
-                    name: row.name,
-                    duration: new Set<string>(),
-                    total_pcs: 0,
-                    qty_by_service_unit: [],
-                    total_orders: Number(row.total_orders || 0),
-                    total_revenue: Number(row.total_revenue || 0),
-                });
-            }
-
-            const service = servicesMap.get(serviceId)!;
-            rowDurations.forEach((durationId) => service.duration.add(durationId));
-            service.total_pcs += totalQty;
-            service.qty_by_service_unit.push({
-                service_unit: serviceUnit,
-                total_qty: totalQty,
-                qty_service_unit: `${totalQty} ${serviceUnit}`,
-            });
-        });
-
-        const services = Array.from(servicesMap.values()).map((service) => ({
-            service_id: service.service_id,
-            name: service.name,
-            duration: Array.from(service.duration),
-            total_pcs: service.total_pcs,
-            qty_by_service_unit: service.qty_by_service_unit,
-            total_orders: service.total_orders,
-            total_revenue: service.total_revenue,
+        const services = result.rows.map((row) => ({
+            service_id: row.service_id,
+            name: row.name,
+            service_unit: row.service_unit,
+            duration: Array.isArray(row.duration) ? row.duration.filter(Boolean) : [],
+            total_pcs: Number(row.total_qty || 0),
+            total_orders: Number(row.total_orders || 0),
+            total_revenue: Number(row.total_revenue || 0),
         }));
 
         const allDurations = new Set<string>();
         services.forEach(s => s.duration.forEach((d: string) => allDurations.add(d)));
+        const uniqueServiceIds = new Set<string>(services.map((s) => s.service_id));
 
         return {
             summary: {
-                total_services: services.length,
+                total_services: uniqueServiceIds.size,
                 total_duration_days: allDurations.size,
             },
             services: services,
