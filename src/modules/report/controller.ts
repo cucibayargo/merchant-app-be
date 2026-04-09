@@ -334,6 +334,7 @@ export async function getServiceReport(
         name: string;
         duration: string[];
         total_pcs: number;
+        qty_by_service_unit: Array<{ service_unit: string; total_qty: number; qty_service_unit: string }>;
         total_orders: number;
         total_revenue: number;
     }>;
@@ -341,31 +342,97 @@ export async function getServiceReport(
     const client = await pool.connect();
     try {
         const query = `
+            WITH service_unit_agg AS (
+                SELECT
+                    ti.service_id,
+                    ti.service_name AS name,
+                    COALESCE(NULLIF(TRIM(ti.service_unit), ''), 'Tanpa Satuan') AS service_unit,
+                    ARRAY_AGG(DISTINCT ti.duration_id) FILTER (WHERE ti.duration_id IS NOT NULL) AS duration,
+                    COALESCE(SUM(COALESCE(ti.qty, 0)), 0) AS total_qty
+                FROM transaction_item ti
+                JOIN transaction t ON t.id = ti.transaction_id
+                WHERE t.merchant_id = $1
+                  AND t.deleted_at IS NULL
+                  AND EXTRACT(MONTH FROM t.created_at) = $2
+                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                GROUP BY
+                    ti.service_id,
+                    ti.service_name,
+                    COALESCE(NULLIF(TRIM(ti.service_unit), ''), 'Tanpa Satuan')
+            ),
+            service_totals AS (
+                SELECT
+                    ti.service_id,
+                    COALESCE(COUNT(DISTINCT t.id), 0) AS total_orders,
+                    COALESCE(SUM(COALESCE(ti.qty, 0) * COALESCE(ti.price, 0)), 0) AS total_revenue
+                FROM transaction_item ti
+                JOIN transaction t ON t.id = ti.transaction_id
+                WHERE t.merchant_id = $1
+                  AND t.deleted_at IS NULL
+                  AND EXTRACT(MONTH FROM t.created_at) = $2
+                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                GROUP BY ti.service_id
+            )
             SELECT
-                ti.service_id,
-                ti.service_name AS name,
-                ARRAY_AGG(DISTINCT ti.duration_id) AS duration,
-                COALESCE(SUM(ti.qty), 0) AS total_pcs,
-                COALESCE(COUNT(DISTINCT t.id), 0) AS total_orders,
-                COALESCE(SUM(ti.qty * ti.price), 0) AS total_revenue
-            FROM transaction_item ti
-            JOIN transaction t ON t.id = ti.transaction_id
-            WHERE t.merchant_id = $1
-              AND t.deleted_at IS NULL
-              AND EXTRACT(MONTH FROM t.created_at) = $2
-              AND EXTRACT(YEAR FROM t.created_at) = $3
-            GROUP BY ti.service_id, ti.service_name
-            ORDER BY total_revenue DESC
+                sua.service_id,
+                sua.name,
+                sua.service_unit,
+                sua.duration,
+                sua.total_qty,
+                st.total_orders,
+                st.total_revenue
+            FROM service_unit_agg sua
+            JOIN service_totals st ON st.service_id = sua.service_id
+            ORDER BY st.total_revenue DESC, sua.name ASC, sua.service_unit ASC
         `;
 
         const result = await client.query(query, [merchant_id, month, year]);
-        const services = result.rows.map((row) => ({
-            service_id: row.service_id,
-            name: row.name,
-            duration: row.duration,
-            total_pcs: Number(row.total_pcs),
-            total_orders: Number(row.total_orders),
-            total_revenue: Number(row.total_revenue),
+        const servicesMap = new Map<string, {
+            service_id: string;
+            name: string;
+            duration: Set<string>;
+            total_pcs: number;
+            qty_by_service_unit: Array<{ service_unit: string; total_qty: number; qty_service_unit: string }>;
+            total_orders: number;
+            total_revenue: number;
+        }>();
+
+        result.rows.forEach((row) => {
+            const serviceId = row.service_id;
+            const totalQty = Number(row.total_qty || 0);
+            const serviceUnit = row.service_unit;
+            const rowDurations: string[] = Array.isArray(row.duration) ? row.duration.filter(Boolean) : [];
+
+            if (!servicesMap.has(serviceId)) {
+                servicesMap.set(serviceId, {
+                    service_id: serviceId,
+                    name: row.name,
+                    duration: new Set<string>(),
+                    total_pcs: 0,
+                    qty_by_service_unit: [],
+                    total_orders: Number(row.total_orders || 0),
+                    total_revenue: Number(row.total_revenue || 0),
+                });
+            }
+
+            const service = servicesMap.get(serviceId)!;
+            rowDurations.forEach((durationId) => service.duration.add(durationId));
+            service.total_pcs += totalQty;
+            service.qty_by_service_unit.push({
+                service_unit: serviceUnit,
+                total_qty: totalQty,
+                qty_service_unit: `${totalQty} ${serviceUnit}`,
+            });
+        });
+
+        const services = Array.from(servicesMap.values()).map((service) => ({
+            service_id: service.service_id,
+            name: service.name,
+            duration: Array.from(service.duration),
+            total_pcs: service.total_pcs,
+            qty_by_service_unit: service.qty_by_service_unit,
+            total_orders: service.total_orders,
+            total_revenue: service.total_revenue,
         }));
 
         const allDurations = new Set<string>();
