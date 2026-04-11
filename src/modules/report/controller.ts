@@ -221,10 +221,16 @@ export async function getTransactionsSummary(
     start_date: string,
     end_date: string,
     outlet_id?: string | null
-): Promise<{ new: number; completed: number; picked_up: number; cancelled: number }> {
+): Promise<{
+    new: number;
+    completed: number;
+    picked_up: number;
+    cancelled: number;
+    qty_by_service_unit: Array<{ service_unit: string; total_qty: number; qty_service_unit: string }>;
+}> {
     const client = await pool.connect();
     try {
-        const query = `
+        const transactionsSummaryQuery = `
             SELECT
                 COUNT(*) FILTER (WHERE t.status = 'Diproses') AS new,
                 COUNT(*) FILTER (WHERE t.status = 'Selesai') AS completed,
@@ -237,12 +243,41 @@ export async function getTransactionsSummary(
               AND t.created_at::date BETWEEN $2::date AND $3::date
         `;
 
-          const result = await client.query(query, [merchant_id, start_date, end_date, outlet_id || null]);
+        const qtyByServiceUnitQuery = `
+            SELECT
+                COALESCE(NULLIF(TRIM(ti.service_unit), ''), 'Tanpa Satuan') AS service_unit,
+                COALESCE(SUM(COALESCE(ti.qty, 0)), 0) AS total_qty
+            FROM transaction_item ti
+            JOIN transaction t ON t.id = ti.transaction_id
+            WHERE t.merchant_id = $1
+              AND ($4::uuid IS NULL OR t.outlet_id = $4)
+              AND t.deleted_at IS NULL
+              AND t.created_at::date BETWEEN $2::date AND $3::date
+            GROUP BY 1
+            ORDER BY 1
+        `;
+
+        const [summaryResult, qtyByServiceUnitResult] = await Promise.all([
+            client.query(transactionsSummaryQuery, [merchant_id, start_date, end_date, outlet_id || null]),
+            client.query(qtyByServiceUnitQuery, [merchant_id, start_date, end_date, outlet_id || null]),
+        ]);
+
+        const qty_by_service_unit = qtyByServiceUnitResult.rows.map((row) => {
+            const totalQty = Number(row.total_qty || 0);
+            const serviceUnit = row.service_unit;
+            return {
+                service_unit: serviceUnit,
+                total_qty: totalQty,
+                qty_service_unit: `${totalQty} ${serviceUnit}`,
+            };
+        });
+
         return {
-            new: Number(result.rows?.[0]?.new || 0),
-            completed: Number(result.rows?.[0]?.completed || 0),
-            picked_up: Number(result.rows?.[0]?.picked_up || 0),
-            cancelled: Number(result.rows?.[0]?.cancelled || 0),
+            new: Number(summaryResult.rows?.[0]?.new || 0),
+            completed: Number(summaryResult.rows?.[0]?.completed || 0),
+            picked_up: Number(summaryResult.rows?.[0]?.picked_up || 0),
+            cancelled: Number(summaryResult.rows?.[0]?.cancelled || 0),
+            qty_by_service_unit,
         };
     } finally {
         client.release();
@@ -325,6 +360,7 @@ export async function getServiceReport(
     services: Array<{
         service_id: string;
         name: string;
+        service_unit: string;
         duration: string[];
         total_pcs: number;
         total_orders: number;
@@ -334,40 +370,70 @@ export async function getServiceReport(
     const client = await pool.connect();
     try {
         const query = `
+            WITH service_unit_agg AS (
+                SELECT
+                    ti.service_id,
+                    ti.service_name AS name,
+                    COALESCE(NULLIF(TRIM(ti.service_unit), ''), 'Tanpa Satuan') AS service_unit,
+                    ARRAY_AGG(DISTINCT ti.duration_id) FILTER (WHERE ti.duration_id IS NOT NULL) AS duration,
+                    COALESCE(SUM(COALESCE(ti.qty, 0)), 0) AS total_qty
+                FROM transaction_item ti
+                JOIN transaction t ON t.id = ti.transaction_id
+                WHERE t.merchant_id = $1
+                                    AND ($4::uuid IS NULL OR t.outlet_id = $4)
+                  AND t.deleted_at IS NULL
+                  AND EXTRACT(MONTH FROM t.created_at) = $2
+                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                GROUP BY
+                    ti.service_id,
+                    ti.service_name,
+                    COALESCE(NULLIF(TRIM(ti.service_unit), ''), 'Tanpa Satuan')
+            ),
+            service_totals AS (
+                SELECT
+                    ti.service_id,
+                    COALESCE(COUNT(DISTINCT t.id), 0) AS total_orders,
+                    COALESCE(SUM(COALESCE(ti.qty, 0) * COALESCE(ti.price, 0)), 0) AS total_revenue
+                FROM transaction_item ti
+                JOIN transaction t ON t.id = ti.transaction_id
+                WHERE t.merchant_id = $1
+                                    AND ($4::uuid IS NULL OR t.outlet_id = $4)
+                  AND t.deleted_at IS NULL
+                  AND EXTRACT(MONTH FROM t.created_at) = $2
+                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                GROUP BY ti.service_id
+            )
             SELECT
-                ti.service_id,
-                ti.service_name AS name,
-                ARRAY_AGG(DISTINCT ti.duration_id) AS duration,
-                COALESCE(SUM(ti.qty), 0) AS total_pcs,
-                COALESCE(COUNT(DISTINCT t.id), 0) AS total_orders,
-                COALESCE(SUM(ti.qty * ti.price), 0) AS total_revenue
-            FROM transaction_item ti
-            JOIN transaction t ON t.id = ti.transaction_id
-            WHERE t.merchant_id = $1
-                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
-              AND t.deleted_at IS NULL
-              AND EXTRACT(MONTH FROM t.created_at) = $2
-              AND EXTRACT(YEAR FROM t.created_at) = $3
-            GROUP BY ti.service_id, ti.service_name
-            ORDER BY total_revenue DESC
+                sua.service_id,
+                sua.name,
+                sua.service_unit,
+                sua.duration,
+                sua.total_qty,
+                st.total_orders,
+                st.total_revenue
+            FROM service_unit_agg sua
+            JOIN service_totals st ON st.service_id = sua.service_id
+            ORDER BY st.total_revenue DESC, sua.name ASC, sua.service_unit ASC
         `;
 
         const result = await client.query(query, [merchant_id, month, year, outlet_id || null]);
         const services = result.rows.map((row) => ({
             service_id: row.service_id,
             name: row.name,
-            duration: row.duration,
-            total_pcs: Number(row.total_pcs),
-            total_orders: Number(row.total_orders),
-            total_revenue: Number(row.total_revenue),
+            service_unit: row.service_unit,
+            duration: Array.isArray(row.duration) ? row.duration.filter(Boolean) : [],
+            total_pcs: Number(row.total_qty || 0),
+            total_orders: Number(row.total_orders || 0),
+            total_revenue: Number(row.total_revenue || 0),
         }));
 
         const allDurations = new Set<string>();
         services.forEach(s => s.duration.forEach((d: string) => allDurations.add(d)));
+        const uniqueServiceIds = new Set<string>(services.map((s) => s.service_id));
 
         return {
             summary: {
-                total_services: services.length,
+                total_services: uniqueServiceIds.size,
                 total_duration_days: allDurations.size,
             },
             services: services,
