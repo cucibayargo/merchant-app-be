@@ -421,7 +421,7 @@ export async function getFinanceReport(
                             AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
               AND p.status = 'Lunas'
-              AND p.created_at::date BETWEEN $2::date AND $3::date
+              AND p.payment_at::date BETWEEN $2::date AND $3::date
             GROUP BY 1
             ORDER BY amount DESC
         `;
