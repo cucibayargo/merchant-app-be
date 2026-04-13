@@ -30,6 +30,7 @@ export interface Employee {
   id: string;
   merchant_id: string;
   outlet_id: string | null;
+  role_id: string | null;
   name: string;
   username: string;
   phone_number: string | null;
@@ -37,11 +38,12 @@ export interface Employee {
   created_at: string;
   updated_at: string;
   last_login_at: string | null;
-  permissions?: string[];
+  role?: { id: string; name: string; permissions: string[] } | null;
 }
 
 export interface EmployeePayload {
   outlet_id?: string | null;
+  role_id?: string | null;
   name: string;
   username: string;
   phone_number?: string | null;
@@ -51,6 +53,7 @@ export interface EmployeePayload {
 
 export interface EmployeeUpdatePayload {
   outlet_id?: string | null;
+  role_id?: string | null;
   name?: string;
   username?: string;
   phone_number?: string | null;
@@ -60,6 +63,7 @@ export interface EmployeeUpdatePayload {
 
 export const employeeSchema = Joi.object<EmployeePayload>({
   outlet_id: Joi.string().uuid().allow(null, ""),
+  role_id: Joi.string().uuid().allow(null, ""),
   name: Joi.string().max(255).required(),
   username: Joi.string().max(255).required(),
   phone_number: Joi.string().max(50).allow(null, ""),
@@ -69,6 +73,7 @@ export const employeeSchema = Joi.object<EmployeePayload>({
 
 export const employeeUpdateSchema = Joi.object<EmployeeUpdatePayload>({
   outlet_id: Joi.string().uuid().allow(null, ""),
+  role_id: Joi.string().uuid().allow(null, ""),
   name: Joi.string().max(255),
   username: Joi.string().max(255),
   phone_number: Joi.string().max(50).allow(null, ""),
@@ -76,10 +81,8 @@ export const employeeUpdateSchema = Joi.object<EmployeeUpdatePayload>({
   is_active: Joi.boolean(),
 }).min(1);
 
-export const permissionAssignmentSchema = Joi.object({
-  permissions: Joi.array()
-    .items(Joi.string().valid(...AVAILABLE_PERMISSIONS))
-    .required(),
+export const roleAssignSchema = Joi.object({
+  role_id: Joi.string().uuid().allow(null, "").required(),
 });
 
 export const employeeLoginSchema = Joi.object({

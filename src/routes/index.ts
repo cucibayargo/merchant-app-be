@@ -19,6 +19,7 @@ import expanseRoutes from "../modules/expanse/routes";
 import discountRoutes from "../modules/discount/routes";
 import outletRoutes from "../modules/outlet/routes";
 import employeeRoutes from "../modules/employee/routes";
+import roleRoutes from "../modules/role/routes";
 import planRoutes from "../modules/plan/routes";
 
 const router = Router();
@@ -42,6 +43,7 @@ router.use("/expanse", expanseRoutes);
 router.use("/discounts", discountRoutes);
 router.use("/outlets", outletRoutes);
 router.use("/employees", employeeRoutes);
+router.use("/roles", roleRoutes);
 router.use("/plan", planRoutes);
 
 export default router;

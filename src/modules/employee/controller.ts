@@ -9,13 +9,14 @@ export async function createEmployee(payload: EmployeePayload, merchantId: strin
 
     const result = await client.query(
       `
-      INSERT INTO employees (merchant_id, outlet_id, name, username, phone_number, password, is_active)
-      VALUES ($1, NULLIF($2, '')::uuid, $3, $4, NULLIF($5, ''), $6, COALESCE($7, true))
-      RETURNING id, merchant_id, outlet_id, name, username, phone_number, is_active, created_at, updated_at, last_login_at
+      INSERT INTO employees (merchant_id, outlet_id, role_id, name, username, phone_number, password, is_active)
+      VALUES ($1, NULLIF($2, '')::uuid, NULLIF($3, '')::uuid, $4, $5, NULLIF($6, ''), $7, COALESCE($8, true))
+      RETURNING id, merchant_id, outlet_id, role_id, name, username, phone_number, is_active, created_at, updated_at, last_login_at
       `,
       [
         merchantId,
         payload.outlet_id || null,
+        payload.role_id || null,
         payload.name,
         payload.username,
         payload.phone_number || null,
@@ -35,12 +36,21 @@ export async function getEmployeeById(id: string, merchantId: string): Promise<E
   try {
     const result = await client.query(
       `
-      SELECT e.id, e.merchant_id, e.outlet_id, e.name, e.username, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
-             COALESCE(json_agg(ep.permission_code) FILTER (WHERE ep.permission_code IS NOT NULL), '[]') AS permissions
+      SELECT e.id, e.merchant_id, e.outlet_id, e.role_id, e.name, e.username, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
+             CASE WHEN er.id IS NOT NULL THEN
+               json_build_object(
+                 'id', er.id,
+                 'name', er.name,
+                 'permissions', COALESCE(
+                   (SELECT json_agg(erp.permission_code ORDER BY erp.permission_code)
+                    FROM employee_role_permissions erp
+                    WHERE erp.role_id = er.id), '[]'::json
+                 )
+               )
+             ELSE NULL END AS role
       FROM employees e
-      LEFT JOIN employee_permissions ep ON ep.employee_id = e.id
+      LEFT JOIN employee_roles er ON er.id = e.role_id
       WHERE e.id = $1 AND e.merchant_id = $2
-      GROUP BY e.id
       LIMIT 1
       `,
       [id, merchantId]
@@ -57,12 +67,21 @@ export async function listEmployees(merchantId: string): Promise<Employee[]> {
   try {
     const result = await client.query(
       `
-      SELECT e.id, e.merchant_id, e.outlet_id, e.name, e.username, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
-             COALESCE(json_agg(ep.permission_code) FILTER (WHERE ep.permission_code IS NOT NULL), '[]') AS permissions
+      SELECT e.id, e.merchant_id, e.outlet_id, e.role_id, e.name, e.username, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
+             CASE WHEN er.id IS NOT NULL THEN
+               json_build_object(
+                 'id', er.id,
+                 'name', er.name,
+                 'permissions', COALESCE(
+                   (SELECT json_agg(erp.permission_code ORDER BY erp.permission_code)
+                    FROM employee_role_permissions erp
+                    WHERE erp.role_id = er.id), '[]'::json
+                 )
+               )
+             ELSE NULL END AS role
       FROM employees e
-      LEFT JOIN employee_permissions ep ON ep.employee_id = e.id
+      LEFT JOIN employee_roles er ON er.id = e.role_id
       WHERE e.merchant_id = $1
-      GROUP BY e.id
       ORDER BY e.created_at DESC
       `,
       [merchantId]
@@ -100,18 +119,20 @@ export async function updateEmployee(
       UPDATE employees
       SET
         outlet_id = COALESCE(NULLIF($1, '')::uuid, outlet_id),
-        name = COALESCE($2, name),
-        username = COALESCE($3, username),
-        phone_number = COALESCE(NULLIF($4, ''), phone_number),
-        password = $5,
-        is_active = COALESCE($6, is_active),
+        role_id = CASE WHEN $2::text IS NOT NULL THEN NULLIF($2, '')::uuid ELSE role_id END,
+        name = COALESCE($3, name),
+        username = COALESCE($4, username),
+        phone_number = COALESCE(NULLIF($5, ''), phone_number),
+        password = $6,
+        is_active = COALESCE($7, is_active),
         updated_at = now()
-      WHERE id = $7
-        AND merchant_id = $8
-      RETURNING id, merchant_id, outlet_id, name, username, phone_number, is_active, created_at, updated_at, last_login_at
+      WHERE id = $8
+        AND merchant_id = $9
+      RETURNING id
       `,
       [
         payload.outlet_id,
+        payload.role_id !== undefined ? (payload.role_id || null) : null,
         payload.name,
         payload.username,
         payload.phone_number,
@@ -122,7 +143,8 @@ export async function updateEmployee(
       ]
     );
 
-    return result.rows[0] || null;
+    if (!result.rows[0]) return null;
+    return getEmployeeById(id, merchantId);
   } finally {
     client.release();
   }
@@ -142,50 +164,29 @@ export async function deleteEmployee(id: string, merchantId: string): Promise<bo
   }
 }
 
-export async function assignEmployeePermissions(
+export async function assignRoleToEmployee(
   employeeId: string,
-  permissions: string[],
+  roleId: string | null,
   merchantId: string
-): Promise<string[]> {
+): Promise<Employee | null> {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    if (roleId) {
+      const role = await client.query(
+        `SELECT id FROM employee_roles WHERE id = $1 AND merchant_id = $2 LIMIT 1`,
+        [roleId, merchantId]
+      );
+      if (!role.rows[0]) throw new Error("Role tidak ditemukan.");
+    }
 
-    const employee = await client.query(
-      `SELECT id FROM employees WHERE id = $1 AND merchant_id = $2 LIMIT 1`,
-      [employeeId, merchantId]
+    const result = await client.query(
+      `UPDATE employees SET role_id = $1, updated_at = now()
+       WHERE id = $2 AND merchant_id = $3 RETURNING id`,
+      [roleId, employeeId, merchantId]
     );
 
-    if (!employee.rows[0]) {
-      throw new Error("Karyawan tidak ditemukan.");
-    }
-
-    await client.query(`DELETE FROM employee_permissions WHERE employee_id = $1`, [employeeId]);
-
-    if (permissions.length > 0) {
-      const values: string[] = [];
-      const params: string[] = [employeeId];
-
-      permissions.forEach((permission, idx) => {
-        values.push(`($1, $${idx + 2})`);
-        params.push(permission);
-      });
-
-      await client.query(
-        `
-        INSERT INTO employee_permissions (employee_id, permission_code)
-        VALUES ${values.join(",")}
-        ON CONFLICT DO NOTHING
-        `,
-        params
-      );
-    }
-
-    await client.query("COMMIT");
-    return permissions;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
+    if (!result.rows[0]) return null;
+    return getEmployeeById(employeeId, merchantId);
   } finally {
     client.release();
   }
@@ -196,12 +197,13 @@ export async function getEmployeePermissions(employeeId: string, merchantId: str
   try {
     const result = await client.query(
       `
-      SELECT ep.permission_code
-      FROM employee_permissions ep
-      JOIN employees e ON e.id = ep.employee_id
-      WHERE ep.employee_id = $1
+      SELECT erp.permission_code
+      FROM employee_role_permissions erp
+      JOIN employee_roles er ON er.id = erp.role_id
+      JOIN employees e ON e.role_id = er.id
+      WHERE e.id = $1
         AND e.merchant_id = $2
-      ORDER BY ep.permission_code ASC
+      ORDER BY erp.permission_code ASC
       `,
       [employeeId, merchantId]
     );

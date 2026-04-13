@@ -1,7 +1,7 @@
 import express from "express";
 import { AuthenticatedRequest, requireOwner } from "../../middlewares";
 import {
-  assignEmployeePermissions,
+  assignRoleToEmployee,
   createEmployee,
   deleteEmployee,
   getEmployeeById,
@@ -10,18 +10,13 @@ import {
   updateEmployee,
 } from "./controller";
 import {
-  AVAILABLE_PERMISSIONS,
   employeeSchema,
   employeeUpdateSchema,
-  permissionAssignmentSchema,
+  roleAssignSchema,
 } from "./types";
 import { formatJoiError } from "../../utils";
 
 const router = express.Router();
-
-router.get("/permissions/catalog", (_req, res) => {
-  return res.status(200).json({ permissions: AVAILABLE_PERMISSIONS });
-});
 
 router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
   try {
@@ -105,20 +100,22 @@ router.get("/:id/permissions", requireOwner, async (req: AuthenticatedRequest, r
   }
 });
 
-router.put("/:id/permissions", requireOwner, async (req: AuthenticatedRequest, res) => {
-  const { error, value } = permissionAssignmentSchema.validate(req.body, { abortEarly: false });
+router.put("/:id/role", requireOwner, async (req: AuthenticatedRequest, res) => {
+  const { error, value } = roleAssignSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({ message: formatJoiError(error) });
   }
 
   try {
-    const permissions = await assignEmployeePermissions(
+    const employee = await assignRoleToEmployee(
       req.params.id,
-      value.permissions,
+      value.role_id || null,
       req.userId as string
     );
-
-    return res.status(200).json({ permissions });
+    if (!employee) {
+      return res.status(404).json({ message: "Karyawan tidak ditemukan." });
+    }
+    return res.status(200).json(employee);
   } catch (error) {
     const err = error as Error;
     return res.status(400).json({ message: err.message });
