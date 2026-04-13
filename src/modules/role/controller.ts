@@ -119,6 +119,8 @@ export async function updateRole(
 ): Promise<Role | null> {
   const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+
     const result = await client.query(
       `
       UPDATE employee_roles
@@ -128,8 +130,40 @@ export async function updateRole(
       `,
       [payload.name, id, merchantId]
     );
-    if (!result.rows[0]) return null;
+
+    if (!result.rows[0]) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (payload.permissions !== undefined) {
+      await client.query(`DELETE FROM employee_role_permissions WHERE role_id = $1`, [id]);
+
+      if (payload.permissions.length > 0) {
+        const values: string[] = [];
+        const params: string[] = [id];
+
+        payload.permissions.forEach((permission, idx) => {
+          values.push(`($1, $${idx + 2})`);
+          params.push(permission);
+        });
+
+        await client.query(
+          `
+          INSERT INTO employee_role_permissions (role_id, permission_code)
+          VALUES ${values.join(",")}
+          ON CONFLICT DO NOTHING
+          `,
+          params
+        );
+      }
+    }
+
+    await client.query("COMMIT");
     return getRoleById(id, merchantId);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
   } finally {
     client.release();
   }

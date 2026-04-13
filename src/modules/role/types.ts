@@ -17,6 +17,7 @@ export interface RolePayload {
 
 export interface RoleUpdatePayload {
   name?: string;
+  permissions?: PermissionCode[];
 }
 
 export const roleSchema = Joi.object<RolePayload>({
@@ -28,10 +29,7 @@ export const roleSchema = Joi.object<RolePayload>({
 
 export const roleUpdateSchema = Joi.object<RoleUpdatePayload>({
   name: Joi.string().max(255),
-}).min(1);
-
-export const rolePermissionSchema = Joi.object({
   permissions: Joi.array()
     .items(Joi.string().valid(...AVAILABLE_PERMISSIONS))
-    .required(),
-});
+    .optional(),
+}).min(1);

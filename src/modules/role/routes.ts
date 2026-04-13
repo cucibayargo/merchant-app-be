@@ -5,10 +5,9 @@ import {
   deleteRole,
   getRoleById,
   listRoles,
-  setRolePermissions,
   updateRole,
 } from "./controller";
-import { rolePermissionSchema, roleSchema, roleUpdateSchema } from "./types";
+import { roleSchema, roleUpdateSchema } from "./types";
 import { formatJoiError } from "../../utils";
 import { AVAILABLE_PERMISSIONS } from "../employee/types";
 
@@ -82,23 +81,6 @@ router.delete("/:id", requireOwner, async (req: AuthenticatedRequest, res) => {
     const deleted = await deleteRole(req.params.id, req.userId as string);
     if (!deleted) return res.status(404).json({ message: "Role tidak ditemukan." });
     return res.status(200).json({ message: "Role berhasil dihapus." });
-  } catch (error) {
-    const err = error as Error;
-    return res.status(500).json({ message: err.message });
-  }
-});
-
-router.put("/:id/permissions", requireOwner, async (req: AuthenticatedRequest, res) => {
-  const { error, value } = rolePermissionSchema.validate(req.body, { abortEarly: false });
-  if (error) return res.status(400).json({ message: formatJoiError(error) });
-
-  try {
-    const permissions = await setRolePermissions(
-      req.params.id,
-      value.permissions,
-      req.userId as string
-    );
-    return res.status(200).json({ permissions });
   } catch (error) {
     const err = error as Error;
     return res.status(500).json({ message: err.message });
