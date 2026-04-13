@@ -9,15 +9,15 @@ export async function createEmployee(payload: EmployeePayload, merchantId: strin
 
     const result = await client.query(
       `
-      INSERT INTO employees (merchant_id, outlet_id, name, email, phone_number, password, is_active)
+      INSERT INTO employees (merchant_id, outlet_id, name, username, phone_number, password, is_active)
       VALUES ($1, NULLIF($2, '')::uuid, $3, $4, NULLIF($5, ''), $6, COALESCE($7, true))
-      RETURNING id, merchant_id, outlet_id, name, email, phone_number, is_active, created_at, updated_at, last_login_at
+      RETURNING id, merchant_id, outlet_id, name, username, phone_number, is_active, created_at, updated_at, last_login_at
       `,
       [
         merchantId,
         payload.outlet_id || null,
         payload.name,
-        payload.email,
+        payload.username,
         payload.phone_number || null,
         passwordHash,
         payload.is_active,
@@ -35,7 +35,7 @@ export async function getEmployeeById(id: string, merchantId: string): Promise<E
   try {
     const result = await client.query(
       `
-      SELECT e.id, e.merchant_id, e.outlet_id, e.name, e.email, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
+      SELECT e.id, e.merchant_id, e.outlet_id, e.name, e.username, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
              COALESCE(json_agg(ep.permission_code) FILTER (WHERE ep.permission_code IS NOT NULL), '[]') AS permissions
       FROM employees e
       LEFT JOIN employee_permissions ep ON ep.employee_id = e.id
@@ -57,7 +57,7 @@ export async function listEmployees(merchantId: string): Promise<Employee[]> {
   try {
     const result = await client.query(
       `
-      SELECT e.id, e.merchant_id, e.outlet_id, e.name, e.email, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
+      SELECT e.id, e.merchant_id, e.outlet_id, e.name, e.username, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
              COALESCE(json_agg(ep.permission_code) FILTER (WHERE ep.permission_code IS NOT NULL), '[]') AS permissions
       FROM employees e
       LEFT JOIN employee_permissions ep ON ep.employee_id = e.id
@@ -101,19 +101,19 @@ export async function updateEmployee(
       SET
         outlet_id = COALESCE(NULLIF($1, '')::uuid, outlet_id),
         name = COALESCE($2, name),
-        email = COALESCE($3, email),
+        username = COALESCE($3, username),
         phone_number = COALESCE(NULLIF($4, ''), phone_number),
         password = $5,
         is_active = COALESCE($6, is_active),
         updated_at = now()
       WHERE id = $7
         AND merchant_id = $8
-      RETURNING id, merchant_id, outlet_id, name, email, phone_number, is_active, created_at, updated_at, last_login_at
+      RETURNING id, merchant_id, outlet_id, name, username, phone_number, is_active, created_at, updated_at, last_login_at
       `,
       [
         payload.outlet_id,
         payload.name,
-        payload.email,
+        payload.username,
         payload.phone_number,
         passwordHash,
         payload.is_active,
@@ -212,18 +212,18 @@ export async function getEmployeePermissions(employeeId: string, merchantId: str
   }
 }
 
-export async function authenticateEmployee(email: string): Promise<(Employee & { password: string }) | null> {
+export async function authenticateEmployee(username: string): Promise<(Employee & { password: string }) | null> {
   const client = await pool.connect();
   try {
     const result = await client.query(
       `
       SELECT *
       FROM employees
-      WHERE email = $1
+      WHERE username = $1
         AND is_active = true
       LIMIT 1
       `,
-      [email]
+      [username]
     );
 
     return result.rows[0] || null;

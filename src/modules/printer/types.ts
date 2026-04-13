@@ -3,6 +3,7 @@ import Joi from "joi";
 export interface PrintedDevice {
   id: string;
   user_id: string;
+  outlet_id?: string | null;
   device_name: string;
   alias_name?: string | null;
   device_id: string;
@@ -11,6 +12,7 @@ export interface PrintedDevice {
 }
 
 export const printedDeviceSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
   device_name: Joi.string().required().messages({
     "string.empty": "Nama perangkat tidak boleh kosong",
   }),

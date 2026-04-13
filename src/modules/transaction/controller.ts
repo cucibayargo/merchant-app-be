@@ -235,7 +235,7 @@ export async function addTransaction(
     // Apply discount if provided
     let discountAmount = 0;
     if (discount_id) {
-      const discountRecord = await getDiscountByIdOnly(discount_id);
+      const discountRecord = await getDiscountByIdOnly(discount_id, merchant_id, finalOutletId);
       if (discountRecord && discountRecord.is_active) {
         discountAmount = calculateDiscountAmount(subtotal, discountRecord);
         await client.query(

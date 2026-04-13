@@ -13,6 +13,7 @@ import {
   addUser,
   addUserSignUpToken,
   changeUserPassword,
+  createDefaultOutletForMerchant,
   createSubscriptions,
   getSubsPlanByCode,
   getUserByEmail,
@@ -313,7 +314,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/employee/login", async (req, res) => {
+router.post("/employe/login", async (req, res) => {
   const { error } = employeeLoginSchema.validate(req.body);
   if (error) {
     const message = formatJoiError(error);
@@ -321,10 +322,10 @@ router.post("/employee/login", async (req, res) => {
   }
 
   try {
-    const { email, password } = req.body;
-    const employee = await authenticateEmployee(email);
+    const { username, password } = req.body;
+    const employee = await authenticateEmployee(username);
     if (!employee) {
-      return res.status(400).json({ message: "Email karyawan tidak ditemukan." });
+      return res.status(400).json({ message: "Username karyawan tidak ditemukan." });
     }
 
     const isValidPassword = await bcrypt.compare(password, employee.password);
@@ -355,7 +356,7 @@ router.post("/employee/login", async (req, res) => {
         merchant_id: employee.merchant_id,
         outlet_id: employee.outlet_id,
         name: employee.name,
-        email: employee.email,
+        username: employee.username,
         permissions,
       },
     });
@@ -474,8 +475,13 @@ router.post("/signup", async (req, res) => {
       });
     }
 
-    // Create Default Service and Duration
-    await initServiceAndDuration(newUser.id);
+    const defaultOutlet = await createDefaultOutletForMerchant(
+      newUser.id,
+      phone_number
+    );
+
+    // Create default service and duration for the default outlet.
+    await initServiceAndDuration(newUser.id, defaultOutlet.id);
 
     // Generate verification token
     // const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {

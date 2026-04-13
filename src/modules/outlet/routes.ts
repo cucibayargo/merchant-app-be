@@ -7,6 +7,7 @@ import {
   listOutlets,
   updateOutlet,
 } from "./controller";
+import { initServiceAndDuration } from "../auth/controller";
 import { outletSchema } from "./types";
 import { formatJoiError } from "../../utils";
 
@@ -44,6 +45,9 @@ router.post("/", requireOwner, async (req: AuthenticatedRequest, res) => {
 
   try {
     const outlet = await createOutlet(value, req.userId as string);
+
+    await initServiceAndDuration(req.userId as string, outlet.id);
+
     return res.status(201).json(outlet);
   } catch (error) {
     const err = error as Error;

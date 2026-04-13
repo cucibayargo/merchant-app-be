@@ -558,27 +558,62 @@ export const notifyUserToPaySubscription = async (
   }
 };
 
-export async function initServiceAndDuration(
-  merchant_id: string
-): Promise<boolean> {
+export async function createDefaultOutletForMerchant(
+  merchant_id: string,
+  phone_number?: string | null
+): Promise<{ id: string }> {
   const client = await pool.connect();
   try {
     const query = `
+      INSERT INTO outlets (merchant_id, code, name, phone_number, is_active)
+      VALUES ($1, 'OTL-001', 'Outlet Utama', NULLIF($2, ''), true)
+      RETURNING id;
+    `;
+
+    const result = await client.query(query, [merchant_id, phone_number || null]);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+export async function initServiceAndDuration(
+  merchant_id: string,
+  outlet_id: string
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const existingDefaults = await client.query(
+      `
+        SELECT 1
+        FROM service
+        WHERE merchant_id = $1
+          AND outlet_id = $2
+        LIMIT 1
+      `,
+      [merchant_id, outlet_id]
+    );
+
+    if (existingDefaults.rowCount && existingDefaults.rowCount > 0) {
+      return true;
+    }
+
+    const query = `
         WITH inserted_durations AS (
-            INSERT INTO duration (duration, name, type, merchant_id) VALUES
-            (3, 'Reguler', 'Hari', $1),
-            (1, 'Express', 'Hari', $1),
-            (6, 'Kilat', 'Jam', $1)
+            INSERT INTO duration (duration, name, type, merchant_id, outlet_id) VALUES
+            (3, 'Reguler', 'Hari', $1, $2),
+            (1, 'Express', 'Hari', $1, $2),
+            (6, 'Kilat', 'Jam', $1, $2)
             RETURNING id, name
         ),
         inserted_services AS (
-            INSERT INTO service (unit, name, merchant_id) VALUES
-            ('KG', 'Kiloan - Cuci, Setrika', $1),
-            ('KG', 'Kiloan - Cuci', $1),
-            ('PCS', 'Jas', $1),
-            ('PCS', 'Boneka', $1),
-            ('PCS', 'Bedcover', $1),
-            ('PCS', 'Selimut', $1)
+            INSERT INTO service (unit, name, merchant_id, outlet_id) VALUES
+            ('KG', 'Kiloan - Cuci, Setrika', $1, $2),
+            ('KG', 'Kiloan - Cuci', $1, $2),
+            ('PCS', 'Jas', $1, $2),
+            ('PCS', 'Boneka', $1, $2),
+            ('PCS', 'Bedcover', $1, $2),
+            ('PCS', 'Selimut', $1, $2)
             RETURNING id, name
         )
         INSERT INTO service_duration (price, duration, service) VALUES
@@ -606,7 +641,7 @@ export async function initServiceAndDuration(
         (10000, (SELECT id FROM inserted_durations WHERE name = 'Express'), (SELECT id FROM inserted_services WHERE name = 'Selimut')),
         (15000, (SELECT id FROM inserted_durations WHERE name = 'Kilat'), (SELECT id FROM inserted_services WHERE name = 'Selimut'));
       `;
-    const result = await client.query(query, [merchant_id]);
+    const result = await client.query(query, [merchant_id, outlet_id]);
 
     // Check if any rows were returned
     return result.rows.length > 0;

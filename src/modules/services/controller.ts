@@ -13,6 +13,7 @@ import { Service, ServiceDurationDetail } from "./types";
 export async function getAllServices(
   merchantId?: string, 
   durationId?: string | null,
+  outletId?: string | null,
   filter?: string | null
 ): Promise<{ id: number, name: string, price?: number }[]> {
   const client = await pool.connect();
@@ -33,10 +34,11 @@ export async function getAllServices(
       LEFT JOIN duration
         ON service_duration.duration = duration.id
       WHERE service.merchant_id = $1
+        AND ($2::uuid IS NULL OR service.outlet_id = $2)
     `;
 
-    const params: any[] = [merchantId];
-    let paramIndex = 2;
+    const params: any[] = [merchantId, outletId || null];
+    let paramIndex = 3;
 
     if (filter) {
       query += ` AND service.name ILIKE '%' || $${paramIndex} || '%'`;
@@ -75,6 +77,7 @@ export async function getAllServices(
 export async function getServices(
   filter: string | null, 
   merchantId?: string, 
+  outletId?: string | null,
   page: number = 1,
   limit: number = 10
 ): Promise<{ services: { id: number, name: string, price?: number }[], totalCount: number }> {
@@ -85,6 +88,7 @@ export async function getServices(
       FROM service
       WHERE ($1::text IS NULL OR service.name ILIKE '%' || $1 || '%') 
         AND service.merchant_id = $2
+        AND ($3::uuid IS NULL OR service.outlet_id = $3)
     `;
 
     // Query for total count
@@ -92,7 +96,7 @@ export async function getServices(
       SELECT COUNT(*) AS total_count
       ${baseQuery}
     `;
-    const countResult = await client.query(countQuery, [filter, merchantId]);
+    const countResult = await client.query(countQuery, [filter, merchantId, outletId || null]);
     const totalCount = parseInt(countResult.rows[0].total_count, 10);
 
     // Calculate offset for pagination
@@ -103,9 +107,9 @@ export async function getServices(
       SELECT service.id, service.name
       ${baseQuery}
       ORDER BY service.created_at DESC
-      LIMIT $3 OFFSET $4
+      LIMIT $4 OFFSET $5
     `;
-    const dataResult = await client.query(dataQuery, [filter, merchantId, limit, offset]);
+    const dataResult = await client.query(dataQuery, [filter, merchantId, outletId || null, limit, offset]);
 
     return {
       services: dataResult.rows,
@@ -124,7 +128,11 @@ export async function getServices(
  * @param {number} serviceId - The ID of the service to retrieve.
  * @returns {Promise<Service | null>} - A promise that resolves to the service with durations or null if not found.
  */
-export async function getServiceById(serviceId: string): Promise<Service | null> {
+export async function getServiceById(
+  serviceId: string,
+  merchantId?: string,
+  outletId?: string | null
+): Promise<Service | null> {
   const client = await pool.connect();
   try {
     const query = `
@@ -139,10 +147,12 @@ export async function getServiceById(serviceId: string): Promise<Service | null>
       LEFT JOIN service_duration ON service.id = service_duration.service
       LEFT JOIN duration ON service_duration.duration = duration.id
       WHERE service.id = $1
+        AND ($2::uuid IS NULL OR service.merchant_id = $2)
+        AND ($3::uuid IS NULL OR service.outlet_id = $3)
       ORDER BY service.created_at DESC
     `;
 
-    const result = await client.query(query, [serviceId]);
+    const result = await client.query(query, [serviceId, merchantId, outletId || null]);
     if (result.rows.length === 0) {
       return null; // Service not found
     }
@@ -176,15 +186,19 @@ export async function getServiceById(serviceId: string): Promise<Service | null>
  * @param service - The service data to add.
  * @returns {Promise<Service>} - A promise that resolves to the newly created service.
  */
-export async function addService(service: Omit<Service, 'id'>, merchant_id?: string): Promise<Service> {
+export async function addService(
+  service: Omit<Service, 'id'>,
+  merchant_id?: string,
+  outlet_id?: string | null
+): Promise<Service> {
   const client = await pool.connect();
   try {
     const { name, unit, durations } = service;
     const query = `
-      INSERT INTO service (name, unit, merchant_id)
-      VALUES ($1, $2, $3) RETURNING id;
+      INSERT INTO service (name, unit, merchant_id, outlet_id)
+      VALUES ($1, $2, $3, $4) RETURNING id;
     `;
-    const values = [name, unit, merchant_id];
+    const values = [name, unit, merchant_id, outlet_id || null];
     const result = await client.query(query, values);
     const newServiceId = result.rows[0].id;
 
@@ -220,7 +234,12 @@ export async function addService(service: Omit<Service, 'id'>, merchant_id?: str
  * @param service - The updated service data.
  * @returns {Promise<Service>} - A promise that resolves to the updated service.
  */
-export async function updateService(id: string, service: Omit<Service, 'id'>): Promise<Service> {
+export async function updateService(
+  id: string,
+  service: Omit<Service, 'id'>,
+  merchant_id?: string,
+  outlet_id?: string | null
+): Promise<Service> {
   const client = await pool.connect();
   try {
     const { name, unit, durations } = service;
@@ -229,10 +248,17 @@ export async function updateService(id: string, service: Omit<Service, 'id'>): P
     const updateServiceQuery = `
       UPDATE service
       SET name = $1, unit = $2
-      WHERE id = $3 RETURNING id;
+      WHERE id = $3
+        AND merchant_id = $4
+        AND ($5::uuid IS NULL OR outlet_id = $5)
+      RETURNING id;
     `;
-    const updateServiceValues = [name, unit, id];
-    await client.query(updateServiceQuery, updateServiceValues);
+    const updateServiceValues = [name, unit, id, merchant_id, outlet_id || null];
+    const updatedService = await client.query(updateServiceQuery, updateServiceValues);
+
+    if ((updatedService.rowCount || 0) === 0) {
+      throw new Error("Layanan tidak ditemukan");
+    }
 
     // Remove existing durations and add new ones
     await client.query('DELETE FROM service_duration WHERE service = $1;', [id]);
@@ -266,14 +292,42 @@ export async function updateService(id: string, service: Omit<Service, 'id'>): P
  * Delete a service from the database.
  * @param id - The ID of the service to delete.
  */
-export async function deleteService(id: string): Promise<void> {
+export async function deleteService(
+  id: string,
+  merchant_id?: string,
+  outlet_id?: string | null
+): Promise<void> {
   const client = await pool.connect();
   try {
     // Delete service durations
-    await client.query('DELETE FROM service_duration WHERE service = $1;', [id]);
+    await client.query(
+      `
+        DELETE FROM service_duration
+        WHERE service = $1
+          AND EXISTS (
+            SELECT 1 FROM service
+            WHERE service.id = $1
+              AND service.merchant_id = $2
+              AND ($3::uuid IS NULL OR service.outlet_id = $3)
+          );
+      `,
+      [id, merchant_id, outlet_id || null]
+    );
 
     // Delete the service
-    await client.query('DELETE FROM service WHERE id = $1;', [id]);
+    const result = await client.query(
+      `
+        DELETE FROM service
+        WHERE id = $1
+          AND merchant_id = $2
+          AND ($3::uuid IS NULL OR outlet_id = $3)
+      `,
+      [id, merchant_id, outlet_id || null]
+    );
+
+    if ((result.rowCount || 0) === 0) {
+      throw new Error("Layanan tidak ditemukan");
+    }
   } finally {
     client.release();
   }

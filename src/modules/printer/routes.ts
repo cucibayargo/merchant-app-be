@@ -7,7 +7,7 @@ import {
   updatePrintedDevice,
   deletePrintedDevice,
 } from "./controller";
-import { AuthenticatedRequest } from "../../middlewares";
+import { AuthenticatedRequest, resolveOutletId } from "../../middlewares";
 import { formatJoiError } from "../../utils";
 
 const router = express.Router();
@@ -16,7 +16,12 @@ const router = express.Router();
 
 router.get("/", async (req: AuthenticatedRequest, res) => {
   try {
-    const devices = await getAllPrintedDevices(req.userId as string);
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    const devices = await getAllPrintedDevices(req.userId as string, outletId);
     res.json(devices);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan server";
@@ -24,9 +29,14 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req: AuthenticatedRequest, res) => {
   try {
-    const device = await getPrintedDeviceById(req.params.id);
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    const device = await getPrintedDeviceById(req.params.id, req.userId as string, outletId);
     if (!device) {
       return res.status(404).json({ message: "Printer tidak ditemukan" });
     }
@@ -44,7 +54,12 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    const newDevice = await addPrintedDevice({ ...value, user_id: req.userId });
+    const outletId = resolveOutletId(req, value.outlet_id);
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    const newDevice = await addPrintedDevice({ ...value, user_id: req.userId, outlet_id: outletId });
     res.status(201).json({
       status: "success",
       message: "Printer berhasil ditambahkan",
@@ -63,7 +78,12 @@ router.put("/:id", async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    const updated = await updatePrintedDevice(req.params.id, req.body);
+    const outletId = resolveOutletId(req, req.body?.outlet_id || (req.query.outlet_id as string | undefined));
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    const updated = await updatePrintedDevice(req.params.id, req.userId as string, outletId, req.body);
     res.json({ status: "success", message: "Printer berhasil diperbarui", data: updated });
   } catch (error) {
     if (error instanceof Error) {
@@ -78,9 +98,14 @@ router.put("/:id", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req: AuthenticatedRequest, res) => {
   try {
-    await deletePrintedDevice(req.params.id);
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    await deletePrintedDevice(req.params.id, req.userId as string, outletId);
     res.json({ status: "success", message: "Printer berhasil dihapus" });
   } catch (error) {
     if (error instanceof Error) {

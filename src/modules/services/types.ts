@@ -23,6 +23,8 @@ export interface ServiceDurationDetail {
 }
 
 export const serviceSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
+
   name: Joi.string().required().messages({
     'string.empty': 'Nama wajib diisi',
     'any.required': 'Nama wajib diisi',

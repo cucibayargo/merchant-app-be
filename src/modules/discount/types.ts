@@ -3,6 +3,7 @@ const Joi = require("joi");
 export interface Discount {
   id: string;
   merchant_id: string;
+  outlet_id?: string | null;
   name: string;
   type: "percentage" | "amount";
   value: number;
@@ -13,6 +14,7 @@ export interface Discount {
 }
 
 export const discountSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
   name: Joi.string().required(),
   type: Joi.string().valid("percentage", "amount").required(),
   value: Joi.number().positive().required(),
@@ -21,6 +23,7 @@ export const discountSchema = Joi.object({
 });
 
 export const discountUpdateSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
   name: Joi.string().optional(),
   type: Joi.string().valid("percentage", "amount").optional(),
   value: Joi.number().positive().optional(),

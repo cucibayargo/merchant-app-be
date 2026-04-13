@@ -1,7 +1,7 @@
 import express from "express";
 import { noteSchema } from "./types";
 import { addNote, GetNote, updateNote } from "./controller";
-import { AuthenticatedRequest } from "../../middlewares";
+import { AuthenticatedRequest, resolveOutletId } from "../../middlewares";
 import { formatJoiError } from "../../utils";
 
 const router = express.Router();
@@ -10,7 +10,12 @@ const router = express.Router();
 
 router.get("/", async (req: AuthenticatedRequest, res) => {
   try {
-    const data = await GetNote(req.userId); // Ensure GetNote() returns a single note object
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    const data = await GetNote(req.userId, outletId); // Ensure GetNote() returns a single note object
     if (Array.isArray(data)) {
       // If GetNote() returns an array, handle it appropriately, e.g., return the first item
       res.json(data[0] || null);
@@ -44,12 +49,17 @@ router.put("/", async (req: AuthenticatedRequest, res) => {
   const { notes } = req.body;
 
   try {
+    const outletId = resolveOutletId(req, req.body?.outlet_id || (req.query.outlet_id as string | undefined));
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
     // Attempt to get the latest note
-    const latestNote = await GetNote(req.userId);
+    const latestNote = await GetNote(req.userId, outletId);
 
     if (latestNote) {
       // Update the latest note
-      const updatedNote = await updateNote(latestNote.id, { notes });
+      const updatedNote = await updateNote(latestNote.id, { notes }, req.userId, outletId);
       res.status(200).json({
         status: "success",
         message: "Catatan berhasil diubah",
@@ -57,7 +67,7 @@ router.put("/", async (req: AuthenticatedRequest, res) => {
       });
     } else {
       // Create a new note
-      await addNote({ notes }, req.userId);
+      await addNote({ notes }, req.userId, outletId);
       res.status(201).json({
         status: "success",
         message: "Catatan berhasil dibuat"

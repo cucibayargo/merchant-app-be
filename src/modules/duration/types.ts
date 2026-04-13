@@ -15,6 +15,8 @@ export interface Duration {
 
 // Define the Joi schema
 export const durationSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
+
   name: Joi.string().required().messages({
     'string.empty': 'Nama wajib diisi',
   }),

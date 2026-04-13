@@ -1,5 +1,5 @@
 import express from "express";
-import { AuthenticatedRequest } from "../../middlewares";
+import { AuthenticatedRequest, resolveOutletId } from "../../middlewares";
 import { formatJoiError } from "../../utils";
 import {
   createDiscount,
@@ -17,6 +17,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   const filter = (req.query.filter as string) || null;
   const page = parseInt((req.query.page as string) || "1", 10);
   const limit = parseInt((req.query.limit as string) || "100", 10);
+  const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
 
   if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1) {
     return res.status(400).json({ message: "Invalid page or limit values" });
@@ -27,7 +28,8 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
       req.userId as string,
       page,
       limit,
-      filter
+      filter,
+      outletId
     );
     const isFirstPage = page === 1;
     const isLastPage = page * limit >= totalCount;
@@ -47,7 +49,8 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 // GET /discounts/:id
 router.get("/:id", async (req: AuthenticatedRequest, res) => {
   try {
-    const discount = await getDiscountById(req.params.id, req.userId as string);
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    const discount = await getDiscountById(req.params.id, req.userId as string, outletId);
     if (!discount) {
       return res.status(404).json({ message: "Diskon tidak ditemukan." });
     }
@@ -67,7 +70,12 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    await createDiscount(value, req.userId as string);
+    const outletId = resolveOutletId(req, value.outlet_id);
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    await createDiscount(value, req.userId as string, outletId);
     res.status(201).json({
       status: "success",
       message: "Diskon berhasil dibuat",
@@ -86,7 +94,12 @@ router.put("/:id", async (req: AuthenticatedRequest, res) => {
   }
 
   try {
-    const discount = await updateDiscount(req.params.id, req.userId as string, value);
+    const outletId = resolveOutletId(req, value.outlet_id || (req.query.outlet_id as string | undefined));
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    const discount = await updateDiscount(req.params.id, req.userId as string, outletId, value);
     if (!discount) {
       return res.status(404).json({ message: "Diskon tidak ditemukan." });
     }
@@ -101,7 +114,12 @@ router.put("/:id", async (req: AuthenticatedRequest, res) => {
 // DELETE /discounts/:id
 router.delete("/:id", async (req: AuthenticatedRequest, res) => {
   try {
-    const deleted = await deleteDiscount(req.params.id, req.userId as string);
+    const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
+    if (!outletId) {
+      return res.status(400).json({ message: "Outlet wajib dipilih." });
+    }
+
+    const deleted = await deleteDiscount(req.params.id, req.userId as string, outletId);
     if (!deleted) {
       return res.status(404).json({ message: "Diskon tidak ditemukan." });
     }

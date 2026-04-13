@@ -10,7 +10,8 @@ import { Duration, DurationType } from "./types";
  */
 export async function getAllDurations(
   hasService?: boolean,
-  merchant_id?: string
+  merchant_id?: string,
+  outlet_id?: string | null
 ): Promise<Duration[]> {
   const client = await pool.connect();
   try {
@@ -19,6 +20,7 @@ export async function getAllDurations(
       FROM duration 
       LEFT JOIN service_duration ON duration.id = service_duration.duration
       WHERE merchant_id = $1
+        AND ($2::uuid IS NULL OR duration.outlet_id = $2)
     `;
 
     if (hasService) {
@@ -32,7 +34,7 @@ export async function getAllDurations(
       GROUP BY duration.id
       ORDER BY duration.created_at DESC
     `;
-    const dataParams = [merchant_id];
+    const dataParams = [merchant_id, outlet_id || null];
 
     // Run the query for durations
     const dataResult = await client.query(dataQuery, dataParams);
@@ -60,6 +62,7 @@ export async function getDurations(
   filter: string | null,
   hasService?: boolean,
   merchant_id?: string,
+  outlet_id?: string | null,
   page: number = 1,
   limit: number = 10
 ): Promise<{ durations: Duration[], totalCount: number }> {
@@ -73,6 +76,7 @@ export async function getDurations(
         OR ($1::text IS NULL OR duration.duration::text ILIKE '%' || $1 || '%')
         OR ($1::text IS NULL OR duration.type::text ILIKE '%' || $1 || '%'))
         AND merchant_id = $2
+        AND ($3::uuid IS NULL OR duration.outlet_id = $3)
     `;
 
     if (hasService) {
@@ -84,7 +88,7 @@ export async function getDurations(
       SELECT COUNT(DISTINCT duration.id) AS total_count
       ${baseQuery}
     `;
-    const countResult = await client.query(countQuery, [filter, merchant_id]);
+    const countResult = await client.query(countQuery, [filter, merchant_id, outlet_id || null]);
     const totalCount = parseInt(countResult.rows[0].total_count, 10);
 
     // Pagination logic
@@ -96,9 +100,9 @@ export async function getDurations(
       ${baseQuery}
       GROUP BY duration.id
       ORDER BY duration.created_at DESC
-      LIMIT $3 OFFSET $4
+      LIMIT $4 OFFSET $5
     `;
-    const dataParams = [filter, merchant_id, limit, offset];
+    const dataParams = [filter, merchant_id, outlet_id || null, limit, offset];
     const dataResult = await client.query(dataQuery, dataParams);
 
     return {
@@ -118,10 +122,23 @@ export async function getDurations(
  * @param id - The ID of the duration to retrieve.
  * @returns {Promise<Duration | null>} - A promise that resolves to the duration if found, or null if not found.
  */
-export async function getDurationById(id: string): Promise<Duration | null> {
+export async function getDurationById(
+  id: string,
+  merchant_id?: string,
+  outlet_id?: string | null
+): Promise<Duration | null> {
   const client = await pool.connect();
   try {
-    const res = await client.query("SELECT * FROM duration WHERE id = $1", [id]);
+    const res = await client.query(
+      `
+        SELECT *
+        FROM duration
+        WHERE id = $1
+          AND ($2::uuid IS NULL OR merchant_id = $2)
+          AND ($3::uuid IS NULL OR outlet_id = $3)
+      `,
+      [id, merchant_id, outlet_id || null]
+    );
     return res.rows[0] || null;
   } finally {
     client.release();
@@ -133,15 +150,19 @@ export async function getDurationById(id: string): Promise<Duration | null> {
  * @param duration - The duration data to add. Excludes 'id' as it's auto-generated.
  * @returns {Promise<Duration>} - A promise that resolves to the newly created duration.
  */
-export async function addDuration(duration: Omit<Duration, 'id'>, merchant_id?: string): Promise<Duration> {
+export async function addDuration(
+  duration: Omit<Duration, 'id'>,
+  merchant_id?: string,
+  outlet_id?: string | null
+): Promise<Duration> {
   const client = await pool.connect();
   try {
     const { name, duration: value, type } = duration;
     const query = `
-      INSERT INTO duration (name, duration, type, merchant_id)
-      VALUES ($1, $2, $3, $4) RETURNING *;
+      INSERT INTO duration (name, duration, type, merchant_id, outlet_id)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *;
     `;
-    const values = [name, value, type, merchant_id];
+    const values = [name, value, type, merchant_id, outlet_id || null];
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
@@ -155,17 +176,30 @@ export async function addDuration(duration: Omit<Duration, 'id'>, merchant_id?: 
  * @param duration - The updated duration data. Excludes 'id' as it's the identifier for the update.
  * @returns {Promise<Duration>} - A promise that resolves to the updated duration.
  */
-export async function updateDuration(id: string, duration: Omit<Duration, 'id'>): Promise<Duration> {
+export async function updateDuration(
+  id: string,
+  duration: Omit<Duration, 'id'>,
+  merchant_id?: string,
+  outlet_id?: string | null
+): Promise<Duration> {
   const client = await pool.connect();
   try {
     const { name, duration: value, type } = duration;
     const query = `
       UPDATE duration
       SET name = $1, duration = $2, type = $3
-      WHERE id = $4 RETURNING *;
+      WHERE id = $4
+        AND merchant_id = $5
+        AND ($6::uuid IS NULL OR outlet_id = $6)
+      RETURNING *;
     `;
-    const values = [name, value, type, id];
+    const values = [name, value, type, id, merchant_id, outlet_id || null];
     const result = await client.query(query, values);
+
+    if ((result.rowCount || 0) === 0) {
+      throw new Error("Durasi tidak ditemukan");
+    }
+
     return result.rows[0];
   } finally {
     client.release();
@@ -177,18 +211,39 @@ export async function updateDuration(id: string, duration: Omit<Duration, 'id'>)
  * @param id - The ID of the duration to delete.
  * @returns {Promise<void>} - A promise that resolves when the deletion is complete.
  */
-export async function deleteDuration(id: string): Promise<void> {
+export async function deleteDuration(
+  id: string,
+  merchant_id?: string,
+  outlet_id?: string | null
+): Promise<void> {
   const client = await pool.connect();
   try {
     const query = `
-      SELECT * FROM service_duration WHERE duration = $1
+      SELECT sd.*
+      FROM service_duration sd
+      JOIN service s ON s.id = sd.service
+      WHERE sd.duration = $1
+        AND s.merchant_id = $2
+        AND ($3::uuid IS NULL OR s.outlet_id = $3)
     `;
-    const services = await client.query(query, [id]);
+    const services = await client.query(query, [id, merchant_id, outlet_id || null]);
 
     if (services.rowCount !== null && services.rowCount > 0) {
       throw new Error("Durasi sedang digunakan oleh layanan");
     } else {
-      await client.query("DELETE FROM duration WHERE id = $1", [id]);
+      const result = await client.query(
+        `
+          DELETE FROM duration
+          WHERE id = $1
+            AND merchant_id = $2
+            AND ($3::uuid IS NULL OR outlet_id = $3)
+        `,
+        [id, merchant_id, outlet_id || null]
+      );
+
+      if ((result.rowCount || 0) === 0) {
+        throw new Error("Durasi tidak ditemukan");
+      }
     }
   } finally {
     client.release();
