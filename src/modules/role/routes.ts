@@ -21,7 +21,7 @@ router.get("/permissions/catalog", (_req, res) => {
 router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
   try {
     const roles = await listRoles(req.userId as string);
-    return res.status(200).json(roles);
+    return res.status(200).json({ roles });
   } catch (error) {
     const err = error as Error;
     return res.status(500).json({ message: err.message });

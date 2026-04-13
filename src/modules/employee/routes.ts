@@ -21,7 +21,7 @@ const router = express.Router();
 router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
   try {
     const employees = await listEmployees(req.userId as string);
-    return res.status(200).json(employees);
+    return res.status(200).json({ employees });
   } catch (error) {
     const err = error as Error;
     return res.status(500).json({ message: err.message });

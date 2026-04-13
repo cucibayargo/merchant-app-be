@@ -16,7 +16,7 @@ const router = express.Router();
 router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
   try {
     const outlets = await listOutlets(req.userId as string);
-    return res.status(200).json(outlets);
+    return res.status(200).json({ outlets });
   } catch (error) {
     const err = error as Error;
     return res.status(500).json({ message: err.message });
