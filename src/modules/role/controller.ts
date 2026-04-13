@@ -45,9 +45,16 @@ export async function createRole(payload: RolePayload, merchantId: string): Prom
   }
 }
 
-export async function listRoles(merchantId: string): Promise<Role[]> {
+export async function listRoles(
+  merchantId: string,
+  filter: string | null,
+  page: number = 1,
+  limit: number = 10
+): Promise<{ roles: Role[]; totalCount: number }> {
   const client = await pool.connect();
   try {
+    const offset = (page - 1) * limit;
+
     const result = await client.query(
       `
       SELECT er.id, er.merchant_id, er.name, er.created_at, er.updated_at,
@@ -56,12 +63,28 @@ export async function listRoles(merchantId: string): Promise<Role[]> {
       FROM employee_roles er
       LEFT JOIN employee_role_permissions erp ON erp.role_id = er.id
       WHERE er.merchant_id = $1
+        AND ($2::text IS NULL OR er.name ILIKE '%' || $2 || '%')
       GROUP BY er.id
       ORDER BY er.created_at DESC
+      LIMIT $3 OFFSET $4
       `,
-      [merchantId]
+      [merchantId, filter, limit, offset]
     );
-    return result.rows;
+
+    const countResult = await client.query(
+      `
+      SELECT COUNT(*) AS total_count
+      FROM employee_roles er
+      WHERE er.merchant_id = $1
+        AND ($2::text IS NULL OR er.name ILIKE '%' || $2 || '%')
+      `,
+      [merchantId, filter]
+    );
+
+    return {
+      roles: result.rows,
+      totalCount: parseInt(countResult.rows[0].total_count, 10),
+    };
   } finally {
     client.release();
   }

@@ -1,21 +1,56 @@
 import pool from "../../database/postgres";
 import { Outlet, OutletPayload } from "./types";
 
-export async function listOutlets(merchantId: string): Promise<Outlet[]> {
+export async function listOutlets(
+  merchantId: string,
+  filter: string | null,
+  page: number = 1,
+  limit: number = 10
+): Promise<{ outlets: Outlet[]; totalCount: number }> {
   const client = await pool.connect();
   try {
+    const offset = (page - 1) * limit;
+
     const result = await client.query(
       `
       SELECT *
       FROM outlets
       WHERE merchant_id = $1
         AND deleted_at IS NULL
+        AND (
+          $2::text IS NULL
+          OR name ILIKE '%' || $2 || '%'
+          OR COALESCE(code, '') ILIKE '%' || $2 || '%'
+          OR COALESCE(address, '') ILIKE '%' || $2 || '%'
+          OR COALESCE(phone_number, '') ILIKE '%' || $2 || '%'
+        )
       ORDER BY created_at DESC
+      LIMIT $3 OFFSET $4
       `,
-      [merchantId]
+      [merchantId, filter, limit, offset]
     );
 
-    return result.rows;
+    const countResult = await client.query(
+      `
+      SELECT COUNT(*) AS total_count
+      FROM outlets
+      WHERE merchant_id = $1
+        AND deleted_at IS NULL
+        AND (
+          $2::text IS NULL
+          OR name ILIKE '%' || $2 || '%'
+          OR COALESCE(code, '') ILIKE '%' || $2 || '%'
+          OR COALESCE(address, '') ILIKE '%' || $2 || '%'
+          OR COALESCE(phone_number, '') ILIKE '%' || $2 || '%'
+        )
+      `,
+      [merchantId, filter]
+    );
+
+    return {
+      outlets: result.rows,
+      totalCount: parseInt(countResult.rows[0].total_count, 10),
+    };
   } finally {
     client.release();
   }

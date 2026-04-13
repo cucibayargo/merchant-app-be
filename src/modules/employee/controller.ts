@@ -62,9 +62,17 @@ export async function getEmployeeById(id: string, merchantId: string): Promise<E
   }
 }
 
-export async function listEmployees(merchantId: string): Promise<Employee[]> {
+export async function listEmployees(
+  merchantId: string,
+  filter: string | null,
+  outletId: string | null,
+  page: number = 1,
+  limit: number = 10
+): Promise<{ employees: Employee[]; totalCount: number }> {
   const client = await pool.connect();
   try {
+    const offset = (page - 1) * limit;
+
     const result = await client.query(
       `
       SELECT e.id, e.merchant_id, e.outlet_id, e.role_id, e.name, e.username, e.phone_number, e.is_active, e.created_at, e.updated_at, e.last_login_at,
@@ -82,12 +90,42 @@ export async function listEmployees(merchantId: string): Promise<Employee[]> {
       FROM employees e
       LEFT JOIN employee_roles er ON er.id = e.role_id
       WHERE e.merchant_id = $1
+        AND ($2::uuid IS NULL OR e.outlet_id = $2)
+        AND (
+          $3::text IS NULL
+          OR e.name ILIKE '%' || $3 || '%'
+          OR e.username ILIKE '%' || $3 || '%'
+          OR COALESCE(e.phone_number, '') ILIKE '%' || $3 || '%'
+          OR COALESCE(er.name, '') ILIKE '%' || $3 || '%'
+        )
       ORDER BY e.created_at DESC
+      LIMIT $4 OFFSET $5
       `,
-      [merchantId]
+      [merchantId, outletId, filter, limit, offset]
     );
 
-    return result.rows;
+    const countResult = await client.query(
+      `
+      SELECT COUNT(*) AS total_count
+      FROM employees e
+      LEFT JOIN employee_roles er ON er.id = e.role_id
+      WHERE e.merchant_id = $1
+        AND ($2::uuid IS NULL OR e.outlet_id = $2)
+        AND (
+          $3::text IS NULL
+          OR e.name ILIKE '%' || $3 || '%'
+          OR e.username ILIKE '%' || $3 || '%'
+          OR COALESCE(e.phone_number, '') ILIKE '%' || $3 || '%'
+          OR COALESCE(er.name, '') ILIKE '%' || $3 || '%'
+        )
+      `,
+      [merchantId, outletId, filter]
+    );
+
+    return {
+      employees: result.rows,
+      totalCount: parseInt(countResult.rows[0].total_count, 10),
+    };
   } finally {
     client.release();
   }

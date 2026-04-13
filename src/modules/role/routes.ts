@@ -19,9 +19,20 @@ router.get("/permissions/catalog", (_req, res) => {
 });
 
 router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
+  const filter = req.query.filter as string | null;
+  const page = parseInt((req.query.page as string) || "1", 10);
+  const limit = parseInt((req.query.limit as string) || "10", 10);
+
+  if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1) {
+    return res.status(400).json({ message: "Invalid page or limit values" });
+  }
+
   try {
-    const roles = await listRoles(req.userId as string);
-    return res.status(200).json({ roles });
+    const { roles, totalCount } = await listRoles(req.userId as string, filter, page, limit);
+    const isFirstPage = page === 1;
+    const isLastPage = page * limit >= totalCount;
+
+    return res.status(200).json({ roles, totalCount, isFirstPage, isLastPage });
   } catch (error) {
     const err = error as Error;
     return res.status(500).json({ message: err.message });
