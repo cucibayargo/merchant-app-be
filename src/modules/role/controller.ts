@@ -98,9 +98,11 @@ export async function getRoleById(id: string, merchantId: string): Promise<Role 
       `
       SELECT er.id, er.merchant_id, er.name, er.created_at, er.updated_at,
              COALESCE(json_agg(erp.permission_code ORDER BY erp.permission_code)
-               FILTER (WHERE erp.permission_code IS NOT NULL), '[]') AS permissions
+               FILTER (WHERE erp.permission_code IS NOT NULL), '[]') AS permissions,
+              COUNT(DISTINCT e.id) AS user_count
       FROM employee_roles er
       LEFT JOIN employee_role_permissions erp ON erp.role_id = er.id
+      LEFT JOIN employees e ON e.role_id = er.id
       WHERE er.id = $1 AND er.merchant_id = $2
       GROUP BY er.id
       LIMIT 1
