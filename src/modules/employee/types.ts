@@ -22,6 +22,8 @@ export const AVAILABLE_PERMISSIONS = [
   "expanse.create",
   "expanse.update",
   "expanse.delete",
+  "note.read",
+  "note.update",
 ] as const;
 
 export type PermissionCode = (typeof AVAILABLE_PERMISSIONS)[number];
