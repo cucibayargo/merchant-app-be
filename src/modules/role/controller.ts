@@ -57,11 +57,12 @@ export async function listRoles(
 
     const result = await client.query(
       `
-      SELECT er.id, er.merchant_id, er.name, er.created_at, er.updated_at,
+      SELECT er.id, er.merchant_id, er.name, er.created_at, er.updated_at, count(distinct e.id) AS user_count,
              COALESCE(json_agg(erp.permission_code ORDER BY erp.permission_code)
                FILTER (WHERE erp.permission_code IS NOT NULL), '[]') AS permissions
       FROM employee_roles er
       LEFT JOIN employee_role_permissions erp ON erp.role_id = er.id
+      LEFT JOIN employees e ON e.role_id = er.id
       WHERE er.merchant_id = $1
         AND ($2::text IS NULL OR er.name ILIKE '%' || $2 || '%')
       GROUP BY er.id
