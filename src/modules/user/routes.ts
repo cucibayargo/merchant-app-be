@@ -66,7 +66,11 @@ router.post("/upload-logo", upload.single("file"), async (req, res) => {
 });
 
 router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.userId;
+  const userId = req.userRole === "employee" ? req.merchantId || req.userId : req.userId;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Akses ditolak. Data pengguna tidak ditemukan pada token." });
+  }
 
   try {
     const user = await getUserDetails(userId);

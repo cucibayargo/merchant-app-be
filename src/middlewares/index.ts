@@ -22,6 +22,8 @@ interface EmployeeTokenPayload {
   id: string;
   role: 'employee';
   employee_id: string;
+  merchant_id?: string;
+  user_id?: string;
   outlet_id?: string;
   permissions?: string[];
   exp?: number;
@@ -74,7 +76,12 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
     return next();
   }
   
-  const token = req.cookies.auth_token || req.headers['authorization'] || req.query.authorization;
+  const authHeader = req.headers['authorization'];
+  const rawToken = req.cookies.auth_token || authHeader || req.query.authorization;
+  const tokenCandidate = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+  const token = typeof tokenCandidate === 'string'
+    ? tokenCandidate.replace(/^Bearer\s+/i, '').trim()
+    : undefined;
   const crToken = req.headers['cron-job-token'];
   const crPrivateToken = process.env.crToken;
 
@@ -96,8 +103,9 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
     const decoded = jwt.verify(token, secretKey) as OwnerTokenPayload | EmployeeTokenPayload;
 
     if (decoded.role === 'employee') {
-      req.userId = decoded.id;
-      req.merchantId = decoded.id;
+      const merchantId = decoded.merchant_id || decoded.user_id || decoded.id;
+      req.userId = merchantId;
+      req.merchantId = merchantId;
       req.employeeId = decoded.employee_id;
       req.outletId = parseSingleUuid(decoded.outlet_id);
       req.userRole = 'employee';

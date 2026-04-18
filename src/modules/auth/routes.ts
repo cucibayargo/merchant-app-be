@@ -334,6 +334,7 @@ router.post("/employe/login", async (req, res) => {
       return res.status(400).json({ message: "Password tidak sesuai." });
     }
 
+    const ownerDetail = await getUserDetails(employee.merchant_id);
     const permissions = await getEmployeePermissions(employee.id, employee.merchant_id);
     const token = jwt.sign(
       {
@@ -360,6 +361,7 @@ router.post("/employe/login", async (req, res) => {
         username: employee.username,
         permissions,
       },
+      owner: ownerDetail,
     });
   } catch (error) {
     const err = error as Error;
