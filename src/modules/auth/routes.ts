@@ -41,6 +41,7 @@ import {
 } from "../employee/controller";
 import { employeeLoginSchema } from "../employee/types";
 import { parseSingleUuid } from "../../middlewares";
+import { getOutletById } from "../outlet/controller";
 
 const router = express.Router();
 dotenv.config();
@@ -335,6 +336,9 @@ router.post("/employe/login", async (req, res) => {
     }
 
     const ownerDetail = await getUserDetails(employee.merchant_id);
+    const outletDetail = employee.outlet_id
+      ? await getOutletById(employee.outlet_id, employee.merchant_id)
+      : null;
     const permissions = await getEmployeePermissions(employee.id, employee.merchant_id);
     const token = jwt.sign(
       {
@@ -357,6 +361,7 @@ router.post("/employe/login", async (req, res) => {
         id: employee.id,
         merchant_id: employee.merchant_id,
         outlet_id: employee.outlet_id,
+        outlet_name: outletDetail?.name || null,
         name: employee.name,
         username: employee.username,
         permissions,
