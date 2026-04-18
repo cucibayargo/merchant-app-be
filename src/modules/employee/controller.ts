@@ -66,6 +66,7 @@ export async function listEmployees(
   merchantId: string,
   filter: string | null,
   outletId: string | null,
+  roleId: string | null,
   page: number = 1,
   limit: number = 10
 ): Promise<{ employees: Employee[]; totalCount: number }> {
@@ -91,17 +92,18 @@ export async function listEmployees(
       LEFT JOIN employee_roles er ON er.id = e.role_id
       WHERE e.merchant_id = $1
         AND ($2::uuid IS NULL OR e.outlet_id = $2)
+        AND ($3::uuid IS NULL OR e.role_id = $3)
         AND (
-          $3::text IS NULL
-          OR e.name ILIKE '%' || $3 || '%'
-          OR e.username ILIKE '%' || $3 || '%'
-          OR COALESCE(e.phone_number, '') ILIKE '%' || $3 || '%'
-          OR COALESCE(er.name, '') ILIKE '%' || $3 || '%'
+          $4::text IS NULL
+          OR e.name ILIKE '%' || $4 || '%'
+          OR e.username ILIKE '%' || $4 || '%'
+          OR COALESCE(e.phone_number, '') ILIKE '%' || $4 || '%'
+          OR COALESCE(er.name, '') ILIKE '%' || $4 || '%'
         )
       ORDER BY e.created_at DESC
-      LIMIT $4 OFFSET $5
+      LIMIT $5 OFFSET $6
       `,
-      [merchantId, outletId, filter, limit, offset]
+      [merchantId, outletId, roleId, filter, limit, offset]
     );
 
     const countResult = await client.query(
@@ -111,15 +113,16 @@ export async function listEmployees(
       LEFT JOIN employee_roles er ON er.id = e.role_id
       WHERE e.merchant_id = $1
         AND ($2::uuid IS NULL OR e.outlet_id = $2)
+        AND ($3::uuid IS NULL OR e.role_id = $3)
         AND (
-          $3::text IS NULL
-          OR e.name ILIKE '%' || $3 || '%'
-          OR e.username ILIKE '%' || $3 || '%'
-          OR COALESCE(e.phone_number, '') ILIKE '%' || $3 || '%'
-          OR COALESCE(er.name, '') ILIKE '%' || $3 || '%'
+          $4::text IS NULL
+          OR e.name ILIKE '%' || $4 || '%'
+          OR e.username ILIKE '%' || $4 || '%'
+          OR COALESCE(e.phone_number, '') ILIKE '%' || $4 || '%'
+          OR COALESCE(er.name, '') ILIKE '%' || $4 || '%'
         )
       `,
-      [merchantId, outletId, filter]
+      [merchantId, outletId, roleId, filter]
     );
 
     return {

@@ -21,6 +21,7 @@ const router = express.Router();
 router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
   const filter = req.query.filter as string | null;
   const outletId = (req.query.outlet_id as string) || null;
+  const roleId = (req.query.role_id as string) || null; 
   const page = parseInt((req.query.page as string) || "1", 10);
   const limit = parseInt((req.query.limit as string) || "10", 10);
 
@@ -33,6 +34,7 @@ router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
       req.userId as string,
       filter,
       outletId,
+      roleId,
       page,
       limit
     );

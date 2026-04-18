@@ -27,6 +27,16 @@ interface EmployeeTokenPayload {
   exp?: number;
 }
 
+// Handles both plain UUIDs and PostgreSQL array literals like {"uuid1","uuid2"}
+export function parseSingleUuid(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  if (value.startsWith('{')) {
+    const match = value.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    return match?.[0];
+  }
+  return value;
+}
+
 const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const skipAuthRoutes = [
     '/auth',
@@ -89,7 +99,7 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
       req.userId = decoded.id;
       req.merchantId = decoded.id;
       req.employeeId = decoded.employee_id;
-      req.outletId = decoded.outlet_id;
+      req.outletId = parseSingleUuid(decoded.outlet_id);
       req.userRole = 'employee';
       req.permissions = decoded.permissions || [];
       return next();

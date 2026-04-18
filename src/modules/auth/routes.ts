@@ -40,6 +40,7 @@ import {
   touchEmployeeLastLogin,
 } from "../employee/controller";
 import { employeeLoginSchema } from "../employee/types";
+import { parseSingleUuid } from "../../middlewares";
 
 const router = express.Router();
 dotenv.config();
@@ -339,7 +340,7 @@ router.post("/employe/login", async (req, res) => {
         id: employee.merchant_id,
         role: "employee",
         employee_id: employee.id,
-        outlet_id: employee.outlet_id,
+        outlet_id: parseSingleUuid(employee.outlet_id ?? undefined),
         permissions,
       },
       process.env.JWT_SECRET || "secret_key",
