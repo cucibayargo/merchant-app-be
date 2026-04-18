@@ -1,5 +1,6 @@
 import pool from "../../database/postgres";
 import {
+  CreateUserInput,
   ReferralInput,
   SignUpInput,
   SignUpTokenInput,
@@ -152,7 +153,7 @@ export async function verifySignupToken(token: string): Promise<boolean> {
  * @param user - The user data to add. Excludes 'id' as it's auto-generated.
  * @returns {Promise<User>} - A promise that resolves to the newly created user.
  */
-export async function addUser(user: Omit<SignUpInput, "id">): Promise<User> {
+export async function addUser(user: Omit<CreateUserInput, "id">): Promise<User> {
   const client = await pool.connect();
   try {
     const { name, email, password, phone_number, oauth, status } = user;
@@ -560,17 +561,28 @@ export const notifyUserToPaySubscription = async (
 
 export async function createDefaultOutletForMerchant(
   merchant_id: string,
-  phone_number?: string | null
+  payload: {
+    code: string;
+    name: string;
+    address: string;
+    phone_number: string;
+  }
 ): Promise<{ id: string }> {
   const client = await pool.connect();
   try {
     const query = `
-      INSERT INTO outlets (merchant_id, code, name, phone_number, is_active)
-      VALUES ($1, 'OTL-001', 'Outlet Utama', NULLIF($2, ''), true)
+      INSERT INTO outlets (merchant_id, code, name, address, phone_number, is_active)
+      VALUES ($1, NULLIF($2, ''), $3, NULLIF($4, ''), NULLIF($5, ''), true)
       RETURNING id;
     `;
 
-    const result = await client.query(query, [merchant_id, phone_number || null]);
+    const result = await client.query(query, [
+      merchant_id,
+      payload.code,
+      payload.name,
+      payload.address,
+      payload.phone_number,
+    ]);
     return result.rows[0];
   } finally {
     client.release();

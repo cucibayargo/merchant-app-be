@@ -398,6 +398,7 @@ router.post("/signup", async (req, res) => {
 
   const { name, email, password, phone_number, subscription_plan, referral_code } =
     req.body;
+  const { outlet_code, outlet_name, outlet_address, outlet_phone_number } = req.body;
 
   try {
     if (isDisposableEmail(email)) {
@@ -485,7 +486,12 @@ router.post("/signup", async (req, res) => {
 
     const defaultOutlet = await createDefaultOutletForMerchant(
       newUser.id,
-      phone_number
+      {
+        code: outlet_code,
+        name: outlet_name,
+        address: outlet_address,
+        phone_number: outlet_phone_number,
+      }
     );
 
     // Create default service and duration for the default outlet.

@@ -1,7 +1,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { addUser, getUserByEmail } from "./controller";
-import { SignUpInput } from "./types"; // Adjust the import based on your project structure
+import { CreateUserInput } from "./types"; // Adjust the import based on your project structure
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID!,
@@ -14,7 +14,7 @@ passport.use(new GoogleStrategy({
 
     if (!user) {
       // If user doesn't exist, create a new user
-      const userInput: SignUpInput = {
+      const userInput: CreateUserInput = {
         email: profile.emails?.[0].value || "",
         name: profile.displayName || "",
         oauth: true,

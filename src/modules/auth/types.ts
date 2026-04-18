@@ -62,9 +62,22 @@ export interface SignUpInput {
   email: string;
   name: string;
   phone_number?: string;
+  outlet_code: string;
+  outlet_name: string;
+  outlet_address: string;
+  outlet_phone_number: string;
   oauth?: boolean;
   status?: string;
   subscription_plan?: string;
+}
+
+export interface CreateUserInput {
+  password?: string;
+  email: string;
+  name: string;
+  phone_number?: string;
+  oauth?: boolean;
+  status?: string;
 }
 
 export const SignUpSchema = Joi.object({
@@ -93,6 +106,22 @@ export const SignUpSchema = Joi.object({
     }),
   phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
     'string.pattern.base': 'Nomor telepon tidak valid',
+  }),
+  outlet_code: Joi.string().min(1).max(50).required().messages({
+    'string.empty': 'Kode outlet harus diisi.',
+    'any.required': 'Kode outlet harus diisi.',
+  }),
+  outlet_name: Joi.string().min(1).max(255).required().messages({
+    'string.empty': 'Nama outlet harus diisi.',
+    'any.required': 'Nama outlet harus diisi.',
+  }),
+  outlet_address: Joi.string().min(1).max(255).required().messages({
+    'string.empty': 'Alamat outlet harus diisi.',
+    'any.required': 'Alamat outlet harus diisi.',
+  }),
+  outlet_phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
+    'string.pattern.base': 'Nomor telepon outlet tidak valid',
+    'any.required': 'Nomor telepon outlet harus diisi.',
   }),
   subscription_plan: Joi.string(),
   referral_code: Joi.string().optional()
