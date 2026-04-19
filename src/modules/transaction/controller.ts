@@ -330,6 +330,7 @@ export async function updateTransaction(
         FROM transaction t
         JOIN payment p ON t.id = p.transaction_id
         WHERE p.invoice_id = $2
+        LIMIT 1
       )
       RETURNING *;
     `;
