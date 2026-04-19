@@ -13,7 +13,7 @@ import { formatJoiError } from "../../utils";
 
 const router = express.Router();
 
-router.get("/", requireOwner, async (req: AuthenticatedRequest, res) => {
+router.get("/", async (req: AuthenticatedRequest, res) => {
   const filter = req.query.filter as string | null;
   const page = parseInt((req.query.page as string) || "1", 10);
   const limit = parseInt((req.query.limit as string) || "10", 10);
