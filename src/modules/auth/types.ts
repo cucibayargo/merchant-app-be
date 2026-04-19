@@ -115,13 +115,9 @@ export const SignUpSchema = Joi.object({
     'string.empty': 'Nama outlet harus diisi.',
     'any.required': 'Nama outlet harus diisi.',
   }),
-  outlet_address: Joi.string().min(1).max(255).required().messages({
-    'string.empty': 'Alamat outlet harus diisi.',
-    'any.required': 'Alamat outlet harus diisi.',
-  }),
-  outlet_phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
+  outlet_address: Joi.string(),
+  outlet_phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).messages({
     'string.pattern.base': 'Nomor telepon outlet tidak valid',
-    'any.required': 'Nomor telepon outlet harus diisi.',
   }),
   subscription_plan: Joi.string(),
   referral_code: Joi.string().optional()

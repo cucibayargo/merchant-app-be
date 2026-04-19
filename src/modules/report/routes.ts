@@ -50,15 +50,8 @@ router.get('/download', requirePermission('report.read'), async (req: Authentica
     }
 });
 
-router.get('/dashboard', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
+router.get('/dashboard', async (req: AuthenticatedRequest, res) => {
     try {
-
-        console.log("IKI IPULL");
-        
-        console.log(req.query.outlet_id);
-        console.error(req);
-        
-        
         const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
         const data = await getDashboardSummary(req.userId as string, outletId);
         res.status(200).json(data);
