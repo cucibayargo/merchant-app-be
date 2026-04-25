@@ -102,6 +102,26 @@ export async function createOutlet(payload: OutletPayload, merchantId: string): 
   }
 }
 
+export async function isOutletCodeExists(merchantId: string, code: string): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `
+      SELECT 1
+      FROM outlets
+      WHERE merchant_id = $1
+        AND code = $2
+      LIMIT 1
+      `,
+      [merchantId, code]
+    );
+
+    return (result.rowCount || 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
 export async function updateOutlet(
   id: string,
   payload: OutletPayload,

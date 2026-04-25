@@ -4,6 +4,7 @@ import {
   createOutlet,
   deleteOutlet,
   getOutletById,
+  isOutletCodeExists,
   listOutlets,
   updateOutlet,
 } from "./controller";
@@ -55,13 +56,25 @@ router.post("/", requireOwner, async (req: AuthenticatedRequest, res) => {
   }
 
   try {
+    const code = (value.code || "").trim();
+    if (code) {
+      const codeExists = await isOutletCodeExists(req.userId as string, code);
+      if (codeExists) {
+        return res.status(400).json({ message: "Kode outlet sudah digunakan." });
+      }
+      value.code = code;
+    }
+
     const outlet = await createOutlet(value, req.userId as string);
 
     await initServiceAndDuration(req.userId as string, outlet.id);
 
     return res.status(201).json(outlet);
   } catch (error) {
-    const err = error as Error;
+    const err = error as Error & { code?: string };
+    if (err.code === "23505") {
+      return res.status(400).json({ message: "Kode outlet sudah digunakan." });
+    }
     return res.status(500).json({ message: err.message });
   }
 });
