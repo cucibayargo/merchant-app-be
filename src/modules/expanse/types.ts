@@ -15,6 +15,7 @@ export interface ExpanseRecord {
 }
 
 export const expanseSchema = Joi.object({
+  outlet_id: Joi.string().uuid().optional(),
   total: Joi.number().min(0).required().messages({
     "number.base": "total harus berupa angka.",
     "number.min": "total tidak boleh negatif.",
