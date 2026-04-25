@@ -396,8 +396,7 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ message: message });
   }
 
-  const { name, email, password, phone_number, subscription_plan, referral_code } =
-    req.body;
+  const { name, email, password, subscription_plan, referral_code } = req.body;
   const { outlet_code, outlet_name, outlet_address, outlet_phone_number } = req.body;
 
   try {
@@ -438,7 +437,6 @@ router.post("/signup", async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      phone_number,
       status: "verified",
     });
     
@@ -560,7 +558,7 @@ router.post("/signup/token", async (req, res) => {
     return res.status(400).json({ message: message });
   }
 
-  const { name, email, phone_number, subscription_plan } = req.body;
+  const { name, email, subscription_plan } = req.body;
   try {
     if (isDisposableEmail(email)) {
       return res.status(400).json({
@@ -587,12 +585,11 @@ router.post("/signup/token", async (req, res) => {
     const signupToken = jwt.sign(
       { email },
       process.env.JWT_SECRET as string
-    );    
+    );
 
     const userDetail = {
       name,
       email,
-      phone_number,
       token: signupToken,
       subscription_plan: subscriptionPlan ? subscriptionPlan.id : undefined,
     };
@@ -604,7 +601,6 @@ router.post("/signup/token", async (req, res) => {
     await sendSignUpLink(email, {
       token: signupToken,
       email,
-      phone_number,
       name,
       subscription_plan: subscriptionPlan ? subscriptionPlan.code : "",
     });

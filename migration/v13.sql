@@ -1,0 +1,3 @@
+ALTER TABLE users DROP COLUMN IF EXISTS phone_number;
+ALTER TABLE users DROP COLUMN IF EXISTS address;
+ALTER TABLE users_signup DROP COLUMN IF EXISTS phone_number;

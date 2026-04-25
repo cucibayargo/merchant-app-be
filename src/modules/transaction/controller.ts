@@ -593,7 +593,7 @@ async function generateInvoiceId(
     }
 
     const { order, sequence_id, code } = rows[0];
-    const outletIdSegment = code || sequence_id || "0";
+    const outletIdSegment = sequence_id || "0";
     return `INV-${outletIdSegment}.${order}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);

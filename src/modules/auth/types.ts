@@ -8,9 +8,7 @@ export interface User {
   oauth: boolean;
   password: string;
   token?: string;
-  phone_number?: string;
   logo?: string;
-  address?: string;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
   id: string; // UUID v4
@@ -27,9 +25,7 @@ export interface User {
 export interface UserDetail {
   name: string;
   email: string;
-  phone_number?: string;
   logo?: string;
-  address?: string;
   id: string; // UUID v4
   referral_points?: number
   referral_points_redeemed?: number
@@ -61,7 +57,6 @@ export interface SignUpInput {
   password?: string;
   email: string;
   name: string;
-  phone_number?: string;
   outlet_code: string;
   outlet_name: string;
   outlet_address: string;
@@ -75,7 +70,6 @@ export interface CreateUserInput {
   password?: string;
   email: string;
   name: string;
-  phone_number?: string;
   oauth?: boolean;
   status?: string;
 }
@@ -104,9 +98,6 @@ export const SignUpSchema = Joi.object({
       'string.email': 'Alamat email tidak valid.',
       'any.required': 'Alamat email harus diisi.'
     }),
-  phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
-    'string.pattern.base': 'Nomor telepon tidak valid',
-  }),
   outlet_code: Joi.string().min(1).max(50).required().messages({
     'string.empty': 'Kode outlet harus diisi.',
     'any.required': 'Kode outlet harus diisi.',
@@ -126,7 +117,6 @@ export const SignUpSchema = Joi.object({
 export interface SignUpTokenInput {
   email: string;
   name: string;
-  phone_number?: string;
   subscription_plan?: string;
   token?: string;
   status?: "signed" | "unsigned"
@@ -147,9 +137,6 @@ export const SignUpTokenSchema = Joi.object({
       'string.email': 'Alamat email tidak valid.',
       'any.required': 'Alamat email harus diisi.'
     }),
-  phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).required().messages({
-    'string.pattern.base': 'Nomor telepon tidak valid',
-  }),
 })
 
 export const ChangePasswordSchema = Joi.object({

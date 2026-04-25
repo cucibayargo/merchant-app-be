@@ -35,13 +35,11 @@ export async function getUserDetails(id?: string): Promise<User | null> {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT 
+      `SELECT
         users.id,
         users.name,
         users.email,
-        users.phone_number,
         users.logo,
-        users.address,
         app_subscriptions.end_date AS subscription_end,
         app_plans.name AS plan_name,
         users.referral_points,
@@ -94,16 +92,6 @@ export async function updateUserDetails(
       params.push(userData.email);
     }
 
-    if (userData.phone_number) {
-      setClauses.push(`phone_number = $${index++}`);
-      params.push(userData.phone_number);
-    }
-
-    if (userData.address) {
-      setClauses.push(`address = $${index++}`);
-      params.push(userData.address);
-    }
-
     if (userData.logo) {
       setClauses.push(`logo = $${index++}`);
       params.push(userData.logo);
@@ -127,9 +115,7 @@ export async function updateUserDetails(
       id: result.rows[0].id,
       name: result.rows[0].name,
       email: result.rows[0].email,
-      phone_number: result.rows[0].phone_number,
       logo: result.rows[0].logo,
-      address: result.rows[0].address,
       referral_points: result.rows[0].referral_points,
       referral_code: result.rows[0].referral_code,
       referral_points_redeemed: result.rows[0].referral_points_redeemed,
@@ -313,10 +299,9 @@ export const uploadTransactionFile = async (
     }
 
     const userDetailQuery = `
-      SELECT 
-        u.name, 
-        u.email, 
-        u.phone_number, 
+      SELECT
+        u.name,
+        u.email,
         t.end_date
       FROM users u
       INNER JOIN app_subscriptions t ON u.id = t.user_id
@@ -335,7 +320,6 @@ export const uploadTransactionFile = async (
       userDetail.end_date,
       invoice_id,
       userDetail.name,
-      userDetail.phone_number,
       fileUrl
     );
 
@@ -963,7 +947,6 @@ const sendPayemntNotification = async (
   endDate: string,
   invoiceId: string,
   userName: string,
-  userPhone: string,
   fileLink: string
 ): Promise<void> => {
   const mailjet = Mailjet.apiConnect(
@@ -1009,7 +992,6 @@ const sendPayemntNotification = async (
                           <p style="font-size: 16px; color: #555555;">
                             <strong>ID Faktur:</strong> ${invoiceId}<br />
                             <strong>Nama:</strong> ${userName}<br />
-                            <strong>Nomor HP:</strong> ${userPhone}<br />
                             <strong>Masa Aktif Hingga:</strong> ${formattedEndDate}
                           </p>
                           <p style="font-size: 16px; color: #555555;">

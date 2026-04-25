@@ -156,12 +156,12 @@ export async function verifySignupToken(token: string): Promise<boolean> {
 export async function addUser(user: Omit<CreateUserInput, "id">): Promise<User> {
   const client = await pool.connect();
   try {
-    const { name, email, password, phone_number, oauth, status } = user;
+    const { name, email, password, oauth, status } = user;
     const query = `
-      INSERT INTO users (name, email, password, phone_number, oauth, status, referral_code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
+      INSERT INTO users (name, email, password, oauth, status, referral_code)
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
     `;
-    const values = [name, email, password, phone_number, oauth, status, generateReferralCode()];
+    const values = [name, email, password, oauth, status, generateReferralCode()];
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
@@ -406,20 +406,12 @@ export async function addUserSignUpToken(
 ): Promise<void> {
   const client = await pool.connect();
   try {
-    const { name, email, phone_number, token, status, subscription_plan } =
-      payload;
+    const { name, email, token, status, subscription_plan } = payload;
     const query = `
-      INSERT INTO users_signup (name, email, phone_number, token, status, subscription_plan)
-      VALUES ($1, $2, $3, $4, $5, $6);
+      INSERT INTO users_signup (name, email, token, status, subscription_plan)
+      VALUES ($1, $2, $3, $4, $5);
     `;
-    const values = [
-      name,
-      email,
-      phone_number,
-      token,
-      status,
-      subscription_plan,
-    ];
+    const values = [name, email, token, status, subscription_plan];
     await client.query(query, values);
   } finally {
     client.release();
