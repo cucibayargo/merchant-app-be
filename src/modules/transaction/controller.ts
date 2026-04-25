@@ -181,14 +181,27 @@ export async function addTransaction(
       );
 
       const durationDetail = await getDurationById(item.duration);
+      if (!serviceDetail) {
+        throw new Error("Layanan tidak ditemukan untuk durasi yang dipilih");
+      }
+
+      if (!durationDetail) {
+        throw new Error("Durasi tidak ditemukan");
+      }
+
+      const durationLength = Number(durationDetail.duration);
+      if (!Number.isFinite(durationLength)) {
+        throw new Error("Nilai durasi tidak valid");
+      }
+
       let estimatedDate;
       if (durationDetail?.type === "Jam") {
         estimatedDate = new Date(
-          currentDate.getTime() + durationDetail.duration * 60 * 60 * 1000
+          currentDate.getTime() + durationLength * 60 * 60 * 1000
         );
       } else if (durationDetail?.type === "Hari") {
         estimatedDate = new Date(
-          currentDate.getTime() + durationDetail.duration * 24 * 60 * 60 * 1000
+          currentDate.getTime() + durationLength * 24 * 60 * 60 * 1000
         );
       }
 
@@ -216,10 +229,10 @@ export async function addTransaction(
           serviceDetail.unit,
           serviceDetail.price,
           item.qty,
-          durationDetail?.id,
-          durationDetail?.name,
-          durationDetail?.duration,
-          durationDetail?.type,
+          durationDetail.id,
+          durationDetail.name,
+          durationLength,
+          durationDetail.type,
           estimatedDate,
         ],
       });

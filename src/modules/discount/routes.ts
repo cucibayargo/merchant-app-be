@@ -1,5 +1,5 @@
 import express from "express";
-import { AuthenticatedRequest, resolveOutletId } from "../../middlewares";
+import { AuthenticatedRequest, requirePermission, resolveOutletId } from "../../middlewares";
 import { formatJoiError } from "../../utils";
 import {
   createDiscount,
@@ -13,7 +13,7 @@ import { discountSchema, discountUpdateSchema } from "./types";
 const router = express.Router();
 
 // GET /discounts
-router.get("/", async (req: AuthenticatedRequest, res) => {
+router.get("/", requirePermission('discount.read'), async (req: AuthenticatedRequest, res) => {
   const filter = (req.query.filter as string) || null;
   const page = parseInt((req.query.page as string) || "1", 10);
   const limit = parseInt((req.query.limit as string) || "100", 10);
@@ -47,7 +47,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 });
 
 // GET /discounts/:id
-router.get("/:id", async (req: AuthenticatedRequest, res) => {
+router.get("/:id", requirePermission('discount.read'), async (req: AuthenticatedRequest, res) => {
   try {
     const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
     const discount = await getDiscountById(req.params.id, req.userId as string, outletId);
@@ -63,7 +63,7 @@ router.get("/:id", async (req: AuthenticatedRequest, res) => {
 });
 
 // POST /discounts
-router.post("/", async (req: AuthenticatedRequest, res) => {
+router.post("/", requirePermission('discount.create'), async (req: AuthenticatedRequest, res) => {
   const { error, value } = discountSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({ message: formatJoiError(error) });
@@ -87,7 +87,7 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
 });
 
 // PUT /discounts/:id
-router.put("/:id", async (req: AuthenticatedRequest, res) => {
+router.put("/:id", requirePermission('discount.update'), async (req: AuthenticatedRequest, res) => {
   const { error, value } = discountUpdateSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({ message: formatJoiError(error) });
@@ -112,7 +112,7 @@ router.put("/:id", async (req: AuthenticatedRequest, res) => {
 });
 
 // DELETE /discounts/:id
-router.delete("/:id", async (req: AuthenticatedRequest, res) => {
+router.delete("/:id", requirePermission('discount.delete'), async (req: AuthenticatedRequest, res) => {
   try {
     const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
     if (!outletId) {
