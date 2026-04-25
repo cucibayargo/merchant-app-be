@@ -578,7 +578,7 @@ export async function getCustomersReport(
                 ) AS female
             FROM customer c
             WHERE c.merchant_id = $1
-                            AND ($4::uuid IS NULL OR c.outlet_id = $4)
+                            AND ($2::uuid IS NULL OR c.outlet_id = $2)
         `;
 
         const topCustomersQuery = `
@@ -601,7 +601,7 @@ export async function getCustomersReport(
         `;
 
         const [summaryResult, topCustomersResult] = await Promise.all([
-            client.query(summaryQuery, [merchant_id, month, year, outlet_id || null]),
+            client.query(summaryQuery, [merchant_id, outlet_id || null]),
             client.query(topCustomersQuery, [merchant_id, month, year, outlet_id || null]),
         ]);
 
