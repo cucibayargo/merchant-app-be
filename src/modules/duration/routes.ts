@@ -8,7 +8,7 @@ const router = express.Router();
 
 
 
-router.get('/', requirePermission('duration.read'), async (req: AuthenticatedRequest, res) => {
+router.get('/', async (req: AuthenticatedRequest, res) => {
   // Extract query parameters from the request
   const filter = req.query.filter as string | null;
   const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
@@ -40,7 +40,7 @@ router.get('/', requirePermission('duration.read'), async (req: AuthenticatedReq
   }
 });
 
-router.get('/all', requirePermission('duration.read'), async (req: AuthenticatedRequest, res) => {
+router.get('/all', async (req: AuthenticatedRequest, res) => {
   const hasService = req.query.hasService === "true"; // Simplified condition for boolean check
   const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
 

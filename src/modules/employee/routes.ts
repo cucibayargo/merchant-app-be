@@ -75,6 +75,9 @@ router.post("/", requireOwner, async (req: AuthenticatedRequest, res) => {
     return res.status(201).json(employee);
   } catch (error) {
     const err = error as Error;
+    if (err.message === "USERNAME_ALREADY_EXISTS") {
+      return res.status(409).json({ message: "Username sudah digunakan, gunakan username lain." });
+    }
     return res.status(500).json({ message: err.message });
   }
 });

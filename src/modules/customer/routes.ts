@@ -10,7 +10,7 @@ const router = express.Router();
 
 
 
-router.get("/", requirePermission("customer.read"), async (req: AuthenticatedRequest, res) => {
+router.get("/", async (req: AuthenticatedRequest, res) => {
   const filter = req.query.filter as string | null;
   const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
   const page = parseInt(req.query.page as string || "1", 10);

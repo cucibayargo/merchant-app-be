@@ -8,7 +8,7 @@ const router = express.Router();
 
 
 
-router.get('/all', requirePermission('service.read'), async (req: AuthenticatedRequest, res) => {
+router.get('/all', async (req: AuthenticatedRequest, res) => {
   const durationId = req.query.duration as string | null;
   const filter = req.query.filter as string | null;
   const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
@@ -22,7 +22,7 @@ router.get('/all', requirePermission('service.read'), async (req: AuthenticatedR
   }
 });
 
-router.get('/', requirePermission('service.read'), async (req: AuthenticatedRequest, res) => {
+router.get('/', async (req: AuthenticatedRequest, res) => {
   // Extract query parameters from the request
   const filter = req.query.filter as string | null;
   const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);

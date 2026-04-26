@@ -5,6 +5,14 @@ import { Employee, EmployeePayload, EmployeeUpdatePayload } from "./types";
 export async function createEmployee(payload: EmployeePayload, merchantId: string): Promise<Employee> {
   const client = await pool.connect();
   try {
+    const existing = await client.query(
+      `SELECT id FROM employees WHERE username = $1 LIMIT 1`,
+      [payload.username]
+    );
+    if (existing.rows[0]) {
+      throw new Error("USERNAME_ALREADY_EXISTS");
+    }
+
     const passwordHash = await bcrypt.hash(payload.password, 10);
 
     const result = await client.query(
