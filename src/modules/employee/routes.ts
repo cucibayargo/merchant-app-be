@@ -77,7 +77,7 @@ router.post("/", requireOwner, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.put("/:id", requireOwner, async (req: AuthenticatedRequest, res) => {
+router.put("/:id", async (req: AuthenticatedRequest, res) => {
   const { error, value } = employeeUpdateSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({ message: formatJoiError(error) });
