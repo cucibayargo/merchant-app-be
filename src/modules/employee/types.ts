@@ -90,12 +90,12 @@ export const employeeUpdateSchema = Joi.object<EmployeeUpdatePayload>({
 
 export interface EmployeeUpdatePasswordPayload {
   old_password: string;
-  new_password: string;
+  password: string;
 }
 
 export const employeeUpdatePasswordSchema = Joi.object<EmployeeUpdatePasswordPayload>({
   old_password: Joi.string().required(),
-  new_password: Joi.string().min(6).required(),
+  password: Joi.string().required(),
 });
 
 export const roleAssignSchema = Joi.object({

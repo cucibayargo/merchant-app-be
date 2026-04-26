@@ -108,7 +108,7 @@ router.put("/:id/password", async (req: AuthenticatedRequest, res) => {
     const result = await updateEmployeePassword(
       req.params.id,
       value.old_password,
-      value.new_password,
+      value.password,
       req.userId as string
     );
 

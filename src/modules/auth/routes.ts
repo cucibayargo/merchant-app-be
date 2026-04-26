@@ -362,6 +362,8 @@ router.post("/employe/login", async (req, res) => {
         merchant_id: employee.merchant_id,
         outlet_id: employee.outlet_id,
         outlet_name: outletDetail?.name || null,
+        outlet_address: outletDetail?.address || null,
+        outlet_phone_number: outletDetail?.phone_number || null,
         name: employee.name,
         username: employee.username,
         permissions,
