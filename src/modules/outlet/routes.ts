@@ -35,7 +35,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get("/:id", requireOwner, async (req: AuthenticatedRequest, res) => {
+router.get("/:id", async (req: AuthenticatedRequest, res) => {
   try {
     const outlet = await getOutletById(req.params.id, req.userId as string);
     if (!outlet) {
