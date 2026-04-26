@@ -301,7 +301,6 @@ export async function authenticateEmployee(username: string): Promise<(Employee 
       SELECT *
       FROM employees
       WHERE username = $1
-        AND is_active = true
       LIMIT 1
       `,
       [username]

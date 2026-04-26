@@ -327,7 +327,11 @@ router.post("/employe/login", async (req, res) => {
     const { username, password } = req.body;
     const employee = await authenticateEmployee(username);
     if (!employee) {
-      return res.status(400).json({ message: "Username karyawan tidak ditemukan." });
+      return res.status(404).json({ message: "Username karyawan tidak ditemukan." });
+    }
+
+    if (!employee.is_active) {
+      return res.status(403).json({ message: "Akun karyawan tidak aktif." });
     }
 
     const isValidPassword = await bcrypt.compare(password, employee.password);
