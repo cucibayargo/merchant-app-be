@@ -85,9 +85,18 @@ export const employeeUpdateSchema = Joi.object<EmployeeUpdatePayload>({
   username: Joi.string().max(255),
   phone_number: Joi.string().max(50).allow(null, ""),
   password: Joi.string(),
-  old_password: Joi.string().optional(),
   is_active: Joi.boolean(),
 }).min(1);
+
+export interface EmployeeUpdatePasswordPayload {
+  old_password: string;
+  new_password: string;
+}
+
+export const employeeUpdatePasswordSchema = Joi.object<EmployeeUpdatePasswordPayload>({
+  old_password: Joi.string().required(),
+  new_password: Joi.string().min(6).required(),
+});
 
 export const roleAssignSchema = Joi.object({
   role_id: Joi.string().uuid().allow(null, "").required(),

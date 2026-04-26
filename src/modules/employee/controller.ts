@@ -191,6 +191,36 @@ export async function updateEmployee(
   }
 }
 
+export async function updateEmployeePassword(
+  id: string,
+  oldPassword: string,
+  newPassword: string,
+  merchantId: string
+): Promise<{ success: boolean; error?: "not_found" | "wrong_password" }> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT password FROM employees WHERE id = $1 AND merchant_id = $2 LIMIT 1`,
+      [id, merchantId]
+    );
+
+    if (!result.rows[0]) return { success: false, error: "not_found" };
+
+    const isMatch = await bcrypt.compare(oldPassword, result.rows[0].password);
+    if (!isMatch) return { success: false, error: "wrong_password" };
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await client.query(
+      `UPDATE employees SET password = $1, updated_at = now() WHERE id = $2 AND merchant_id = $3`,
+      [newHash, id, merchantId]
+    );
+
+    return { success: true };
+  } finally {
+    client.release();
+  }
+}
+
 export async function deleteEmployee(id: string, merchantId: string): Promise<boolean> {
   const client = await pool.connect();
   try {

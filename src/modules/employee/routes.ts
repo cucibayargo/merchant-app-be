@@ -8,9 +8,11 @@ import {
   getEmployeePermissions,
   listEmployees,
   updateEmployee,
+  updateEmployeePassword,
 } from "./controller";
 import {
   employeeSchema,
+  employeeUpdatePasswordSchema,
   employeeUpdateSchema,
   roleAssignSchema,
 } from "./types";
@@ -90,6 +92,34 @@ router.put("/:id", async (req: AuthenticatedRequest, res) => {
     }
 
     return res.status(200).json(employee);
+  } catch (error) {
+    const err = error as Error;
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.put("/:id/password", async (req: AuthenticatedRequest, res) => {
+  const { error, value } = employeeUpdatePasswordSchema.validate(req.body, { abortEarly: false });
+  if (error) {
+    return res.status(400).json({ message: formatJoiError(error) });
+  }
+
+  try {
+    const result = await updateEmployeePassword(
+      req.params.id,
+      value.old_password,
+      value.new_password,
+      req.userId as string
+    );
+
+    if (!result.success) {
+      if (result.error === "not_found") {
+        return res.status(404).json({ message: "Karyawan tidak ditemukan." });
+      }
+      return res.status(400).json({ message: "Password lama tidak sesuai." });
+    }
+
+    return res.status(200).json({ message: "Password berhasil diperbarui." });
   } catch (error) {
     const err = error as Error;
     return res.status(500).json({ message: err.message });
