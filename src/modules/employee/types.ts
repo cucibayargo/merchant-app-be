@@ -64,6 +64,7 @@ export interface EmployeeUpdatePayload {
   username?: string;
   phone_number?: string | null;
   password?: string;
+  old_password?: string;
   is_active?: boolean;
 }
 
@@ -83,7 +84,8 @@ export const employeeUpdateSchema = Joi.object<EmployeeUpdatePayload>({
   name: Joi.string().max(255),
   username: Joi.string().max(255),
   phone_number: Joi.string().max(50).allow(null, ""),
-  password: Joi.string().min(6),
+  password: Joi.string(),
+  old_password: Joi.string().optional(),
   is_active: Joi.boolean(),
 }).min(1);
 
