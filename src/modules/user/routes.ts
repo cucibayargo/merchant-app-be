@@ -99,7 +99,7 @@ router.get("/details", async (req: AuthenticatedRequest, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, email, logo } = req.body;
+  const { name, email, logo, nickname } = req.body;
 
   // Validate required fields
   if (!name || !email) {
@@ -108,7 +108,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
   try {
     // Update user details (excluding logo initially)
-    const updatedUser = await updateUserDetails(id, { name, email });
+    const updatedUser = await updateUserDetails(id, { name, email, nickname });
 
     if (!updatedUser) {
       return res.status(404).json({ message: 'Pengguna tidak ditemukan' });

@@ -402,7 +402,7 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ message: message });
   }
 
-  const { name, email, password, subscription_plan, referral_code } = req.body;
+  const { name, email, password, subscription_plan, referral_code, nickname } = req.body;
   const { outlet_code, outlet_name, outlet_address, outlet_phone_number } = req.body;
 
   try {
@@ -442,6 +442,7 @@ router.post("/signup", async (req, res) => {
     const newUser = await addUser({
       name,
       email,
+      nickname,
       password: hashedPassword,
       status: "verified",
     });

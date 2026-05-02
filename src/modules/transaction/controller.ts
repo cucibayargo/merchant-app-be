@@ -140,6 +140,7 @@ export async function addTransaction(
     const { customer, status, items, note, discount_id, outlet_id } = transaction;
     const finalOutletId = resolved_outlet_id || outlet_id || null;
     const customerDetail = await getCustomerById(customer);
+    const creatorDetail = await getCreatorDetail(merchant_id, transaction.employee_id);
 
     const query = `
       INSERT INTO transaction (
@@ -151,9 +152,11 @@ export async function addTransaction(
         status, 
         merchant_id,
         outlet_id,
-        note
+        note,
+        created_by_id,
+        created_by_name
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id;
     `;
 
     const values = [
@@ -166,6 +169,8 @@ export async function addTransaction(
       merchant_id,
       finalOutletId,
       note,
+      creatorDetail.id,
+      creatorDetail.name
     ];
     const result = await client.query(query, values);
     const newTransactionId = result.rows?.[0]?.id;
@@ -374,6 +379,7 @@ export async function getTransactionById(
         t.customer_id AS customer_id,
         t.customer_name AS customer_name,
         t.customer_address AS customer_address,
+        t.created_by_name AS created_by_name,
         t.customer_phone_number AS customer_phone_number,
         t.ready_to_pick_up_at,
         t.completed_at,
@@ -597,6 +603,30 @@ async function generateInvoiceId(
     return `INV-${outletIdSegment}.${order}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function getCreatorDetail(user_id?: string, employee_id?: string): Promise<{id: string, name: string}> {
+  const client = await pool.connect();
+
+  try {
+    let id = user_id;
+    let query = `
+      SELECT "id", nickname as "name" FROM users WHERE "id" = $1
+    `
+    if (employee_id) {
+      query = `
+        SELECT "id", "name" FROM employees WHERE "id" = $1
+      `
+      id = employee_id;
+    }
+    const { rows } = await client.query(query, [id]);
+    return rows[0];
+  } catch (error) {
+    console.error("Error get user details", error);
     throw error;
   } finally {
     client.release();

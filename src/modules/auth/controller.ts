@@ -156,12 +156,12 @@ export async function verifySignupToken(token: string): Promise<boolean> {
 export async function addUser(user: Omit<CreateUserInput, "id">): Promise<User> {
   const client = await pool.connect();
   try {
-    const { name, email, password, oauth, status } = user;
+    const { name, email, password, oauth, status, nickname } = user;
     const query = `
-      INSERT INTO users (name, email, password, oauth, status, referral_code)
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+      INSERT INTO users (name, email, password, oauth, status, referral_code, nickname)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
     `;
-    const values = [name, email, password, oauth, status, generateReferralCode()];
+    const values = [name, email, password, oauth, status, generateReferralCode(), nickname];
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {

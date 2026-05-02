@@ -44,7 +44,8 @@ export async function getUserDetails(id?: string): Promise<User | null> {
         app_plans.name AS plan_name,
         users.referral_points,
         users.referral_points_redeemed,
-        users.referral_code
+        users.referral_code,
+        users.nickname
       FROM users 
       LEFT JOIN app_subscriptions ON app_subscriptions.user_id = users.id AND app_subscriptions.status = 'active'
       LEFT JOIN app_plans ON app_plans.id = app_subscriptions.plan_id
@@ -72,55 +73,97 @@ export async function updateUserDetails(
   const client: PoolClient = await pool.connect();
 
   try {
-    // Dynamically build the SQL query and parameters based on provided fields
-    const setClauses = [];
+    // 🔍 First, verify the user exists
+    const userExistsResult = await client.query(
+      `SELECT id FROM users WHERE id = $1`,
+      [id]
+    );
+
+    if (userExistsResult.rows.length === 0) {
+      console.warn(`User with ID ${id} does not exist`);
+      return null;
+    }
+
+    const setClauses: string[] = [];
     const params: any[] = [];
     let index = 1;
 
-    if (userData.name) {
+    if (userData.name !== undefined) {
       setClauses.push(`name = $${index++}`);
       params.push(userData.name);
     }
 
-    if (userData.status) {
+    if (userData.nickname !== undefined) {
+      setClauses.push(`nickname = $${index++}`);
+      params.push(userData.nickname);
+    }
+
+    if (userData.status !== undefined) {
       setClauses.push(`status = $${index++}`);
       params.push(userData.status);
     }
 
-    if (userData.email) {
+    if (userData.email !== undefined) {
       setClauses.push(`email = $${index++}`);
       params.push(userData.email);
     }
 
-    if (userData.logo) {
+    if (userData.logo !== undefined) {
       setClauses.push(`logo = $${index++}`);
       params.push(userData.logo);
     }
 
-    // Add the ID to the parameters
+    // 🚨 prevent empty update
+    if (setClauses.length === 0) {
+      throw new Error("No fields provided for update");
+    }
+
     params.push(id);
 
-    // Construct the final SQL query
     const query = `
-        UPDATE users
-        SET ${setClauses.join(", ")}
-        WHERE id = $${index}
-        RETURNING *
-      `;
+      UPDATE users
+      SET ${setClauses.join(", ")}
+      WHERE id = $${index}
+      RETURNING *
+    `;
 
-    // Execute the query
+    console.log("📝 Executing query:", query);
+    console.log("📦 Parameters:", params);
+
     const result = await client.query(query, params);
 
-    const userDatail: UserDetail = {
-      id: result.rows[0].id,
-      name: result.rows[0].name,
-      email: result.rows[0].email,
-      logo: result.rows[0].logo,
-      referral_points: result.rows[0].referral_points,
-      referral_code: result.rows[0].referral_code,
-      referral_points_redeemed: result.rows[0].referral_points_redeemed,
+    console.log(`✅ Query executed. Rows affected: ${result.rowCount}`);
+    
+    if (result.rows.length === 0) {
+      console.error(`❌ Update failed: No rows returned for user ID ${id}`);
+      console.error("⚠️ This may indicate: 1) Email unique constraint violation, 2) Other constraint violation, 3) User was deleted during transaction");
+      return null;
+    }
+
+    const row = result.rows[0];
+
+    const userDetail: UserDetail = {
+      id: row.id,
+      name: row.name,
+      nickname: row.nickname,
+      email: row.email,
+      logo: row.logo,
+      referral_points: row.referral_points,
+      referral_code: row.referral_code,
+      referral_points_redeemed: row.referral_points_redeemed,
     };
-    return result.rows[0] ? userDatail : null;
+
+    console.log("✨ User updated successfully:", userDetail);
+    return userDetail;
+  } catch (err) {
+    const error = err as any;
+    console.error("🚨 Error updating user:", {
+      code: error.code,
+      message: error.message,
+      constraint: error.constraint,
+      detail: error.detail,
+    });
+    throw err; // 👈 don't swallow errors
   } finally {
     client.release();
   }

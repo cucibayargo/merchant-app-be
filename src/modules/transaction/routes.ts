@@ -78,6 +78,7 @@ router.post("/", requirePermission("transaction.create"), async (req: Authentica
 
   try {
     const outletId = resolveOutletId(req, req.body?.outlet_id);
+    req.body["employee_id"] = req.employeeId;
     const newTransaction = await addTransaction(req.body, req.userId, outletId);
     res.status(201).json({
       status: "success",

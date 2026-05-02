@@ -19,12 +19,14 @@ export interface User {
   isInExpiry?: boolean
   referral_points: number
   referral_points_redeemed: number
-  referral_code: string
+  referral_code: string,
+  nickname: string
 }
 
 export interface UserDetail {
   name: string;
   email: string;
+  nickname: string;
   logo?: string;
   id: string; // UUID v4
   referral_points?: number
@@ -69,6 +71,7 @@ export interface SignUpInput {
 export interface CreateUserInput {
   password?: string;
   email: string;
+  nickname?: string;
   name: string;
   oauth?: boolean;
   status?: string;
@@ -85,6 +88,15 @@ export const SignUpSchema = Joi.object({
     .min(1)
     .max(255)
     .required()
+    .messages({
+      'string.empty': 'Nama harus diisi.',
+      'string.min': 'Nama harus memiliki setidaknya {#limit} karakter.',
+      'string.max': 'Nama tidak boleh lebih dari {#limit} karakter.',
+      'any.required': 'Nama harus diisi.'
+    }),
+  nickname: Joi.string()
+    .min(1)
+    .max(255)
     .messages({
       'string.empty': 'Nama harus diisi.',
       'string.min': 'Nama harus memiliki setidaknya {#limit} karakter.',

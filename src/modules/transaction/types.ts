@@ -17,6 +17,8 @@ export interface Transaction {
   total?: number;
   note?: string;
   discount_id?: string;
+  employee_id?: string;
+  user_id?: string;
 }
 export interface TransactionData {
   id: string;
@@ -55,6 +57,7 @@ export interface TransactionDetails {
   payment_method: string;
   invoice: string;
   services: ServiceDetail[];
+  created_by_name: string;
 }
 
 export const transactionSchema = Joi.object({
