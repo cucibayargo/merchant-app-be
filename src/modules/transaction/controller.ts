@@ -600,7 +600,7 @@ async function generateInvoiceId(
 
     const { order, sequence_id, code } = rows[0];
     const outletIdSegment = sequence_id || "0";
-    return `INV-${outletIdSegment}.${order}`;
+    return `INV-${outletIdSegment}.${String(order).padStart(4, "0")}`;
   } catch (error) {
     console.error("Error generating invoice ID:", error);
     throw error;
