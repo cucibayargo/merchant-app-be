@@ -66,6 +66,7 @@ export interface SignUpInput {
   oauth?: boolean;
   status?: string;
   subscription_plan?: string;
+  subscription_duration: number;
 }
 
 export interface CreateUserInput {
@@ -123,6 +124,12 @@ export const SignUpSchema = Joi.object({
     'string.pattern.base': 'Nomor telepon outlet tidak valid',
   }),
   subscription_plan: Joi.string(),
+  subscription_duration: Joi.number().integer().min(1).required().messages({
+    'number.base': 'Durasi langganan harus berupa angka.',
+    'number.integer': 'Durasi langganan harus berupa bilangan bulat.',
+    'number.min': 'Durasi langganan minimal 1 hari.',
+    'any.required': 'Durasi langganan harus diisi.'
+  }),
   referral_code: Joi.string().optional()
 });
 
@@ -215,7 +222,6 @@ export interface SubscriptionPlan {
   id: string;
   code: string;
   price: number;
-  duration: number;
   created_at: string;
 }
 

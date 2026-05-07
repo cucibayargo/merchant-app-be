@@ -7,7 +7,6 @@ export interface InvoiceDetails {
     invoice_id: string;
     plan_name: string;
     plan_code: string;
-    plan_duration: number;
     plan_price: number;
   }
   

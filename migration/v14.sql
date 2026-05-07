@@ -299,3 +299,48 @@ ADD COLUMN created_by_id UUID,
 ADD COLUMN created_by_name VARCHAR(225);
 
 ALTER TABLE users ADD COLUMN nickname varchar(255);
+
+
+-- ============================================================
+-- New Plan
+ALTER TABLE public.app_plans DROP COLUMN IF EXISTS duration;
+ALTER TABLE public.app_plans ADD COLUMN features jsonb;
+INSERT INTO public.app_plans (name, code, price, features)
+VALUES
+(
+  'Basic',
+  'basic',
+  29900,
+  '[
+    "1 Outlet",
+    "Membuat order tak terbatas",
+    "Mengelola data layanan",
+    "Mengelola data pelanggan",
+    "Laporan layanan",
+    "Laporan pelanggan",
+    "Laporan penjualan",
+    "Laporan pengeluaran"
+  ]'::jsonb
+),
+(
+  'Pro',
+  'pro',
+  45000,
+  '[
+    "Semua fitur Basic",
+    "1 Outlet",
+    "Mengelola data karyawan",
+    "Login karyawan"
+  ]'::jsonb
+),
+(
+  'Enterprise',
+  'enterprise',
+  50000,
+  '[
+    "Semua fitur Pro",
+    "Multi outlet",
+    "Akses ke semua fitur",
+    "Layanan support prioritas"
+  ]'::jsonb
+);

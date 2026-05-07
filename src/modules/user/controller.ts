@@ -400,7 +400,6 @@ export async function getInvoiceDetails(
         i.invoice_id,
         p.name AS plan_name,
         p.code AS plan_code,
-        p.duration AS plan_duration,
         p.price AS plan_price
       FROM app_invoices i
       LEFT JOIN app_subscriptions s ON s.user_id = i.user_id AND s.plan_id = i.plan_id
@@ -435,7 +434,6 @@ export async function getInvoices(): Promise<InvoiceDetails[] | null> {
         i.created_at AS invoice_created_at,
         p.name AS plan_name,
         p.code AS plan_code,
-        p.duration AS plan_duration,
         p.price AS plan_price
       FROM app_invoices i
       LEFT JOIN app_subscriptions s ON s.user_id = i.user_id AND s.plan_id = i.plan_id
@@ -530,8 +528,8 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
 
     // Check if the user already has this plan active
     const checkSubscriptionQuery = `
-     SELECT 1
-     FROM app_subscriptions 
+     SELECT start_date, end_date
+     FROM app_subscriptions
      WHERE plan_id = $1 AND user_id = $2
      ORDER BY created_at DESC
      LIMIT 1
@@ -569,9 +567,12 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
       await client.query(query, [redeemedPoints, user_id]);
 
       if (status === "Diterima") {
-        // Update the subscription end date
-        newEndDate = rows[0]?.end_date ? new Date(rows[0].end_date) : new Date();
-        newEndDate.setDate(newEndDate.getDate() + subscriptionPlan.duration);
+        // Calculate duration from original subscription dates
+        const subStart = rows[0]?.start_date ? new Date(rows[0].start_date) : new Date();
+        const subEnd = rows[0]?.end_date ? new Date(rows[0].end_date) : new Date();
+        const durationDays = Math.round((subEnd.getTime() - subStart.getTime()) / (1000 * 60 * 60 * 24));
+        newEndDate = new Date(subEnd);
+        newEndDate.setDate(newEndDate.getDate() + durationDays);
 
         const updateSubscriptionQuery = `
           UPDATE app_subscriptions 
@@ -657,9 +658,12 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
 
         const subscription = subscriptionResult.rows[0];
 
-        // Update the subscription end date
+        // Calculate duration from original subscription dates
+        const durationDays = Math.round(
+          (new Date(subscription.end_date).getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24)
+        );
         const newEndDate = new Date(subscription.end_date);
-        newEndDate.setDate(newEndDate.getDate() + subscriptionPlan.duration);
+        newEndDate.setDate(newEndDate.getDate() + durationDays);
 
         const updateSubscriptionQuery = `
           UPDATE app_subscriptions 

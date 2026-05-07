@@ -6,9 +6,9 @@ export async function getPlanList(): Promise<Plan[]> {
   try {
     const result = await client.query(
       `
-      SELECT id, name, code, price, duration, created_at
+      SELECT id, name, code, price, created_at, features
       FROM app_plans
-      ORDER BY duration ASC
+      ORDER BY price ASC
       `
     );
 

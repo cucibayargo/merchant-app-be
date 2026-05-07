@@ -402,7 +402,7 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ message: message });
   }
 
-  const { name, email, password, subscription_plan, referral_code, nickname } = req.body;
+  const { name, email, password, subscription_plan, subscription_duration, referral_code, nickname } = req.body;
   const { outlet_code, outlet_name, outlet_address, outlet_phone_number } = req.body;
 
   try {
@@ -473,7 +473,7 @@ router.post("/signup", async (req, res) => {
         withReferralPoint: true
       });
       if (invoiceResponse.status == "Diterima") {
-        sendInvoiceApproved(email, new Date(Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000).toISOString())
+        sendInvoiceApproved(email, new Date(Date.now() + subscription_duration * 24 * 60 * 60 * 1000).toISOString())
       } else {
         notifyUserToPaySubscription(email, invoiceResponse.invoice_id);
       }
@@ -484,7 +484,7 @@ router.post("/signup", async (req, res) => {
         start_date: new Date().toISOString(),
         price: subscriptionPlan.price,
         end_date: new Date(
-          Date.now() + subscriptionPlan.duration * 24 * 60 * 60 * 1000
+          Date.now() + subscription_duration * 24 * 60 * 60 * 1000
         ).toISOString(),
       });
     }
