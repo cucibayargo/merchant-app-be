@@ -308,6 +308,15 @@ ALTER TABLE public.app_plans ADD COLUMN features jsonb;
 INSERT INTO public.app_plans (name, code, price, features)
 VALUES
 (
+  'Gratis',
+  'gratis',
+  0,
+  '[
+    "Semua fitur Basic",
+    "Gratis selama 14 hari"
+  ]'::jsonb
+),
+(
   'Basic',
   'basic',
   29900,

@@ -123,13 +123,6 @@ export const SignUpSchema = Joi.object({
   outlet_phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).messages({
     'string.pattern.base': 'Nomor telepon outlet tidak valid',
   }),
-  subscription_plan: Joi.string(),
-  subscription_duration: Joi.number().integer().min(1).required().messages({
-    'number.base': 'Durasi langganan harus berupa angka.',
-    'number.integer': 'Durasi langganan harus berupa bilangan bulat.',
-    'number.min': 'Durasi langganan minimal 1 hari.',
-    'any.required': 'Durasi langganan harus diisi.'
-  }),
   referral_code: Joi.string().optional()
 });
 
