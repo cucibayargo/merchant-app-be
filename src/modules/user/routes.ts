@@ -20,7 +20,7 @@ import {
 } from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
 import { AuthenticatedRequest } from "../../middlewares";
-import { createSubscriptions, getSubsPlanByCode, getSubsPlanById } from "../auth/controller";
+import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getSubscriptionByUserAndPlan } from "../auth/controller";
 
 const router = express.Router();
 
@@ -194,16 +194,24 @@ router.post(
   upload.single("file"),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { note, referral_points, user_id, plan_id } = req.body;
+      const { note, referral_points, user_id, plan_id, duration } = req.body;
 
       // Validate required fields
       if (!user_id) {
         return res.status(400).json({ message: "User ID diperlukan" });
       }
 
+      if (!plan_id) {
+        return res.status(400).json({ message: "Plan ID diperlukan" });
+      }
+
+      if (!duration || isNaN(Number(duration))) {
+        return res.status(400).json({ message: "Durasi langganan harus diisi." });
+      }
+
       let invoiceDetail = await getInvoiceByUserId(user_id);
 
-      if (plan_id != invoiceDetail?.plan_code || !invoiceDetail) {
+      if (!invoiceDetail || plan_id != invoiceDetail?.plan_code) {
         const subscriptionPlan = await getSubsPlanByCode(plan_id);
         if (!subscriptionPlan) {
           return res
@@ -211,21 +219,26 @@ router.post(
             .json({ message: "Paket Aplikasi Tidak ditemukan." });
         }
 
-        await createSubscriptions({
-          user_id: user_id,
-          plan_id: subscriptionPlan.id,
-          price: subscriptionPlan.price,
-          start_date: new Date().toISOString(),
-          end_date: new Date().toISOString(),
-          status: "pending"
-        });
+        // Hanya buat subscription baru jika belum ada (signup sudah membuat)
+        const existingSubscription = await getSubscriptionByUserAndPlan(user_id, subscriptionPlan.id);
+        if (!existingSubscription) {
+          await createSubscriptions({
+            user_id: user_id,
+            plan_id: subscriptionPlan.id,
+            price: subscriptionPlan.price,
+            start_date: new Date().toISOString(),
+            end_date: new Date().toISOString(),
+            duration: Number(duration),
+            status: "pending",
+          });
+        }
 
-        const invoiceResponse = await createInvoice({
+        await createInvoice({
           user_id: user_id,
           plan_code: subscriptionPlan.code,
-          withReferralPoint: false
+          withReferralPoint: false,
         });
-        
+
         invoiceDetail = await getInvoiceByUserId(user_id);
         if (!invoiceDetail?.invoice_id) {
           return res.status(403).json({ message: "Invoice Belum ada silahkan hubungi admin" });

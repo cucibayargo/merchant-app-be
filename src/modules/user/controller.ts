@@ -528,7 +528,7 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
 
     // Check if the user already has this plan active
     const checkSubscriptionQuery = `
-     SELECT start_date, end_date
+     SELECT start_date, end_date, duration
      FROM app_subscriptions
      WHERE plan_id = $1 AND user_id = $2
      ORDER BY created_at DESC
@@ -567,10 +567,10 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
       await client.query(query, [redeemedPoints, user_id]);
 
       if (status === "Diterima") {
-        // Calculate duration from original subscription dates
-        const subStart = rows[0]?.start_date ? new Date(rows[0].start_date) : new Date();
         const subEnd = rows[0]?.end_date ? new Date(rows[0].end_date) : new Date();
-        const durationDays = Math.round((subEnd.getTime() - subStart.getTime()) / (1000 * 60 * 60 * 24));
+        const durationDays = rows[0]?.duration != null
+          ? rows[0].duration
+          : Math.round((subEnd.getTime() - (rows[0]?.start_date ? new Date(rows[0].start_date).getTime() : subEnd.getTime())) / (1000 * 60 * 60 * 24));
         newEndDate = new Date(subEnd);
         newEndDate.setDate(newEndDate.getDate() + durationDays);
 
@@ -658,10 +658,10 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
 
         const subscription = subscriptionResult.rows[0];
 
-        // Calculate duration from original subscription dates
-        const durationDays = Math.round(
-          (new Date(subscription.end_date).getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24)
-        );
+        // Use stored duration; fall back to calculating from dates for old subscriptions
+        const durationDays = subscription.duration != null
+          ? subscription.duration
+          : Math.round((new Date(subscription.end_date).getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
         const newEndDate = new Date(subscription.end_date);
         newEndDate.setDate(newEndDate.getDate() + durationDays);
 

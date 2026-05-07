@@ -123,6 +123,7 @@ export const SignUpSchema = Joi.object({
   outlet_phone_number: Joi.string().pattern(/^[+]?[0-9]{10,15}$/).messages({
     'string.pattern.base': 'Nomor telepon outlet tidak valid',
   }),
+  subscription_plan: Joi.string(),
   referral_code: Joi.string().optional()
 });
 
@@ -225,6 +226,7 @@ export interface SubscriptionInput {
   price: number
   plan_id: string
   status?: string
+  duration?: number
 }
 
 export interface ReferralInput {

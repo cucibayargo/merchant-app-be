@@ -20,7 +20,6 @@ import {
   initServiceAndDuration,
   insertReferral,
   isReferralCodeValid,
-  notifyUserToPaySubscription,
   requestPasswordReset,
   updateUserPassword,
   verifyPasswordResetCodeAndConsume,
@@ -28,7 +27,7 @@ import {
 } from "./controller";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { createInvoice, getUserDetails, sendInvoiceApproved, updateUserDetails } from "../user/controller";
+import { getUserDetails, updateUserDetails } from "../user/controller";
 import * as dotenv from "dotenv";
 import disposableDomains from "disposable-email-domains";
 import Mailjet from "node-mailjet";
@@ -465,18 +464,9 @@ router.post("/signup", async (req, res) => {
         price: subscriptionPlan.price,
         start_date: new Date().toISOString(),
         end_date: new Date().toISOString(),
+        duration: 14,
+        status: "pending",
       });
-
-      const invoiceResponse = await createInvoice({
-        user_id: newUser.id,
-        plan_code: subscriptionPlan.code,
-        withReferralPoint: true
-      });
-      if (invoiceResponse.status == "Diterima") {
-        sendInvoiceApproved(email, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
-      } else {
-        // notifyUserToPaySubscription(email, invoiceResponse.invoice_id);
-      }
     } else {
       await createSubscriptions({
         user_id: newUser.id,
@@ -486,6 +476,7 @@ router.post("/signup", async (req, res) => {
         end_date: new Date(
           Date.now() + 30 * 24 * 60 * 60 * 1000
         ).toISOString(),
+        duration: 30,
       });
     }
 

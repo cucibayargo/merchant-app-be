@@ -188,14 +188,30 @@ export async function createSubscriptions(
 ): Promise<User> {
   const client = await pool.connect();
   try {
-    const { start_date, end_date, user_id, plan_id, price, status } = user;
+    const { start_date, end_date, user_id, plan_id, price, status, duration } = user;
     const query = `
-      INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id, user_plan_price, status)
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+      INSERT INTO app_subscriptions (start_date, end_date, user_id, plan_id, user_plan_price, status, duration)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
     `;
-    const values = [start_date, end_date, user_id, plan_id, price, (status || 'active')];
+    const values = [start_date, end_date, user_id, plan_id, price, (status || 'active'), duration ?? null];
     const result = await client.query(query, values);
     return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+export async function getSubscriptionByUserAndPlan(
+  user_id: string,
+  plan_id: string
+): Promise<any | null> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query(
+      `SELECT * FROM app_subscriptions WHERE user_id = $1 AND plan_id = $2 ORDER BY created_at DESC LIMIT 1`,
+      [user_id, plan_id]
+    );
+    return res.rows[0] || null;
   } finally {
     client.release();
   }
