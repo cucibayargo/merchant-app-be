@@ -567,11 +567,13 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
 
       if (status === "Diterima") {
         const subEnd = rows[0]?.end_date ? new Date(rows[0].end_date) : new Date();
-        const durationDays = rows[0]?.duration != null
-          ? rows[0].duration
-          : Math.round((subEnd.getTime() - (rows[0]?.start_date ? new Date(rows[0].start_date).getTime() : subEnd.getTime())) / (1000 * 60 * 60 * 24));
         newEndDate = new Date(subEnd);
-        newEndDate.setDate(newEndDate.getDate() + durationDays);
+        if (rows[0]?.duration != null) {
+          newEndDate.setMonth(newEndDate.getMonth() + rows[0].duration);
+        } else {
+          const durationDays = Math.round((subEnd.getTime() - (rows[0]?.start_date ? new Date(rows[0].start_date).getTime() : subEnd.getTime())) / (1000 * 60 * 60 * 24));
+          newEndDate.setDate(newEndDate.getDate() + durationDays);
+        }
 
         const updateSubscriptionQuery = `
           UPDATE app_subscriptions 
@@ -657,12 +659,13 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
 
         const subscription = subscriptionResult.rows[0];
 
-        // Use stored duration; fall back to calculating from dates for old subscriptions
-        const durationDays = subscription.duration != null
-          ? (subscription.duration * 30) // Assuming duration is in months, convert to days
-          : Math.round((new Date(subscription.end_date).getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
         const newEndDate = new Date(subscription.end_date);
-        newEndDate.setDate(newEndDate.getDate() + durationDays);
+        if (subscription.duration != null) {
+          newEndDate.setMonth(newEndDate.getMonth() + subscription.duration);
+        } else {
+          const durationDays = Math.round((new Date(subscription.end_date).getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
+          newEndDate.setDate(newEndDate.getDate() + durationDays);
+        }
 
         const updateSubscriptionQuery = `
           UPDATE app_subscriptions 
