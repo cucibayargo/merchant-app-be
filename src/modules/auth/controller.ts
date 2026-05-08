@@ -237,6 +237,25 @@ export async function inactivateOtherSubscriptions(
     client.release();
   }
 }
+export async function updateSubscription(
+  user_id: string,
+  plan_id: string,
+  price: number,
+  duration: number
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const query = `
+      UPDATE app_subscriptions
+      SET user_plan_price = $1, duration = $2
+      WHERE user_id = $3 AND plan_id = $4
+    `;
+    await client.query(query, [price, duration, user_id, plan_id]);
+  } finally {
+    client.release();
+  }
+}
+
 /**
  * Change the user's password.
  * @param email - The user's email.

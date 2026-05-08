@@ -20,7 +20,7 @@ import {
 } from "./controller"; // Assuming you have this function
 import supabase from "../../database/supabase";
 import { AuthenticatedRequest } from "../../middlewares";
-import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getSubscriptionByUserAndPlan } from "../auth/controller";
+import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getSubscriptionByUserAndPlan, updateSubscription } from "../auth/controller";
 
 const router = express.Router();
 
@@ -219,13 +219,16 @@ router.post(
             .json({ message: "Paket Aplikasi Tidak ditemukan." });
         }
 
-        // Hanya buat subscription baru jika belum ada (signup sudah membuat)
+        const computedPrice = subscriptionPlan.price * Number(duration);
+
         const existingSubscription = await getSubscriptionByUserAndPlan(user_id, subscriptionPlan.id);
-        if (!existingSubscription) {
+        if (existingSubscription) {
+          await updateSubscription(user_id, subscriptionPlan.id, computedPrice, Number(duration));
+        } else {
           await createSubscriptions({
             user_id: user_id,
             plan_id: subscriptionPlan.id,
-            price: subscriptionPlan.price,
+            price: computedPrice,
             start_date: new Date().toISOString(),
             end_date: new Date().toISOString(),
             duration: Number(duration),

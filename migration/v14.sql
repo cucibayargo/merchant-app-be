@@ -303,7 +303,7 @@ ALTER TABLE users ADD COLUMN nickname varchar(255);
 
 -- ============================================================
 -- New Plan
-ALTER TABLE public.app_subscriptions ADD COLUMN duration INT;
+ALTER TABLE public.app_subscriptions ADD COLUMN duration jsonb;
 ALTER TABLE public.app_plans DROP COLUMN IF EXISTS duration;
 ALTER TABLE public.app_plans ADD COLUMN features jsonb;
 INSERT INTO public.app_plans (name, code, price, features)

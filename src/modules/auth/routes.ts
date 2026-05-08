@@ -530,6 +530,7 @@ router.post("/signup", async (req, res) => {
       user_id: newUser.id
     });    
   } catch (err: any) {
+    console.log(err);
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 });

@@ -4,7 +4,7 @@ import { User, UserDetail } from "../auth/types";
 import supabase from "../../database/supabase";
 import Mailjet from 'node-mailjet';
 import { CreateInvoiceResponse, getInvoiceResponse, InvoiceDetails, OfflineUser, setPlanInput, updateInvoiceInput, verifyInvoiceResponse } from "./types";
-import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, getUserPlanPrice, inactivateOtherSubscriptions } from "../auth/controller";
+import { createSubscriptions, getSubsPlanByCode, getSubsPlanById, inactivateOtherSubscriptions } from "../auth/controller";
 import jwt from 'jsonwebtoken';
 
 /**
@@ -519,7 +519,6 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
   try {
     const { user_id, plan_code } = planDetail;
     const subscriptionPlan = await getSubsPlanByCode(plan_code);
-    const userPlanPrice = await getUserPlanPrice(user_id);
     const userDetails = await getUserDetails(user_id);
 
     if (!subscriptionPlan) {
@@ -539,12 +538,12 @@ export async function createInvoice(planDetail: Omit<setPlanInput, 'id'>): Promi
     // Generate the invoice ID with prefix CBG- and current timestamp in milliseconds
     const invoiceId = `CBG-${Date.now()}`;
 
-    let amount = userPlanPrice?.price || 0;
+    const computedPrice = subscriptionPlan.price * (rows[0]?.duration || 1);
+    let amount = computedPrice;
     let redeemedPoints = 0;
     if (userDetails && userDetails.referral_points > 0 && planDetail.withReferralPoint) {
-      const planPrice = userPlanPrice?.price || 0;
-      redeemedPoints = Math.min(userDetails.referral_points, planPrice);
-      amount = planPrice - redeemedPoints;
+      redeemedPoints = Math.min(userDetails.referral_points, computedPrice);
+      amount = computedPrice - redeemedPoints;
     }
     let status = amount === 0 ? "Diterima" : "Menunggu Pembayaran";
 
