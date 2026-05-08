@@ -659,7 +659,7 @@ export async function updateInvoice(planDetail: Omit<updateInvoiceInput, 'id'>):
 
         // Use stored duration; fall back to calculating from dates for old subscriptions
         const durationDays = subscription.duration != null
-          ? subscription.duration
+          ? (subscription.duration * 30) // Assuming duration is in months, convert to days
           : Math.round((new Date(subscription.end_date).getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
         const newEndDate = new Date(subscription.end_date);
         newEndDate.setDate(newEndDate.getDate() + durationDays);
