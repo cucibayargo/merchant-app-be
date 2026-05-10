@@ -130,21 +130,22 @@ export async function addTransaction(
 ): Promise<any | null> {
   const client = await pool.connect();
   try {
-    const { customer, status, items, note, discount_id } = transaction;
+    const { customer, status, items, note, discount_id, created_at } = transaction;
     const customerDetail = await getCustomerById(customer);
 
     const query = `
       INSERT INTO transaction (
-        customer_id, 
-        customer_name, 
-        customer_phone_number, 
-        customer_email, 
-        customer_address, 
-        status, 
+        customer_id,
+        customer_name,
+        customer_phone_number,
+        customer_email,
+        customer_address,
+        status,
         merchant_id,
-        note
+        note,
+        created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, NOW())) RETURNING id;
     `;
 
     const values = [
@@ -156,6 +157,7 @@ export async function addTransaction(
       status,
       merchant_id,
       note,
+      created_at ?? null,
     ];
     const result = await client.query(query, values);
     const newTransactionId = result.rows?.[0]?.id;
@@ -163,7 +165,7 @@ export async function addTransaction(
     // Insert service items
     const transactionQueries: TransactionQuery[] = [];
 
-    const currentDate = new Date(); 
+    const currentDate = created_at ? new Date(created_at) : new Date();
     for (const item of items || []) {
       const serviceDetail = await getServiceDurationDetail(
         item.service,
