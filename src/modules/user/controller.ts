@@ -345,13 +345,17 @@ export const uploadTransactionFile = async (
       SELECT
         u.name,
         u.email,
-        t.end_date
+        t.end_date,
+        p.name AS plan_name,
+        i.amount AS price
       FROM users u
       INNER JOIN app_subscriptions t ON u.id = t.user_id
+      INNER JOIN app_invoices i ON i.invoice_id = $2
+      INNER JOIN app_plans p ON p.id = i.plan_id
       WHERE u.id = $1
     `;
 
-    const queryResult = await client.query(userDetailQuery, [userId]);
+    const queryResult = await client.query(userDetailQuery, [userId, invoice_id]);
     const userDetail = queryResult.rows[0];
 
     if (!userDetail) {
@@ -363,7 +367,9 @@ export const uploadTransactionFile = async (
       userDetail.end_date,
       invoice_id,
       userDetail.name,
-      fileUrl
+      fileUrl,
+      userDetail.plan_name,
+      userDetail.price
     );
 
     return true; // Successfully processed
@@ -996,7 +1002,9 @@ const sendPayemntNotification = async (
   endDate: string,
   invoiceId: string,
   userName: string,
-  fileLink: string
+  fileLink: string,
+  planName: string,
+  price: number
 ): Promise<void> => {
   const mailjet = Mailjet.apiConnect(
     process.env.MAILJET_API_KEY as string,
@@ -1041,6 +1049,8 @@ const sendPayemntNotification = async (
                           <p style="font-size: 16px; color: #555555;">
                             <strong>ID Faktur:</strong> ${invoiceId}<br />
                             <strong>Nama:</strong> ${userName}<br />
+                            <strong>Paket:</strong> ${planName}<br />
+                            <strong>Harga:</strong> Rp ${price.toLocaleString('id-ID')}<br />
                             <strong>Masa Aktif Hingga:</strong> ${formattedEndDate}
                           </p>
                           <p style="font-size: 16px; color: #555555;">
