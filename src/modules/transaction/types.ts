@@ -19,6 +19,7 @@ export interface Transaction {
   discount_id?: string;
   employee_id?: string;
   user_id?: string;
+  created_at?: string | Date;
 }
 export interface TransactionData {
   id: string;
@@ -66,6 +67,7 @@ export const transactionSchema = Joi.object({
   note: Joi.string().allow(''),
   status: Joi.string().valid("Diproses", "Selesai", "Siap Diambil", "Dibatalkan").required(),
   discount_id: Joi.string().uuid().allow(null, '').optional(),
+  created_at: Joi.date().iso().optional(),
   items: Joi.array()
     .items(
       Joi.object({

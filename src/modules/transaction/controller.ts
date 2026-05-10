@@ -137,26 +137,27 @@ export async function addTransaction(
 ): Promise<any | null> {
   const client = await pool.connect();
   try {
-    const { customer, status, items, note, discount_id, outlet_id } = transaction;
+    const { customer, status, items, note, discount_id, outlet_id, created_at } = transaction;
     const finalOutletId = resolved_outlet_id || outlet_id || null;
     const customerDetail = await getCustomerById(customer);
     const creatorDetail = await getCreatorDetail(merchant_id, transaction.employee_id);
 
     const query = `
       INSERT INTO transaction (
-        customer_id, 
-        customer_name, 
-        customer_phone_number, 
-        customer_email, 
-        customer_address, 
-        status, 
+        customer_id,
+        customer_name,
+        customer_phone_number,
+        customer_email,
+        customer_address,
+        status,
         merchant_id,
         outlet_id,
         note,
         created_by_id,
-        created_by_name
+        created_by_name,
+        created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id;
     `;
 
     const values = [
@@ -170,7 +171,8 @@ export async function addTransaction(
       finalOutletId,
       note,
       creatorDetail.id,
-      creatorDetail.name
+      creatorDetail.name,
+      created_at ?? null,
     ];
     const result = await client.query(query, values);
     const newTransactionId = result.rows?.[0]?.id;
@@ -178,7 +180,7 @@ export async function addTransaction(
     // Insert service items
     const transactionQueries: TransactionQuery[] = [];
 
-    const currentDate = new Date(); 
+    const currentDate = created_at ? new Date(created_at) : new Date();
     for (const item of items || []) {
       const serviceDetail = await getServiceDurationDetail(
         item.service,
