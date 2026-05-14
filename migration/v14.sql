@@ -7,7 +7,7 @@
 -- v7: Outlets, employee tables, and multi-outlet support
 -- ============================================================
 
-CREATE TABLE outlets (
+CREATE TABLE IF NOT EXISTS outlets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     merchant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     sequence_id BIGSERIAL,
@@ -22,25 +22,25 @@ CREATE TABLE outlets (
     UNIQUE (merchant_id, code)
 );
 
-CREATE INDEX idx_outlets_merchant_id ON outlets (merchant_id);
+CREATE INDEX IF NOT EXISTS idx_outlets_merchant_id ON outlets (merchant_id);
 
-ALTER TABLE customer ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
-ALTER TABLE duration ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
-ALTER TABLE note ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
-ALTER TABLE payment ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
-ALTER TABLE service ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
-ALTER TABLE transaction ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
-ALTER TABLE expenses ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
-ALTER TABLE discounts ADD COLUMN outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE customer ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE duration ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE note ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE payment ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE service ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE transaction ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
+ALTER TABLE discounts ADD COLUMN IF NOT EXISTS outlet_id UUID REFERENCES outlets(id) ON DELETE SET NULL;
 
-CREATE INDEX idx_customer_outlet_id ON customer (outlet_id);
-CREATE INDEX idx_duration_outlet_id ON duration (outlet_id);
-CREATE INDEX idx_note_outlet_id ON note (outlet_id);
-CREATE INDEX idx_payment_outlet_id ON payment (outlet_id);
-CREATE INDEX idx_service_outlet_id ON service (outlet_id);
-CREATE INDEX idx_transaction_outlet_id ON transaction (outlet_id);
-CREATE INDEX idx_expenses_outlet_id ON expenses (outlet_id);
-CREATE INDEX idx_discounts_outlet_id ON discounts (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_customer_outlet_id ON customer (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_duration_outlet_id ON duration (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_note_outlet_id ON note (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_payment_outlet_id ON payment (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_service_outlet_id ON service (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_outlet_id ON transaction (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_outlet_id ON expenses (outlet_id);
+CREATE INDEX IF NOT EXISTS idx_discounts_outlet_id ON discounts (outlet_id);
 
 INSERT INTO outlets (merchant_id, code, name, address, phone_number)
 SELECT
@@ -120,8 +120,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TABLE IF EXISTS employee_permissions;
-DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS employee_permissions CASCADE;
+DROP TABLE IF EXISTS employees CASCADE;
 
 CREATE TABLE employees (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -219,7 +219,7 @@ WHERE o.merchant_id = pd.user_id
 -- v10: Employee roles and role-based permissions
 -- ============================================================
 
-CREATE TABLE employee_roles (
+CREATE TABLE IF NOT EXISTS employee_roles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     merchant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -228,9 +228,9 @@ CREATE TABLE employee_roles (
     UNIQUE (merchant_id, name)
 );
 
-CREATE INDEX idx_employee_roles_merchant_id ON employee_roles (merchant_id);
+CREATE INDEX IF NOT EXISTS idx_employee_roles_merchant_id ON employee_roles (merchant_id);
 
-CREATE TABLE employee_role_permissions (
+CREATE TABLE IF NOT EXISTS employee_role_permissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id UUID NOT NULL REFERENCES employee_roles(id) ON DELETE CASCADE,
     permission_code VARCHAR(100) NOT NULL,
@@ -238,22 +238,46 @@ CREATE TABLE employee_role_permissions (
     UNIQUE (role_id, permission_code)
 );
 
-CREATE INDEX idx_employee_role_permissions_role_id ON employee_role_permissions (role_id);
+CREATE INDEX IF NOT EXISTS idx_employee_role_permissions_role_id ON employee_role_permissions (role_id);
 
-ALTER TABLE employees ADD COLUMN role_id UUID REFERENCES employee_roles(id) ON DELETE SET NULL;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS role_id UUID REFERENCES employee_roles(id) ON DELETE SET NULL;
 
-CREATE INDEX idx_employees_role_id ON employees (role_id);
+CREATE INDEX IF NOT EXISTS idx_employees_role_id ON employees (role_id);
 
 INSERT INTO employee_roles (merchant_id, name)
 SELECT DISTINCT e.merchant_id, 'Karyawan'
 FROM employees e
 ON CONFLICT DO NOTHING;
 
+-- Seed role permissions using the known static permission list
+-- (avoids depending on employee_permissions which is dropped at end of this block)
 INSERT INTO employee_role_permissions (role_id, permission_code)
-SELECT DISTINCT er.id, ep.permission_code
+SELECT er.id, p.permission_code
 FROM employee_roles er
-JOIN employees e ON e.merchant_id = er.merchant_id
-JOIN employee_permissions ep ON ep.employee_id = e.id
+CROSS JOIN (
+    VALUES
+      ('transaction.read'),
+      ('transaction.create'),
+      ('transaction.update'),
+      ('transaction.delete'),
+      ('report.read'),
+      ('customer.read'),
+      ('customer.create'),
+      ('customer.update'),
+      ('customer.delete'),
+      ('service.read'),
+      ('service.create'),
+      ('service.update'),
+      ('service.delete'),
+      ('duration.read'),
+      ('duration.create'),
+      ('duration.update'),
+      ('duration.delete'),
+      ('expanse.read'),
+      ('expanse.create'),
+      ('expanse.update'),
+      ('expanse.delete')
+) AS p(permission_code)
 WHERE er.name = 'Karyawan'
 ON CONFLICT DO NOTHING;
 
@@ -270,11 +294,11 @@ DROP TABLE IF EXISTS employee_permissions;
 -- v11: Fix app_invoices.user_id type and add columns to app_transactions
 -- ============================================================
 
-ALTER TABLE app_invoices DROP COLUMN user_id;
-ALTER TABLE app_invoices ADD COLUMN user_id uuid;
+ALTER TABLE app_invoices DROP COLUMN IF EXISTS user_id;
+ALTER TABLE app_invoices ADD COLUMN IF NOT EXISTS user_id uuid;
 
-ALTER TABLE app_transactions ADD COLUMN file character varying;
-ALTER TABLE app_transactions ADD COLUMN note text;
+ALTER TABLE app_transactions ADD COLUMN IF NOT EXISTS file character varying;
+ALTER TABLE app_transactions ADD COLUMN IF NOT EXISTS note text;
 
 
 -- ============================================================
@@ -295,17 +319,19 @@ ALTER TABLE users DROP COLUMN IF EXISTS address;
 ALTER TABLE users_signup DROP COLUMN IF EXISTS phone_number;
 
 ALTER TABLE transaction
-ADD COLUMN created_by_id UUID,
-ADD COLUMN created_by_name VARCHAR(225);
+ADD COLUMN IF NOT EXISTS created_by_id UUID,
+ADD COLUMN IF NOT EXISTS created_by_name VARCHAR(225);
 
-ALTER TABLE users ADD COLUMN nickname varchar(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname varchar(255);
 
 
 -- ============================================================
 -- New Plan
-ALTER TABLE public.app_subscriptions ADD COLUMN duration jsonb;
+-- ============================================================
+
+ALTER TABLE public.app_subscriptions ADD COLUMN IF NOT EXISTS duration jsonb;
 ALTER TABLE public.app_plans DROP COLUMN IF EXISTS duration;
-ALTER TABLE public.app_plans ADD COLUMN features jsonb;
+ALTER TABLE public.app_plans ADD COLUMN IF NOT EXISTS features jsonb;
 INSERT INTO public.app_plans (name, code, price, features)
 VALUES
 (
@@ -353,4 +379,5 @@ VALUES
     "Akses ke semua fitur",
     "Layanan support prioritas"
   ]'::jsonb
-);
+)
+ON CONFLICT DO NOTHING;
