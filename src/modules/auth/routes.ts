@@ -41,6 +41,7 @@ import {
 import { employeeLoginSchema } from "../employee/types";
 import { parseSingleUuid } from "../../middlewares";
 import { getOutletById } from "../outlet/controller";
+import { createRole } from "../role/controller";
 
 const router = express.Router();
 dotenv.config();
@@ -492,6 +493,30 @@ router.post("/signup", async (req, res) => {
 
     // Create default service and duration for the default outlet.
     await initServiceAndDuration(newUser.id, defaultOutlet.id);
+
+    // For Pro/Enterprise plans, automatically create a default "Kasir" role.
+    // Roles are merchant-scoped, so this applies to all outlets automatically.
+    if (
+      subscriptionPlan.code === "pro" ||
+      subscriptionPlan.code === "enterprise"
+    ) {
+      await createRole(
+        {
+          name: "Kasir",
+          permissions: [
+            "transaction.read",
+            "transaction.create",
+            "transaction.update",
+            "transaction.delete",
+            "customer.read",
+            "customer.create",
+            "customer.update",
+            "customer.delete",
+          ],
+        },
+        newUser.id
+      );
+    }
 
     // Generate verification token
     // const verificationToken = jwt.sign({ id: newUser.id }, "verification_secret_key", {

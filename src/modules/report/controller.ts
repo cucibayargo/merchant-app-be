@@ -460,12 +460,33 @@ export async function getFinanceReport(
 }> {
     const client = await pool.connect();
     try {
+        // Discount is stored per-transaction, so distribute it across each
+        // transaction's service lines proportionally to their gross amount,
+        // giving a net (after-discount) revenue per service.
         const revenueByServiceQuery = `
+            WITH tx_gross AS (
+                SELECT ti.transaction_id, SUM(ti.qty * ti.price) AS gross
+                FROM transaction_item ti
+                JOIN transaction t ON t.id = ti.transaction_id
+                WHERE t.merchant_id = $1
+                  AND ($4::uuid IS NULL OR t.outlet_id = $4)
+                  AND t.deleted_at IS NULL
+                  AND t.created_at::date BETWEEN $2::date AND $3::date
+                GROUP BY ti.transaction_id
+            )
             SELECT
                 ti.service_name AS name,
-                COALESCE(SUM(ti.qty * ti.price), 0) AS amount
+                COALESCE(SUM(
+                    (ti.qty * ti.price)
+                    - CASE
+                        WHEN g.gross > 0
+                            THEN COALESCE(t.discount_amount, 0) * (ti.qty * ti.price) / g.gross
+                        ELSE 0
+                      END
+                ), 0) AS amount
             FROM transaction_item ti
             JOIN transaction t ON t.id = ti.transaction_id
+            JOIN tx_gross g ON g.transaction_id = ti.transaction_id
             WHERE t.merchant_id = $1
                             AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL

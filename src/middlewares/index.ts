@@ -139,6 +139,7 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
     }
     next()
   } catch (error) {
+    console.log(error);
     return res.status(401).json({ message: "Token tidak valid atau telah kedaluwarsa." });
   }
   

@@ -346,13 +346,17 @@ export const uploadTransactionFile = async (
         u.name,
         u.email,
         t.end_date,
+        t.start_date,
+        t.duration,
         p.name AS plan_name,
         i.amount AS price
       FROM users u
-      INNER JOIN app_subscriptions t ON u.id = t.user_id
       INNER JOIN app_invoices i ON i.invoice_id = $2
       INNER JOIN app_plans p ON p.id = i.plan_id
+      INNER JOIN app_subscriptions t ON t.user_id = u.id AND t.plan_id = i.plan_id
       WHERE u.id = $1
+      ORDER BY t.created_at DESC
+      LIMIT 1
     `;
 
     const queryResult = await client.query(userDetailQuery, [userId, invoice_id]);
@@ -362,9 +366,21 @@ export const uploadTransactionFile = async (
       throw new Error(`User with ID ${userId} not found.`);
     }
 
+    // Compute the projected end date (the value it will have once the payment is
+    // confirmed). Mirrors the calculation in updateInvoiceStatus ("Diterima").
+    const projectedEndDate = new Date(userDetail.end_date);
+    if (userDetail.duration != null) {
+      projectedEndDate.setMonth(projectedEndDate.getMonth() + userDetail.duration);
+    } else {
+      const durationDays = Math.round(
+        (new Date(userDetail.end_date).getTime() - new Date(userDetail.start_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      projectedEndDate.setDate(projectedEndDate.getDate() + durationDays);
+    }
+
     await sendPayemntNotification(
       userDetail.email,
-      userDetail.end_date,
+      projectedEndDate.toISOString(),
       invoice_id,
       userDetail.name,
       fileUrl,
