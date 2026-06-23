@@ -389,13 +389,35 @@ export async function getServiceReport(
                     ti.service_name,
                     COALESCE(NULLIF(TRIM(ti.service_unit), ''), 'Tanpa Satuan')
             ),
+            -- Discount is stored per-transaction, so distribute it across each
+            -- transaction's service lines proportionally to their gross amount,
+            -- giving a net (after-discount) revenue per service.
+            tx_gross AS (
+                SELECT ti.transaction_id, SUM(COALESCE(ti.qty, 0) * COALESCE(ti.price, 0)) AS gross
+                FROM transaction_item ti
+                JOIN transaction t ON t.id = ti.transaction_id
+                WHERE t.merchant_id = $1
+                                    AND ($4::uuid IS NULL OR t.outlet_id = $4)
+                  AND t.deleted_at IS NULL
+                  AND EXTRACT(MONTH FROM t.created_at) = $2
+                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                GROUP BY ti.transaction_id
+            ),
             service_totals AS (
                 SELECT
                     ti.service_id,
                     COALESCE(COUNT(DISTINCT t.id), 0) AS total_orders,
-                    COALESCE(SUM(COALESCE(ti.qty, 0) * COALESCE(ti.price, 0)), 0) AS total_revenue
+                    COALESCE(SUM(
+                        (COALESCE(ti.qty, 0) * COALESCE(ti.price, 0))
+                        - CASE
+                            WHEN g.gross > 0
+                                THEN COALESCE(t.discount_amount, 0) * (COALESCE(ti.qty, 0) * COALESCE(ti.price, 0)) / g.gross
+                            ELSE 0
+                          END
+                    ), 0) AS total_revenue
                 FROM transaction_item ti
                 JOIN transaction t ON t.id = ti.transaction_id
+                JOIN tx_gross g ON g.transaction_id = ti.transaction_id
                 WHERE t.merchant_id = $1
                                     AND ($4::uuid IS NULL OR t.outlet_id = $4)
                   AND t.deleted_at IS NULL
