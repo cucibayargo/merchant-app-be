@@ -11,3 +11,4 @@ src/config/cucibayargo-06faa754b656.json
 src/.DS_Store
 supabase
 db-backup
+.env.prod.v2

@@ -2,11 +2,11 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "v2" ]
 
 env:
   GCP_PROJECT_ID: cucibayargo-485115
-  CLOUD_RUN_SERVICE: cucibayargo-production
+  CLOUD_RUN_SERVICE: cucibayargo-production-v2
   CLOUD_RUN_REGION: asia-southeast1
   IMAGE: ccbdev2026/node-api
 
