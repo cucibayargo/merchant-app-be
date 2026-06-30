@@ -10,3 +10,4 @@ src/config/cucibayargo-06faa754b656.json
 .DS_Store
 src/.DS_Store
 supabase
+db-backup
