@@ -5,6 +5,7 @@ import compression from "compression";
 import session from "express-session";
 import passport from "./modules/auth/passportConfig";
 import routes from "./routes";
+import syncRoutes from "./routes/sync";
 
 const app = express();
 
@@ -41,6 +42,9 @@ app.use(
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Internal sync trigger (token-guarded, not behind user auth)
+app.use("/internal", syncRoutes);
 
 // Use centralized routes
 app.use("/api/", routes);

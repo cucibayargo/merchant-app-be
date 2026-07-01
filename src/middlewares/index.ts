@@ -57,7 +57,8 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
   const cronJobRoutes = [
     '/user/delete-temp-files',
     '/user/check-subscriptions',
-    '/user/save-offline-user'
+    '/user/save-offline-user',
+    '/nternal/sync'
   ];
   
   if (
@@ -85,8 +86,12 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
   const crToken = req.headers['cron-job-token'];
   const crPrivateToken = process.env.crToken;
 
+  const syncTriggerToken = process.env.SYNC_TRIGGER_TOKEN;
+  const syncTriggerHeader = req.headers['x-sync-token'];
+
+  
   if (cronJobRoutes.some(route => req.path.startsWith(route))) {
-    if (crToken === crPrivateToken) {
+    if (crToken === crPrivateToken || syncTriggerHeader === syncTriggerToken) {
       return next();
     } else {
       return res.status(401).json({ message: 'Akses ditolak. Token tidak sesuai' });
