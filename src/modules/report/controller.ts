@@ -288,8 +288,6 @@ export async function getTransactionsReport(
     merchant_id: string,
     start_date: string,
     end_date: string,
-    page: number,
-    limit: number,
     outlet_id?: string | null
 ): Promise<Array<{
         id: string;
@@ -306,10 +304,9 @@ export async function getTransactionsReport(
     }>> {
     const client = await pool.connect();
     try {
-        const offset = (page - 1) * limit;
         const conditions = [
             "t.merchant_id = $1",
-            "($6::uuid IS NULL OR t.outlet_id = $6)",
+            "($4::uuid IS NULL OR t.outlet_id = $4)",
             "t.deleted_at IS NULL",
             "t.created_at::date BETWEEN $2::date AND $3::date"
         ];
@@ -340,10 +337,9 @@ export async function getTransactionsReport(
                 agg.estimated_date
             ${baseQuery}
             ORDER BY t.created_at DESC
-            LIMIT $4 OFFSET $5
         `;
 
-        const result = await client.query(query, [merchant_id, start_date, end_date, limit, offset, outlet_id || null]);
+        const result = await client.query(query, [merchant_id, start_date, end_date, outlet_id || null]);
         return result.rows;
     } finally {
         client.release();

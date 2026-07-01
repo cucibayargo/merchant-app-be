@@ -63,7 +63,7 @@ router.get('/dashboard', async (req: AuthenticatedRequest, res) => {
 
 router.get('/transactions', requirePermission('report.read'), async (req: AuthenticatedRequest, res) => {
     try {
-        const { start_date, end_date, page = '1', limit = '10' } = req.query;
+        const { start_date, end_date } = req.query;
         const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
         if (!start_date || !end_date) {
             return res.status(400).json({ message: 'start_date dan end_date wajib diisi.' });
@@ -75,19 +75,11 @@ router.get('/transactions', requirePermission('report.read'), async (req: Authen
             return res.status(400).json({ message: 'Format tanggal tidak valid.' });
         }
 
-        const pageNumber = Number(page);
-        const limitNumber = Number(limit);
-        if (!Number.isInteger(pageNumber) || pageNumber <= 0 || !Number.isInteger(limitNumber) || limitNumber <= 0) {
-            return res.status(400).json({ message: 'page dan limit harus bilangan bulat positif.' });
-        }
-
         const summary = await getTransactionsSummary(req.userId as string, start_date as string, end_date as string, outletId);
         const data = await getTransactionsReport(
             req.userId as string,
             start_date as string,
             end_date as string,
-            pageNumber,
-            limitNumber,
             outletId
         );
         res.status(200).json({ summary, data });
