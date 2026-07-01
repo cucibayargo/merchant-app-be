@@ -452,7 +452,7 @@ router.post("/signup", async (req, res) => {
       await insertReferral({
         user_id: newUser.id,
         referral_user_id: referralUser.id,
-        referral_reward: 50000, 
+        referral_reward: 30000, 
       });
     }
 
