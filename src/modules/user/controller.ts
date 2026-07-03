@@ -38,6 +38,7 @@ export async function getUserDetails(id?: string): Promise<User | null> {
       `SELECT
         users.id,
         users.name,
+        users.name as merchant_name,
         users.email,
         users.logo,
         app_subscriptions.end_date AS subscription_end,
