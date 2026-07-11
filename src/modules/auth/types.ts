@@ -53,6 +53,9 @@ export const LoginSchema = Joi.object({
       'string.email': 'Alamat email tidak valid.',
       'any.required': 'Alamat email harus diisi.'
     }),
+  // Login is not outlet-scoped, but the mobile client may still send an
+  // outlet_id from a lingering session — accept and ignore it.
+  outlet_id: Joi.string().optional().allow(null, ''),
 });
 
 export interface SignUpInput {

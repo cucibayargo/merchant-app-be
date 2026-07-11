@@ -105,4 +105,6 @@ export const roleAssignSchema = Joi.object({
 export const employeeLoginSchema = Joi.object({
   username: Joi.string().required(),
   password: Joi.string().required(),
+  // Accept and ignore an outlet_id injected by a lingering client session.
+  outlet_id: Joi.string().optional().allow(null, ''),
 });
