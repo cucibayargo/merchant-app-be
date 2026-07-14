@@ -169,13 +169,23 @@ BEFORE INSERT ON transaction
 FOR EACH ROW
 EXECUTE FUNCTION set_order_for_transaction();
 
-COMMIT;
-
 -- ------------------------------------------------------------
 -- 5. Guard: a live transaction's order must be unique within its scope.
---    Created OUTSIDE the transaction with CONCURRENTLY so it does not lock the
---    table. Run step 2 (the renumber) first, or this will fail on existing dupes.
+--    Plain (non-concurrent) index so it runs inside this transaction — required
+--    by SQL runners that wrap the whole script in one transaction block. It
+--    takes a brief write lock on `transaction` while building; run in a
+--    maintenance window. Step 2 (the renumber) must have removed all dupes
+--    first, or index creation fails.
+--
+--    For a very large table where you cannot afford the write lock, DELETE this
+--    statement, run the rest of v16.sql, then build the index separately in a
+--    session that is NOT inside a transaction:
+--      CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_transaction_order_unique
+--        ON transaction (COALESCE(outlet_id, merchant_id), "order")
+--        WHERE deleted_at IS NULL;
 -- ------------------------------------------------------------
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_transaction_order_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_transaction_order_unique
   ON transaction (COALESCE(outlet_id, merchant_id), "order")
   WHERE deleted_at IS NULL;
+
+COMMIT;
