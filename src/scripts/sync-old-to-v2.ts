@@ -445,6 +445,30 @@ async function applyOutletBackfill(v2: PoolClient): Promise<void> {
      WHERE o.merchant_id = pd.user_id
        AND pd.outlet_id IS NULL
   `);
+
+  // Keep the per-outlet order counter (v16.sql) in step with the data. The
+  // "order" trigger scopes by outlet, but the sync inserts transactions with
+  // outlet_id = NULL and only assigns it here. For a brand-new merchant, its
+  // outlet did not exist when its transactions were inserted, so the trigger
+  // scoped those rows by merchant_id. After this backfill moves them under the
+  // outlet, reseed transaction_order_seq to max("order") per outlet so the next
+  // insert continues from there instead of restarting at 1 (which would collide
+  // with an existing order under that outlet). Idempotent; only advances.
+  // Guard: transaction_order_seq is created by v16.sql. Skip quietly if the
+  // migration hasn't been applied yet (older v2 DBs still on the count trigger).
+  if (await v2.query(`SELECT to_regclass('public.transaction_order_seq') AS t`).then((r) => r.rows[0]?.t)) {
+    await v2.query(`
+      INSERT INTO transaction_order_seq (scope_key, last_order)
+      SELECT COALESCE(outlet_id::text, merchant_id::text), MAX("order")
+        FROM transaction
+       WHERE COALESCE(outlet_id::text, merchant_id::text) IS NOT NULL
+       GROUP BY COALESCE(outlet_id::text, merchant_id::text)
+      ON CONFLICT (scope_key)
+      DO UPDATE SET last_order = GREATEST(
+        transaction_order_seq.last_order, EXCLUDED.last_order
+      )
+    `);
+  }
 }
 
 // ------------------------------------------------------------------
