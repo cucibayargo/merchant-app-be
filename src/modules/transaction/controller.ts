@@ -29,6 +29,7 @@ export async function getTransactions(
     let conditions: string[] = ["t.deleted_at IS NULL"];
 
     let dateColumn = "t.created_at";
+    let dateFilter = "t.created_at";
     let sortType = "DESC";
 
     if (status === "Diproses") {
@@ -36,8 +37,10 @@ export async function getTransactions(
       sortType = "ASC";
     } else if (status === "Siap Diambil") {
       dateColumn = "t.ready_to_pick_up_at";
+      dateFilter = "t.ready_to_pick_up_at";
     } else if (status === "Selesai") {
       dateColumn = "t.completed_at";
+      dateFilter = "t.completed_at";
     }
 
     if (status) {
@@ -65,7 +68,7 @@ export async function getTransactions(
 
     if (date_from && date_to) {
       conditions.push(
-        `${dateColumn}::date BETWEEN $${values.length + 1} 
+        `${dateFilter}::date BETWEEN $${values.length + 1} 
          AND $${values.length + 2}`
       );
       values.push(date_from, date_to);
