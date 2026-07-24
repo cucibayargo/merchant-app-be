@@ -194,7 +194,7 @@ export async function getDashboardSummary(
                      WHERE t2.merchant_id = $1
                        AND ($2::uuid IS NULL OR t2.outlet_id = $2)
                        AND t2.deleted_at IS NULL
-                       AND (t2.created_at AT TIME ZONE 'Asia/Jakarta')::date = CURRENT_DATE AT TIME ZONE 'Asia/Jakarta'
+                       AND (t2.created_at AT TIME ZONE 'Asia/Jakarta')::date = (CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date
                     ), 0
                 ) AS today_revenue,
                 COALESCE(COUNT(DISTINCT t.id), 0) AS total_transactions
@@ -203,7 +203,7 @@ export async function getDashboardSummary(
             WHERE t.merchant_id = $1
               AND ($2::uuid IS NULL OR t.outlet_id = $2)
               AND t.deleted_at IS NULL
-              AND (t.created_at AT TIME ZONE 'Asia/Jakarta')::date = CURRENT_DATE AT TIME ZONE 'Asia/Jakarta'
+              AND (t.created_at AT TIME ZONE 'Asia/Jakarta')::date = (CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date
         `;
 
                 const result = await client.query(query, [merchant_id, outlet_id || null]);

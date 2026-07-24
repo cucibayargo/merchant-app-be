@@ -128,11 +128,15 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
       (req.method === 'POST' && req.path === '/user/upload-logo') ||
       (req.method === 'PUT' && /^\/user\/[^/]+$/.test(req.path));
     const userDetail = await getUserDetails(id)
-    if (userDetail?.subscription_end && new Date(userDetail?.subscription_end).getTime() <= Date.now()) {
-      if (req.method !== 'GET' && !isExpiredSubscriptionException) {
-        return res.status(403).json({
-          message: "Langganan Anda telah kedaluwarsa. Silakan perbarui langganan Anda atau hubungi administrator."
-        });
+    if (userDetail?.subscription_end) {
+      const subscriptionEnd = new Date(userDetail.subscription_end);
+      const now = new Date();
+      if (subscriptionEnd.getTime() <= now.getTime()) {
+        if (req.method !== 'GET' && !isExpiredSubscriptionException) {
+          return res.status(403).json({
+            message: "Langganan Anda telah kedaluwarsa. Silakan perbarui langganan Anda atau hubungi administrator."
+          });
+        }
       }
     }
   
