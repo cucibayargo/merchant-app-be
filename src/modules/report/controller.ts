@@ -121,13 +121,13 @@ async function getReportData(
             WITH date_series AS (
                     SELECT generate_series($1::DATE, $2::DATE, '1 day') AS date
             )
-            SELECT 
+            SELECT
                 TO_CHAR(ds.date, 'DD-MM-YYYY') AS date,
                 COALESCE(COUNT(ti.id), 0) AS total_transactions,
                 COALESCE(SUM(ti.qty * ti.price), 0) - COALESCE(
                     (SELECT SUM(COALESCE(t2.discount_amount, 0))
                      FROM transaction t2
-                     WHERE t2.created_at::DATE = ds.date
+                     WHERE (t2.created_at AT TIME ZONE 'Asia/Jakarta')::DATE = ds.date
                        AND t2.merchant_id = $3
                        AND ($4::uuid IS NULL OR t2.outlet_id = $4)
                        AND t2.status = 'Selesai'
@@ -136,11 +136,11 @@ async function getReportData(
                 ) AS total_revenue
                 ${serviceColumns ? `, ${serviceColumns}` : ""}
             FROM date_series ds
-            LEFT JOIN transaction t ON t.created_at::DATE = ds.date AND t.merchant_id = $3 AND ($4::uuid IS NULL OR t.outlet_id = $4) AND t.status = 'Selesai'
+            LEFT JOIN transaction t ON (t.created_at AT TIME ZONE 'Asia/Jakarta')::DATE = ds.date AND t.merchant_id = $3 AND ($4::uuid IS NULL OR t.outlet_id = $4) AND t.status = 'Selesai'
             LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
             WHERE t.deleted_at IS NULL
             GROUP BY ds.date
-            ORDER BY ds.date;   
+            ORDER BY ds.date;
         `;
         
         const result = await client.query(query, [start_date, end_date, merchantId, outletId || null]);
@@ -165,7 +165,7 @@ async function getServiceList(
             SELECT DISTINCT ti.service_name, ti.service_id
             FROM transaction_item ti
             LEFT JOIN transaction t ON ti.transaction_id = t.id
-            WHERE ti.created_at BETWEEN $1 AND $2
+            WHERE (t.created_at AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $1 AND $2
             AND t.status = 'Selesai' AND t.merchant_id = $3
             AND ($4::uuid IS NULL OR t.outlet_id = $4)
             ORDER BY ti.service_name;
@@ -191,19 +191,19 @@ export async function getDashboardSummary(
                 COALESCE(SUM(ti.price * ti.qty), 0) - COALESCE(
                     (SELECT SUM(COALESCE(t2.discount_amount, 0))
                      FROM transaction t2
-                                         WHERE t2.merchant_id = $1
-                                             AND ($2::uuid IS NULL OR t2.outlet_id = $2)
+                     WHERE t2.merchant_id = $1
+                       AND ($2::uuid IS NULL OR t2.outlet_id = $2)
                        AND t2.deleted_at IS NULL
-                       AND t2.created_at::date = CURRENT_DATE
+                       AND (t2.created_at AT TIME ZONE 'Asia/Jakarta')::date = CURRENT_DATE AT TIME ZONE 'Asia/Jakarta'
                     ), 0
                 ) AS today_revenue,
                 COALESCE(COUNT(DISTINCT t.id), 0) AS total_transactions
             FROM transaction t
             LEFT JOIN transaction_item ti ON ti.transaction_id = t.id
             WHERE t.merchant_id = $1
-                            AND ($2::uuid IS NULL OR t.outlet_id = $2)
+              AND ($2::uuid IS NULL OR t.outlet_id = $2)
               AND t.deleted_at IS NULL
-              AND t.created_at::date = CURRENT_DATE
+              AND (t.created_at AT TIME ZONE 'Asia/Jakarta')::date = CURRENT_DATE AT TIME ZONE 'Asia/Jakarta'
         `;
 
                 const result = await client.query(query, [merchant_id, outlet_id || null]);
@@ -240,7 +240,7 @@ export async function getTransactionsSummary(
             WHERE t.merchant_id = $1
               AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
-              AND t.created_at::date BETWEEN $2::date AND $3::date
+              AND (t.created_at AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2::date AND $3::date
         `;
 
         const qtyByServiceUnitQuery = `
@@ -252,7 +252,7 @@ export async function getTransactionsSummary(
             WHERE t.merchant_id = $1
               AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
-              AND t.created_at::date BETWEEN $2::date AND $3::date
+              AND (t.created_at AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2::date AND $3::date
             GROUP BY 1
             ORDER BY 1
         `;
@@ -308,7 +308,7 @@ export async function getTransactionsReport(
             "t.merchant_id = $1",
             "($4::uuid IS NULL OR t.outlet_id = $4)",
             "t.deleted_at IS NULL",
-            "t.created_at::date BETWEEN $2::date AND $3::date"
+            "(t.created_at AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2::date AND $3::date"
         ];
 
         const baseQuery = `
@@ -376,10 +376,10 @@ export async function getServiceReport(
                 FROM transaction_item ti
                 JOIN transaction t ON t.id = ti.transaction_id
                 WHERE t.merchant_id = $1
-                                    AND ($4::uuid IS NULL OR t.outlet_id = $4)
+                  AND ($4::uuid IS NULL OR t.outlet_id = $4)
                   AND t.deleted_at IS NULL
-                  AND EXTRACT(MONTH FROM t.created_at) = $2
-                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                  AND EXTRACT(MONTH FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $2
+                  AND EXTRACT(YEAR FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $3
                 GROUP BY
                     ti.service_id,
                     ti.service_name,
@@ -393,10 +393,10 @@ export async function getServiceReport(
                 FROM transaction_item ti
                 JOIN transaction t ON t.id = ti.transaction_id
                 WHERE t.merchant_id = $1
-                                    AND ($4::uuid IS NULL OR t.outlet_id = $4)
+                  AND ($4::uuid IS NULL OR t.outlet_id = $4)
                   AND t.deleted_at IS NULL
-                  AND EXTRACT(MONTH FROM t.created_at) = $2
-                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                  AND EXTRACT(MONTH FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $2
+                  AND EXTRACT(YEAR FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $3
                 GROUP BY ti.transaction_id
             ),
             service_totals AS (
@@ -415,10 +415,10 @@ export async function getServiceReport(
                 JOIN transaction t ON t.id = ti.transaction_id
                 JOIN tx_gross g ON g.transaction_id = ti.transaction_id
                 WHERE t.merchant_id = $1
-                                    AND ($4::uuid IS NULL OR t.outlet_id = $4)
+                  AND ($4::uuid IS NULL OR t.outlet_id = $4)
                   AND t.deleted_at IS NULL
-                  AND EXTRACT(MONTH FROM t.created_at) = $2
-                  AND EXTRACT(YEAR FROM t.created_at) = $3
+                  AND EXTRACT(MONTH FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $2
+                  AND EXTRACT(YEAR FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $3
                 GROUP BY ti.service_id
             )
             SELECT
@@ -489,7 +489,7 @@ export async function getFinanceReport(
                 WHERE t.merchant_id = $1
                   AND ($4::uuid IS NULL OR t.outlet_id = $4)
                   AND t.deleted_at IS NULL
-                  AND t.created_at::date BETWEEN $2::date AND $3::date
+                  AND (t.created_at AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2::date AND $3::date
                 GROUP BY ti.transaction_id
             )
             SELECT
@@ -506,9 +506,9 @@ export async function getFinanceReport(
             JOIN transaction t ON t.id = ti.transaction_id
             JOIN tx_gross g ON g.transaction_id = ti.transaction_id
             WHERE t.merchant_id = $1
-                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
+              AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
-              AND t.created_at::date BETWEEN $2::date AND $3::date
+              AND (t.created_at AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2::date AND $3::date
             GROUP BY ti.service_name
             ORDER BY amount DESC
         `;
@@ -523,10 +523,10 @@ export async function getFinanceReport(
             FROM payment p
             JOIN transaction t ON t.id = p.transaction_id
             WHERE t.merchant_id = $1
-                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
+              AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
               AND p.status = 'Lunas'
-              AND p.payment_at::date BETWEEN $2::date AND $3::date
+              AND (p.payment_at AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2::date AND $3::date
             GROUP BY 1
             ORDER BY amount DESC
         `;
@@ -537,8 +537,8 @@ export async function getFinanceReport(
                 COALESCE(SUM(e.total), 0) AS amount
             FROM expenses e
             WHERE e.merchant_id = $1
-                            AND ($4::uuid IS NULL OR e.outlet_id = $4)
-              AND e.date BETWEEN $2::date AND $3::date
+              AND ($4::uuid IS NULL OR e.outlet_id = $4)
+              AND (e.date AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $2::date AND $3::date
             GROUP BY e.description
             ORDER BY amount DESC
         `;
@@ -629,10 +629,10 @@ export async function getCustomersReport(
             FROM transaction t
             LEFT JOIN payment p ON p.transaction_id = t.id
             WHERE t.merchant_id = $1
-                            AND ($4::uuid IS NULL OR t.outlet_id = $4)
+              AND ($4::uuid IS NULL OR t.outlet_id = $4)
               AND t.deleted_at IS NULL
-              AND EXTRACT(MONTH FROM t.created_at) = $2
-              AND EXTRACT(YEAR FROM t.created_at) = $3
+              AND EXTRACT(MONTH FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $2
+              AND EXTRACT(YEAR FROM (t.created_at AT TIME ZONE 'Asia/Jakarta')) = $3
               AND t.customer_name IS NOT NULL
             GROUP BY t.customer_name, t.customer_phone_number
             ORDER BY total_spent DESC

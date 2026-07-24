@@ -68,7 +68,7 @@ export async function getTransactions(
 
     if (date_from && date_to) {
       conditions.push(
-        `${dateFilter}::date BETWEEN $${values.length + 1} 
+        `(${dateFilter} AT TIME ZONE 'Asia/Jakarta')::date BETWEEN $${values.length + 1}
          AND $${values.length + 2}`
       );
       values.push(date_from, date_to);
