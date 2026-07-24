@@ -10,11 +10,12 @@ export async function GetCustomers(
   merchant_id: string,
   outlet_id: string | null = null,
   page: number = 1,
-  limit: number = 10
+  limit?: number
 ): Promise<{ customers: Customer[]; totalCount: number }> {
   const client = await pool.connect();
   try {
-    const offset = (page - 1) * limit;
+    const offset = limit ? (page - 1) * limit : 0;
+    const limitClause = limit ? `LIMIT $4 OFFSET $5` : '';
 
     // Query for customers with pagination
     const query = `
@@ -26,9 +27,9 @@ export async function GetCustomers(
         AND merchant_id = $2
           AND ($3::uuid IS NULL OR outlet_id = $3)
         ORDER BY created_at DESC
-        LIMIT $4 OFFSET $5
+        ${limitClause}
     `;
-      const customersResult = await client.query(query, [filter, merchant_id, outlet_id, limit, offset]);
+      const customersResult = await client.query(query, limit ? [filter, merchant_id, outlet_id, limit, offset] : [filter, merchant_id, outlet_id]);
 
     // Query for total count
     const countQuery = `

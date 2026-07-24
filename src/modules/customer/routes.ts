@@ -14,16 +14,16 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   const filter = req.query.filter as string | null;
   const outletId = resolveOutletId(req, req.query.outlet_id as string | undefined);
   const page = parseInt(req.query.page as string || "1", 10);
-  const limit = parseInt(req.query.limit as string || "10", 10);
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
 
-  if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1) {
+  if (isNaN(page) || page < 1 || (limit !== undefined && (isNaN(limit) || limit < 1))) {
     return res.status(400).json({ message: "Invalid page or limit values" });
   }
 
   try {
     const { customers, totalCount } = await GetCustomers(filter, req.userId ?? "empty", outletId, page, limit);
     const isFirstPage = page === 1;
-    const isLastPage = page * limit >= totalCount;
+    const isLastPage = limit ? page * limit >= totalCount : true;
 
     res.json({
       customers,
