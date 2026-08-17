@@ -1,6 +1,19 @@
 import pool from "../../database/postgres";
 import { Service, ServiceDurationDetail } from "./types";
 
+/** Satuan yang dipaksa untuk layanan cuci karpet (harga per meter persegi). */
+export const CARPET_UNIT = "m²";
+
+/**
+ * Normalizes the carpet flag and unit together. The routes validate with Joi but
+ * discard the coerced value, so `is_carpet` can arrive as undefined from older
+ * clients — treat anything but an explicit true as non-carpet.
+ */
+function resolveUnit(unit: string, isCarpetInput?: boolean): { is_carpet: boolean; unit: string } {
+  const is_carpet = isCarpetInput === true;
+  return { is_carpet, unit: is_carpet ? CARPET_UNIT : unit };
+}
+
 /**
  * Fetches all services with their IDs, names, and optional prices from the database.
  * 
@@ -23,7 +36,8 @@ export async function getAllServices(
       SELECT 
         service.id, 
         service.name,
-        service.unit, 
+        service.unit,
+        service.is_carpet,
         service_duration.price,
         duration.name AS duration_name,
         duration.id AS duration_id,
@@ -104,7 +118,7 @@ export async function getServices(
 
     // Query for services with pagination
     const dataQuery = `
-      SELECT service.id, service.name
+      SELECT service.id, service.name, service.unit, service.is_carpet
       ${baseQuery}
       ORDER BY service.created_at DESC
       LIMIT $4 OFFSET $5
@@ -139,6 +153,7 @@ export async function getServiceById(
       SELECT service.id AS id,
              service.name AS name,
              service.unit AS unit,
+             service.is_carpet AS is_carpet,
              service_duration.id AS duration_id,
              service_duration.duration,
              duration.name AS duration_name,
@@ -161,6 +176,7 @@ export async function getServiceById(
       id: result.rows[0].id,
       name: result.rows[0].name,
       unit: result.rows[0].unit,
+      is_carpet: result.rows[0].is_carpet === true,
       durations: [],
     };
 
@@ -193,12 +209,13 @@ export async function addService(
 ): Promise<Service> {
   const client = await pool.connect();
   try {
-    const { name, unit, durations } = service;
+    const { name, durations } = service;
+    const { is_carpet, unit } = resolveUnit(service.unit, service.is_carpet);
     const query = `
-      INSERT INTO service (name, unit, merchant_id, outlet_id)
-      VALUES ($1, $2, $3, $4) RETURNING id;
+      INSERT INTO service (name, unit, merchant_id, outlet_id, is_carpet)
+      VALUES ($1, $2, $3, $4, $5) RETURNING id;
     `;
-    const values = [name, unit, merchant_id, outlet_id || null];
+    const values = [name, unit, merchant_id, outlet_id || null, is_carpet];
     const result = await client.query(query, values);
     const newServiceId = result.rows[0].id;
 
@@ -221,6 +238,7 @@ export async function addService(
       id: newServiceId,
       name,
       unit,
+      is_carpet,
       durations,
     };
   } finally {
@@ -242,18 +260,19 @@ export async function updateService(
 ): Promise<Service> {
   const client = await pool.connect();
   try {
-    const { name, unit, durations } = service;
+    const { name, durations } = service;
+    const { is_carpet, unit } = resolveUnit(service.unit, service.is_carpet);
 
     // Update the service
     const updateServiceQuery = `
       UPDATE service
-      SET name = $1, unit = $2
-      WHERE id = $3
-        AND merchant_id = $4
-        AND ($5::uuid IS NULL OR outlet_id = $5)
+      SET name = $1, unit = $2, is_carpet = $3
+      WHERE id = $4
+        AND merchant_id = $5
+        AND ($6::uuid IS NULL OR outlet_id = $6)
       RETURNING id;
     `;
-    const updateServiceValues = [name, unit, id, merchant_id, outlet_id || null];
+    const updateServiceValues = [name, unit, is_carpet, id, merchant_id, outlet_id || null];
     const updatedService = await client.query(updateServiceQuery, updateServiceValues);
 
     if ((updatedService.rowCount || 0) === 0) {
@@ -281,6 +300,7 @@ export async function updateService(
       id,
       name,
       unit,
+      is_carpet,
       durations,
     };
   } finally {
@@ -342,6 +362,7 @@ export async function getServiceDurationDetail(service: string, duration: string
         service.name,
         service.unit,
         service.id,
+        service.is_carpet,
         service_duration.price
       FROM service
       LEFT JOIN service_duration ON service_duration.service = service.id 

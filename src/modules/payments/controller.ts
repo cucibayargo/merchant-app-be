@@ -80,7 +80,8 @@ export async function getPaymentByInvoiceId(invoiceId: string): Promise<PaymentD
             SELECT 
                 p.id AS payment_id,
                 p.invoice_id AS invoice,
-                SUM(ti.price * ti.qty) AS total,
+                -- qty bisa fraksional (luas karpet m²): bulatkan ke rupiah utuh
+                ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision AS total,
                 p.status AS payment_status,
                 p.payment_method,
                 json_agg(

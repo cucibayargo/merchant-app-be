@@ -1,4 +1,5 @@
 import {
+  CarpetDimension,
   InvoiceDetails,
   Transaction,
   TransactionData,
@@ -11,6 +12,42 @@ import { getCustomerById } from "../customer/controller";
 import { getDurationById } from "../duration/controller";
 import { getServiceDurationDetail } from "../services/controller";
 import { calculateDiscountAmount, getDiscountByIdOnly } from "../discount/controller";
+
+/** Bulatkan ke 2 desimal — dipakai untuk luas karpet (m²). */
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+/**
+ * Normalizes the carpet dimensions of one order item and derives the billable
+ * area from them. Server-authoritative: the qty sent by the client is ignored
+ * for carpet services, otherwise the dimension rows on the receipt could add up
+ * to something other than the quantity actually charged.
+ */
+function resolveItemQty(
+  isCarpet: boolean,
+  rawDimensions: unknown,
+  clientQty: unknown
+): { qty: number; dimensions: CarpetDimension[] | null } {
+  const rows = Array.isArray(rawDimensions) ? rawDimensions : null;
+
+  if (!isCarpet || !rows?.length) {
+    return { qty: Number(clientQty), dimensions: null };
+  }
+
+  const dimensions = rows.map((row: any) => ({
+    length: round2(Number(row?.length)),
+    width: round2(Number(row?.width)),
+  }));
+
+  if (dimensions.some((d) => !Number.isFinite(d.length) || !Number.isFinite(d.width) || d.length <= 0 || d.width <= 0)) {
+    throw new Error("Ukuran karpet tidak valid");
+  }
+
+  const qty = round2(
+    dimensions.reduce((sum, d) => sum + round2(d.length * d.width), 0)
+  );
+
+  return { qty, dimensions };
+}
 
 export async function getTransactions(
   status: string | null = null,
@@ -204,6 +241,15 @@ export async function addTransaction(
         throw new Error("Nilai durasi tidak valid");
       }
 
+      const { qty, dimensions } = resolveItemQty(
+        serviceDetail.is_carpet === true,
+        item.dimensions,
+        item.qty
+      );
+      if (!Number.isFinite(qty) || qty <= 0) {
+        throw new Error("Jumlah layanan tidak valid");
+      }
+
       let estimatedDate;
       if (durationDetail?.type === "Jam") {
         estimatedDate = new Date(
@@ -228,9 +274,10 @@ export async function addTransaction(
             duration_name,
             duration_length,
             duration_length_type,
-            estimated_date
+            estimated_date,
+            dimensions
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb);
     `,
         values: [
           newTransactionId,
@@ -238,12 +285,13 @@ export async function addTransaction(
           serviceDetail.name,
           serviceDetail.unit,
           serviceDetail.price,
-          item.qty,
+          qty,
           durationDetail.id,
           durationDetail.name,
           durationLength,
           durationDetail.type,
           estimatedDate,
+          dimensions ? JSON.stringify(dimensions) : null,
         ],
       });
     }
@@ -303,8 +351,11 @@ async function getInvoiceTotalPrice(
   const client = await pool.connect();
   try {
     const query = `
-      SELECT 
-        SUM(ti.price * ti.qty) AS total
+      SELECT
+        -- qty bisa fraksional (luas karpet m²), jadi bulatkan ke rupiah utuh
+        -- lewat numeric lalu kembalikan sebagai float supaya tipe respons
+        -- tetap angka (numeric akan dikirim pg sebagai string).
+        ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision AS total
       FROM transaction_item ti
       WHERE ti.transaction_id = $1
       GROUP BY ti.transaction_id
@@ -392,13 +443,13 @@ export async function getTransactionById(
         t.note,
         t.status AS transaction_status,
         p.invoice_id AS invoice,
-        SUM(ti.price * ti.qty) AS subtotal,
+        ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision AS subtotal,
         t.discount_id,
         d.name AS discount_name,
         d.type AS discount_type,
         d.value AS discount_value,
         t.discount_amount,
-        SUM(ti.price * ti.qty) - COALESCE(t.discount_amount, 0) AS total,
+        ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision - COALESCE(t.discount_amount, 0) AS total,
         p.status AS payment_status,
         p.payment_method,
         p.id AS payment_id,
@@ -412,7 +463,8 @@ export async function getTransactionById(
             'quantity', ti.qty,
             'duration_id', ti.duration_id,
             'duration_name', ti.duration_name,
-            'estimated_date', ti.estimated_date
+            'estimated_date', ti.estimated_date,
+            'dimensions', ti.dimensions
           )
         ) AS services
       FROM transaction t
@@ -536,18 +588,19 @@ export async function getInvoiceById(
                       'unit', ti.service_unit,
                       'price', ti.price,
                       'quantity', ti.qty,
-                      'total_price', ti.qty * ti.price,
+                      'total_price', ROUND((ti.qty * ti.price)::numeric, 0)::double precision,
                       'duration_id', ti.duration_id,
                       'duration_name', ti.duration_name,
-                      'estimated_date', TO_CHAR(ti.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                      'estimated_date', TO_CHAR(ti.estimated_date, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                      'dimensions', ti.dimensions
                   )
               ),
-              'subtotal', SUM(ti.price * ti.qty),
+              'subtotal', ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision,
               'discount_name', d.name,
               'discount_type', d.type,
               'discount_value', d.value,
               'discount_amount', COALESCE(t.discount_amount, 0),
-              'total_price', SUM(ti.price * ti.qty) - COALESCE(t.discount_amount, 0),
+              'total_price', ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision - COALESCE(t.discount_amount, 0),
               'payment_received', p.payment_received,
               'change_given', p.change_given
           ) as transaction

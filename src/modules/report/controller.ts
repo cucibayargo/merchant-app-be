@@ -6,6 +6,9 @@ import { getUserDetails } from '../user/controller';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
+/** Bulatkan ke 2 desimal — dipakai untuk kuantitas fraksional (luas karpet m²). */
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
 export async function generateReport(
     start_date: string,
     end_date: string,
@@ -124,7 +127,7 @@ async function getReportData(
             SELECT
                 TO_CHAR(ds.date, 'DD-MM-YYYY') AS date,
                 COALESCE(COUNT(ti.id), 0) AS total_transactions,
-                COALESCE(SUM(ti.qty * ti.price), 0) - COALESCE(
+                ROUND(COALESCE(SUM(ti.qty * ti.price), 0)::numeric, 0)::double precision - COALESCE(
                     (SELECT SUM(COALESCE(t2.discount_amount, 0))
                      FROM transaction t2
                      WHERE (t2.created_at AT TIME ZONE 'Asia/Jakarta')::DATE = ds.date
@@ -188,7 +191,7 @@ export async function getDashboardSummary(
     try {
         const query = `
             SELECT
-                COALESCE(SUM(ti.price * ti.qty), 0) - COALESCE(
+                ROUND(COALESCE(SUM(ti.price * ti.qty), 0)::numeric, 0)::double precision - COALESCE(
                     (SELECT SUM(COALESCE(t2.discount_amount, 0))
                      FROM transaction t2
                      WHERE t2.merchant_id = $1
@@ -263,7 +266,8 @@ export async function getTransactionsSummary(
         ]);
 
         const qty_by_service_unit = qtyByServiceUnitResult.rows.map((row) => {
-            const totalQty = Number(row.total_qty || 0);
+            // Luas karpet (m²) fraksional: bulatkan agar tidak tampil 12.799999999999999
+            const totalQty = round2(Number(row.total_qty || 0));
             const serviceUnit = row.service_unit;
             return {
                 service_unit: serviceUnit,
@@ -403,14 +407,14 @@ export async function getServiceReport(
                 SELECT
                     ti.service_id,
                     COALESCE(COUNT(DISTINCT t.id), 0) AS total_orders,
-                    COALESCE(SUM(
+                    ROUND(COALESCE(SUM(
                         (COALESCE(ti.qty, 0) * COALESCE(ti.price, 0))
                         - CASE
                             WHEN g.gross > 0
                                 THEN COALESCE(t.discount_amount, 0) * (COALESCE(ti.qty, 0) * COALESCE(ti.price, 0)) / g.gross
                             ELSE 0
                           END
-                    ), 0) AS total_revenue
+                    ), 0)::numeric, 0)::double precision AS total_revenue
                 FROM transaction_item ti
                 JOIN transaction t ON t.id = ti.transaction_id
                 JOIN tx_gross g ON g.transaction_id = ti.transaction_id
@@ -440,7 +444,7 @@ export async function getServiceReport(
             name: row.name,
             service_unit: row.service_unit,
             duration: Array.isArray(row.duration) ? row.duration.filter(Boolean) : [],
-            total_pcs: Number(row.total_qty || 0),
+            total_pcs: round2(Number(row.total_qty || 0)),
             total_orders: Number(row.total_orders || 0),
             total_revenue: Number(row.total_revenue || 0),
         }));

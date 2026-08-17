@@ -12,6 +12,7 @@ export interface Service {
   id: string;
   name: string;
   unit: string; // Unit of measurement
+  is_carpet: boolean; // Priced per square meter (cuci karpet)
   durations: Duration[];
 }
 
@@ -19,6 +20,7 @@ export interface ServiceDurationDetail {
   id: string;
   name: string;
   unit: string;
+  is_carpet: boolean;
   price: number;
 }
 
@@ -33,6 +35,13 @@ export const serviceSchema = Joi.object({
   unit: Joi.string().required().messages({
     'string.empty': 'Satuan wajib diisi',
     'any.required': 'Satuan wajib diisi',
+  }),
+
+  // Layanan cuci karpet: harga durasi dibaca sebagai harga per m².
+  // Unit-nya dinormalisasi ke 'm²' di controller, bukan di sini, supaya
+  // client lama tidak bisa menyimpan unit yang inkonsisten.
+  is_carpet: Joi.boolean().default(false).messages({
+    'boolean.base': 'Penanda layanan karpet harus berupa boolean',
   }),
 
   durations: Joi.array()

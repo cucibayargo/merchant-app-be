@@ -1,9 +1,17 @@
 const Joi = require("joi");
+
+/** Satu lembar karpet yang diukur merchant (meter). */
+export interface CarpetDimension {
+  length: number;
+  width: number;
+}
+
 interface TransactionItemDetail {
   service: string;
   service_name: string;
   qty: number;
   duration: string;
+  dimensions?: CarpetDimension[] | null;
 }
 
 export interface Transaction {
@@ -38,6 +46,7 @@ export interface ServiceDetail {
   service_name: string;
   price: number;
   quantity: number;
+  dimensions?: CarpetDimension[] | null;
 }
 
 export interface TransactionDetails {
@@ -74,6 +83,34 @@ export const transactionSchema = Joi.object({
         service: Joi.string().uuid().required(),
         duration: Joi.string().uuid().required(),
         qty: Joi.number().required(),
+        // Layanan cuci karpet: daftar ukuran lembar karpet. qty dihitung ulang
+        // dari daftar ini di controller, jadi field ini yang jadi acuan harga.
+        // Optional supaya build app lama (tanpa dimensions) tetap jalan.
+        dimensions: Joi.array()
+          .items(
+            Joi.object({
+              length: Joi.number().greater(0).max(1000).precision(2).required().messages({
+                'number.base': 'Panjang harus berupa angka',
+                'number.greater': 'Panjang harus lebih dari 0',
+                'number.max': 'Panjang terlalu besar',
+                'any.required': 'Panjang wajib diisi',
+              }),
+              width: Joi.number().greater(0).max(1000).precision(2).required().messages({
+                'number.base': 'Lebar harus berupa angka',
+                'number.greater': 'Lebar harus lebih dari 0',
+                'number.max': 'Lebar terlalu besar',
+                'any.required': 'Lebar wajib diisi',
+              }),
+            })
+          )
+          .min(1)
+          .max(200)
+          .optional()
+          .messages({
+            'array.base': 'Ukuran karpet harus berupa array',
+            'array.min': 'Minimal 1 ukuran karpet wajib diisi',
+            'array.max': 'Ukuran karpet maksimal 200 lembar',
+          }),
       })
     )
     .required(),
