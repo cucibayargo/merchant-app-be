@@ -127,7 +127,7 @@ async function getReportData(
             SELECT
                 TO_CHAR(ds.date, 'DD-MM-YYYY') AS date,
                 COALESCE(COUNT(ti.id), 0) AS total_transactions,
-                ROUND(COALESCE(SUM(ti.qty * ti.price), 0)::numeric, 0)::double precision - COALESCE(
+                COALESCE(SUM(ROUND((ti.qty * ti.price)::numeric, 0)), 0)::double precision - COALESCE(
                     (SELECT SUM(COALESCE(t2.discount_amount, 0))
                      FROM transaction t2
                      WHERE (t2.created_at AT TIME ZONE 'Asia/Jakarta')::DATE = ds.date
@@ -191,7 +191,7 @@ export async function getDashboardSummary(
     try {
         const query = `
             SELECT
-                ROUND(COALESCE(SUM(ti.price * ti.qty), 0)::numeric, 0)::double precision - COALESCE(
+                COALESCE(SUM(ROUND((ti.price * ti.qty)::numeric, 0)), 0)::double precision - COALESCE(
                     (SELECT SUM(COALESCE(t2.discount_amount, 0))
                      FROM transaction t2
                      WHERE t2.merchant_id = $1

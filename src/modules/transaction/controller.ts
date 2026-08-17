@@ -355,7 +355,7 @@ async function getInvoiceTotalPrice(
         -- qty bisa fraksional (luas karpet m²), jadi bulatkan ke rupiah utuh
         -- lewat numeric lalu kembalikan sebagai float supaya tipe respons
         -- tetap angka (numeric akan dikirim pg sebagai string).
-        ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision AS total
+        SUM(ROUND((ti.price * ti.qty)::numeric, 0))::double precision AS total
       FROM transaction_item ti
       WHERE ti.transaction_id = $1
       GROUP BY ti.transaction_id
@@ -443,13 +443,13 @@ export async function getTransactionById(
         t.note,
         t.status AS transaction_status,
         p.invoice_id AS invoice,
-        ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision AS subtotal,
+        SUM(ROUND((ti.price * ti.qty)::numeric, 0))::double precision AS subtotal,
         t.discount_id,
         d.name AS discount_name,
         d.type AS discount_type,
         d.value AS discount_value,
         t.discount_amount,
-        ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision - COALESCE(t.discount_amount, 0) AS total,
+        SUM(ROUND((ti.price * ti.qty)::numeric, 0))::double precision - COALESCE(t.discount_amount, 0) AS total,
         p.status AS payment_status,
         p.payment_method,
         p.id AS payment_id,
@@ -595,12 +595,12 @@ export async function getInvoiceById(
                       'dimensions', ti.dimensions
                   )
               ),
-              'subtotal', ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision,
+              'subtotal', SUM(ROUND((ti.price * ti.qty)::numeric, 0))::double precision,
               'discount_name', d.name,
               'discount_type', d.type,
               'discount_value', d.value,
               'discount_amount', COALESCE(t.discount_amount, 0),
-              'total_price', ROUND(SUM(ti.price * ti.qty)::numeric, 0)::double precision - COALESCE(t.discount_amount, 0),
+              'total_price', SUM(ROUND((ti.price * ti.qty)::numeric, 0))::double precision - COALESCE(t.discount_amount, 0),
               'payment_received', p.payment_received,
               'change_given', p.change_given
           ) as transaction
